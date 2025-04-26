@@ -12,6 +12,7 @@ cosmos-server
 │   │   └── dto              // Package where the data transfer objects are defined.
 │   ├── config               // Package where the configuration format is defined.
 │   ├── server               // Package where the server is defined.
-│   └── services             // Package where the services are defined.
+│   ├── services             // Package where the services are defined.
+│   └── test                 // Package where test utilities are defined
 └── config                   // Configuration files
 ```
