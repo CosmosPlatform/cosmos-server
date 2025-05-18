@@ -1,4 +1,5 @@
 # cosmos-server
+
 Server for the cosmos platform
 
 ## File Structure
@@ -16,3 +17,26 @@ cosmos-server
 │   └── test                 // Package where test utilities are defined
 └── config                   // Configuration files
 ```
+
+## Requisites
+
+### Golang
+
+This program uses ``go 1.23.1`, so you should have go downloaded to run it.
+
+### Migrations
+
+This program needs a Mongo compatible database to work.
+
+We use `go-migrate`so that we can easily keep the database in a valid state and it can evolve side by side with this project's needs.
+
+To download `go-migrate` run
+
+```sh
+sudo curl -L https://packagecloud.io/golang-migrate/migrate/gpgkey | sudo apt-key add -
+echo "deb https://packagecloud.io/golang-migrate/migrate/ubuntu/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/migrate.list
+sudo apt-get update
+sudo apt-get install -y migrate
+```
+
+To run the migrations, first start a local database with `make run-db` and then run `make migrate`
