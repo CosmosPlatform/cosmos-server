@@ -1,6 +1,6 @@
 [
     {
-        "create": "admin_users",
+        "create": "users",
         "validator": {
             "$jsonSchema": {
                 "bsonType": "object",
@@ -17,6 +17,11 @@
                     "email": {
                         "bsonType": "string",
                         "description": "must be a string and is required"
+                    },
+                    "role": {
+                        "bsonType": "string",
+                        "description": "must be a string and is required",
+                        "enum": ["admin", "user"]
                     }
                 }
             }
