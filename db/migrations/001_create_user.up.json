@@ -10,7 +10,7 @@
                         "bsonType": "string",
                         "description": "must be a string and is required"
                     },
-                    "password": {
+                    "encryptedPassword": {
                         "bsonType": "string",
                         "description": "must be a string and is required"
                     },
