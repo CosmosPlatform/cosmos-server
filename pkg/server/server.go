@@ -1,15 +1,16 @@
 package server
 
 import (
-	"cosmos-server/pkg/routes/healthcheck"
+	"cosmos-server/pkg/routes"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
-func NewGinHandler() *gin.Engine {
+func NewGinHandler(routes *routes.HTTPRoutes) *gin.Engine {
 	e := gin.New()
 
-	healthcheck.AddHealthcheckHandler(e.Group("/"))
+	unauthenticatedGroup := e.Group("/")
+	routes.RegisterUnauthenticatedRoutes(unauthenticatedGroup)
 
 	return e
 }
