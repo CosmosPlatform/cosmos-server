@@ -28,7 +28,7 @@ This program uses ``go 1.23.1`, so you should have go downloaded to run it.
 
 This program needs a Mongo compatible database to work.
 
-We use `go-migrate` so that we can easily keep the database in a valid state and it can evolve side by side with this project's needs.
+We use `go-migrate` so that we can easily keep the database in a valid state, and it can evolve side by side with this project's needs.
 
 To download `go-migrate` run
 

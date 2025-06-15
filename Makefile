@@ -7,3 +7,6 @@ run-db:
 
 migrate:
 	migrate -source file://./db/migrations -database mongodb://localhost:27017/cosmos up
+
+migrate-down:
+	migrate -source file://./db/migrations -database mongodb://localhost:27017/cosmos down
