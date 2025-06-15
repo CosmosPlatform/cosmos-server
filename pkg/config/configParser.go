@@ -2,19 +2,19 @@ package config
 
 import "github.com/spf13/viper"
 
-func readConfig() (Config, error) {
-	viper.SetConfigFile("config/local.json")
+func readConfig(path string) (*Config, error) {
+	viper.SetConfigFile(path)
 	viper.SetConfigType("json")
 
 	if err := viper.ReadInConfig(); err != nil {
-		return Config{}, err
+		return nil, err
 	}
 
 	var conf Config
 
 	if err := viper.Unmarshal(&conf); err != nil {
-		return Config{}, err
+		return nil, err
 	}
 
-	return conf, nil
+	return &conf, nil
 }
