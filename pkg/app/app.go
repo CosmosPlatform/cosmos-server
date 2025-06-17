@@ -20,7 +20,7 @@ func NewApp(config *c.Config) (*App, error) {
 		return nil, err
 	}
 
-	authService := auth.NewStorageAuthService(storageService)
+	authService := auth.NewStorageAuthService(config.AuthConfig, storageService)
 
 	httpRoutes := routes.NewHTTPRoutes(authService)
 
@@ -31,8 +31,9 @@ func NewApp(config *c.Config) (*App, error) {
 }
 
 func (app *App) RunServer() error {
+	address := app.config.ServerConfig.Host + ":" + app.config.ServerConfig.Port
 	s := &http.Server{
-		Addr:    app.config.ServerConfig.Port,
+		Addr:    address,
 		Handler: server.NewGinHandler(app.routes),
 	}
 

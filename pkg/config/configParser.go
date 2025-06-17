@@ -1,10 +1,18 @@
 package config
 
-import "github.com/spf13/viper"
+import (
+	"fmt"
+	"github.com/spf13/viper"
+)
 
 func readConfig(path string) (*Config, error) {
 	viper.SetConfigFile(path)
 	viper.SetConfigType("json")
+
+	err := viper.BindEnv("auth.jwtsecret", "JWT_SECRET")
+	if err != nil {
+		return nil, fmt.Errorf("failed to bind environment variable: %w", err)
+	}
 
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, err

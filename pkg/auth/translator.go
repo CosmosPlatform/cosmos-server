@@ -16,7 +16,7 @@ func NewTranslator() Translator {
 	return &translator{}
 }
 
-func (t *translator) ToUserModel(userObj obj.User) *model.User {
+func (t *translator) ToUserModel(userObj *obj.User) *model.User {
 	return &model.User{
 		ID:    userObj.ID,
 		Email: userObj.Email,

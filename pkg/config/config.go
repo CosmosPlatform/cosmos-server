@@ -8,6 +8,7 @@ import (
 type Config struct {
 	ServerConfig  `json:"server"`
 	StorageConfig `json:"storage"`
+	AuthConfig    `json:"auth"`
 }
 
 type ServerConfig struct {
@@ -20,9 +21,13 @@ type StorageConfig struct {
 	Port string
 }
 
+type AuthConfig struct {
+	JWTSecret string
+}
+
 func NewConfiguration() (*Config, error) {
 	env := os.Getenv("ENVIRONMENT")
-	if env == "local" {
+	if env == "LOCAL" {
 		if conf, err := readConfig("config/local.json"); err != nil {
 			return nil, err
 		} else {

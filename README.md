@@ -40,3 +40,10 @@ sudo apt-get install -y migrate
 ```
 
 To run the migrations, first start a local database with `make run-db` and then run `make migrate`
+
+### Environment Variables
+
+This program expects a set of environment variables to be inserted in order to function properly.
+
+- `JWT_SECRET`: Secret used to sign the JWT tokens.
+  -  If you are running this locally you can quickly generate one running `openssl rand -base64 32`

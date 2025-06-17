@@ -2,22 +2,27 @@ package auth
 
 import (
 	"context"
+	"cosmos-server/pkg/config"
 	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/storage"
 	"errors"
 	"fmt"
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
+	"time"
 )
 
 type StorageAuthService struct {
 	storageService storage.Service
 	translator     Translator
+	config         config.AuthConfig
 }
 
-func NewStorageAuthService(storageService storage.Service) *StorageAuthService {
+func NewStorageAuthService(config config.AuthConfig, storageService storage.Service) *StorageAuthService {
 	return &StorageAuthService{
 		storageService: storageService,
 		translator:     NewTranslator(),
+		config:         config,
 	}
 }
 
@@ -51,9 +56,45 @@ func (s *StorageAuthService) Authenticate(ctx context.Context, email, password s
 		return nil, "", fmt.Errorf("error comparing password: %v", err)
 	}
 
-	return s.translator.ToUserModel(user), "", nil
+	userModel := s.translator.ToUserModel(user)
+
+	token, err := s.GenerateToken(userModel)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to generate token: %w", err)
+	}
+
+	return userModel, token, nil
 }
 
-func (s *StorageAuthService) IsAuthenticated(token string) (string, error) {
-	return "", nil // Placeholder return
+func (s *StorageAuthService) IsAuthenticated(tokenString string) (*jwt.Token, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method")
+		}
+		return []byte(s.config.JWTSecret), nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse token: %w", err)
+	}
+
+	if !token.Valid {
+		return nil, fmt.Errorf("invalid token")
+	}
+
+	return token, nil
+}
+
+func (s *StorageAuthService) GenerateToken(user *model.User) (string, error) {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": user.ID,
+		"exp":     jwt.NewNumericDate(time.Now().Add(24 * time.Hour)), // TODO: Move to config.
+	})
+
+	tokenString, err := token.SignedString([]byte(s.config.JWTSecret))
+	if err != nil {
+		return "", fmt.Errorf("failed to sign token: %w", err)
+	}
+
+	return tokenString, nil
 }
