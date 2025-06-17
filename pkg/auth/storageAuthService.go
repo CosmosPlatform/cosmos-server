@@ -89,6 +89,7 @@ func (s *StorageAuthService) GenerateToken(user *model.User) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": user.ID,
 		"exp":     jwt.NewNumericDate(time.Now().Add(24 * time.Hour)), // TODO: Move to config.
+		"role":    user.Role,
 	})
 
 	tokenString, err := token.SignedString([]byte(s.config.JWTSecret))

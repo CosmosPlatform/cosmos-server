@@ -31,6 +31,7 @@ func (t *translator) ToAuthenticateResponse(user *model.User, token string) *api
 			ID:       user.ID,
 			Username: user.Username,
 			Email:    user.Email,
+			Role:     user.Role,
 		},
 	}
 }

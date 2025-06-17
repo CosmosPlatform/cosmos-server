@@ -29,5 +29,6 @@ func (t *translator) ToUserObj(userModel *model.User, encryptedPassword string) 
 		Username:          userModel.Username,
 		Email:             userModel.Email,
 		EncryptedPassword: encryptedPassword,
+		Role:              userModel.Role,
 	}
 }
