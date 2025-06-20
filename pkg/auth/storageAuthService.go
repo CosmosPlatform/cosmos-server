@@ -12,6 +12,17 @@ import (
 	"time"
 )
 
+const (
+	UserIDClaimKey         = "user_id"
+	UserEmailClaimKey      = "email"
+	UserUsernameClaimKey   = "username"
+	UserRoleClaimKey       = "role"
+	UserExpirationClaimKey = "exp"
+
+	RegularUserRole = "user"
+	AdminUserRole   = "admin"
+)
+
 type StorageAuthService struct {
 	storageService storage.Service
 	translator     Translator
@@ -26,7 +37,37 @@ func NewStorageAuthService(config config.AuthConfig, storageService storage.Serv
 	}
 }
 
-func (s *StorageAuthService) RegisterUser(ctx context.Context, user *model.User, password string) (string, error) {
+func (s *StorageAuthService) RegisterRegularUser(ctx context.Context, username, email, password string) (string, error) {
+	user := &model.User{
+		Username: username,
+		Email:    email,
+		Role:     RegularUserRole,
+	}
+
+	userID, err := s.registerUser(ctx, user, password)
+	if err != nil {
+		return "", fmt.Errorf("failed to register regular user: %w", err)
+	}
+
+	return userID, nil
+}
+
+func (s *StorageAuthService) RegisterAdminUser(ctx context.Context, username, email, password string) (string, error) {
+	user := &model.User{
+		Username: username,
+		Email:    email,
+		Role:     AdminUserRole,
+	}
+
+	userID, err := s.registerUser(ctx, user, password)
+	if err != nil {
+		return "", fmt.Errorf("failed to register admin user: %w", err)
+	}
+
+	return userID, nil
+}
+
+func (s *StorageAuthService) registerUser(ctx context.Context, user *model.User, password string) (string, error) {
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -87,9 +128,11 @@ func (s *StorageAuthService) IsAuthenticated(tokenString string) (*jwt.Token, er
 
 func (s *StorageAuthService) GenerateToken(user *model.User) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": user.ID,
-		"exp":     jwt.NewNumericDate(time.Now().Add(24 * time.Hour)), // TODO: Move to config.
-		"role":    user.Role,
+		UserIDClaimKey:         user.ID,
+		UserEmailClaimKey:      user.Email,
+		UserUsernameClaimKey:   user.Username,
+		UserRoleClaimKey:       user.Role,
+		UserExpirationClaimKey: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)), // TODO: Move to config.
 	})
 
 	tokenString, err := token.SignedString([]byte(s.config.JWTSecret))

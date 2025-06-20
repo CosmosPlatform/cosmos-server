@@ -8,16 +8,20 @@ import (
 )
 
 type HTTPRoutes struct {
-	authService auth.Service
+	AuthService auth.Service
 }
 
 func NewHTTPRoutes(authService auth.Service) *HTTPRoutes {
 	return &HTTPRoutes{
-		authService: authService,
+		AuthService: authService,
 	}
 }
 
 func (r *HTTPRoutes) RegisterUnauthenticatedRoutes(e *gin.RouterGroup) {
-	authRoute.AddAuthHandler(e, r.authService)
+	authRoute.AddAuthHandler(e, r.AuthService)
 	healthcheckRoute.AddHealthcheckHandler(e)
+}
+
+func (r *HTTPRoutes) RegisterAdminAuthenticatedRoutes(e *gin.RouterGroup) {
+	// TODO
 }

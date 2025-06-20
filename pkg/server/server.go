@@ -12,6 +12,12 @@ func NewGinHandler(routes *routes.HTTPRoutes) *gin.Engine {
 	unauthenticatedGroup := e.Group("/")
 	routes.RegisterUnauthenticatedRoutes(unauthenticatedGroup)
 
+	adminAuthenticatedGroup := e.Group("/",
+		authMiddleware(routes.AuthService),
+		adminMiddleware(),
+	)
+	routes.RegisterAdminAuthenticatedRoutes(adminAuthenticatedGroup)
+
 	return e
 }
 
