@@ -2,6 +2,7 @@ package server
 
 import (
 	"cosmos-server/pkg/auth"
+	"cosmos-server/pkg/user"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -43,7 +44,7 @@ func authMiddleware(authService auth.Service) gin.HandlerFunc {
 func adminMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		role, exists := c.Get(auth.UserRoleContextKey)
-		if !exists || role != auth.AdminUserRole {
+		if !exists || role != user.AdminUserRole {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
 			return
 		}
