@@ -4,7 +4,7 @@
         "validator": {
             "$jsonSchema": {
                 "bsonType": "object",
-                "required": ["username", "password", "email"],
+                "required": ["username", "encryptedPassword", "email"],
                 "properties": {
                     "username": {
                         "bsonType": "string",

@@ -19,6 +19,12 @@ func main() {
 		return
 	}
 
+	err = application.SetUpDatabase()
+	if err != nil {
+		fmt.Printf("Error setting up database: %v\n", err)
+		return
+	}
+
 	if err := application.RunServer(); err != nil {
 		fmt.Printf("Error starting server: %v\n", err)
 		return

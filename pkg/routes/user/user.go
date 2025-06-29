@@ -34,13 +34,13 @@ func (handler *handler) handleRegisterUser(e *gin.Context) {
 		return
 	}
 
-	userID, err := handler.userService.RegisterRegularUser(e, registerUserRequest.Username, registerUserRequest.Email, registerUserRequest.Password)
+	err := handler.userService.RegisterRegularUser(e, registerUserRequest.Username, registerUserRequest.Email, registerUserRequest.Password)
 	if err != nil {
 		e.JSON(500, gin.H{"error": "Failed to register user"})
 		return
 	}
 
-	e.JSON(201, handler.translator.ToRegisterUserResponse(userID, registerUserRequest.Username, registerUserRequest.Email))
+	e.JSON(201, handler.translator.ToRegisterUserResponse(registerUserRequest.Username, registerUserRequest.Email, user.RegularUserRole))
 }
 
 func (handler *handler) handleRegisterAdminUser(e *gin.Context) {
@@ -56,11 +56,11 @@ func (handler *handler) handleRegisterAdminUser(e *gin.Context) {
 		return
 	}
 
-	userID, err := handler.userService.RegisterAdminUser(e, registerUserRequest.Username, registerUserRequest.Email, registerUserRequest.Password)
+	err := handler.userService.RegisterAdminUser(e, registerUserRequest.Username, registerUserRequest.Email, registerUserRequest.Password)
 	if err != nil {
 		e.JSON(500, gin.H{"error": "Failed to register admin user"})
 		return
 	}
 
-	e.JSON(201, handler.translator.ToRegisterUserResponse(userID, registerUserRequest.Username, registerUserRequest.Email))
+	e.JSON(201, handler.translator.ToRegisterUserResponse(registerUserRequest.Username, registerUserRequest.Email, user.AdminUserRole))
 }

@@ -18,14 +18,14 @@ func NewTranslator() Translator {
 
 func (t *translator) ToUserModel(userObj *obj.User) *model.User {
 	return &model.User{
-		ID:    userObj.ID,
-		Email: userObj.Email,
+		Email:    userObj.Email,
+		Username: userObj.Username,
+		Role:     userObj.Role,
 	}
 }
 
 func (t *translator) ToUserObj(userModel *model.User, encryptedPassword string) *obj.User {
 	return &obj.User{
-		ID:                userModel.ID,
 		Username:          userModel.Username,
 		Email:             userModel.Email,
 		EncryptedPassword: encryptedPassword,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"cosmos-server/pkg/config"
 	"cosmos-server/pkg/storage/obj"
+	"errors"
 	"fmt"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
@@ -35,13 +36,14 @@ func (s *MongoService) GetUserCollection() *mongo.Collection {
 	return s.mongo.Database(s.databaseName).Collection(s.userCollectionName)
 }
 
-func (s *MongoService) InsertUser(ctx context.Context, user *obj.User) (string, error) {
+func (s *MongoService) InsertUser(ctx context.Context, user *obj.User) error {
 	collection := s.GetUserCollection()
-	result, err := insertOne[obj.User](ctx, collection, user)
+	_, err := insertOne[obj.User](ctx, collection, user)
 	if err != nil {
-		return "", fmt.Errorf("failed to insert user: %w", err)
+		return fmt.Errorf("failed to insert user: %w", err)
 	}
-	return result.InsertedID.(string), nil
+
+	return nil
 }
 
 func (s *MongoService) GetUserWithEmail(ctx context.Context, email string) (*obj.User, error) {
@@ -54,6 +56,23 @@ func (s *MongoService) GetUserWithEmail(ctx context.Context, email string) (*obj
 	user, err := findOne[obj.User](ctx, collection, filter)
 	if err != nil {
 		return nil, err
+	}
+	return user, nil
+}
+
+func (s *MongoService) GetUserWithRole(ctx context.Context, role string) (*obj.User, error) {
+	collection := s.GetUserCollection()
+
+	filter := NewBsonBuilder().
+		Eq("role", role).
+		Build()
+
+	user, err := findOne[obj.User](ctx, collection, filter)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get user with role %s: %w", role, err)
 	}
 	return user, nil
 }

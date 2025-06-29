@@ -6,23 +6,34 @@ import (
 )
 
 type Config struct {
-	ServerConfig  `json:"server"`
-	StorageConfig `json:"storage"`
-	AuthConfig    `json:"auth"`
+	ServerConfig  `mapstructure:"server"`
+	StorageConfig `mapstructure:"storage"`
+	AuthConfig    `mapstructure:"auth"`
+	SystemConfig  `mapstructure:"system"`
 }
 
 type ServerConfig struct {
-	Host string
-	Port string
+	Host string `mapstructure:"host"`
+	Port string `mapstructure:"port"`
 }
 
 type StorageConfig struct {
-	Host string
-	Port string
+	Host string `mapstructure:"host"`
+	Port string `mapstructure:"port"`
+}
+
+type SystemConfig struct {
+	DefaultAdmin `mapstructure:"default_admin"`
+}
+
+type DefaultAdmin struct {
+	Username string `mapstructure:"username"`
+	Email    string `mapstructure:"email"`
+	Password string `mapstructure:"password"`
 }
 
 type AuthConfig struct {
-	JWTSecret string
+	JWTSecret string `mapstructure:"jwt_secret"`
 }
 
 func NewConfiguration() (*Config, error) {

@@ -13,7 +13,6 @@ import (
 )
 
 const (
-	UserIDClaimKey         = "user_id"
 	UserEmailClaimKey      = "email"
 	UserUsernameClaimKey   = "username"
 	UserRoleClaimKey       = "role"
@@ -87,7 +86,6 @@ func (s *authService) IsAuthenticated(tokenString string) (*jwt.Token, error) {
 
 func (s *authService) GenerateToken(user *model.User) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		UserIDClaimKey:         user.ID,
 		UserEmailClaimKey:      user.Email,
 		UserUsernameClaimKey:   user.Username,
 		UserRoleClaimKey:       user.Role,

@@ -29,10 +29,6 @@ func authMiddleware(authService auth.Service) gin.HandlerFunc {
 			return
 		}
 
-		if userID, exists := claims[auth.UserIDClaimKey]; exists {
-			c.Set(auth.UserIDContextKey, userID)
-		}
-
 		if role, exists := claims[auth.UserRoleClaimKey]; exists {
 			c.Set(auth.UserRoleContextKey, role)
 		}
