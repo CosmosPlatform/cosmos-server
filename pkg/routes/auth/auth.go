@@ -31,17 +31,20 @@ func (handler *handler) handleLogin(e *gin.Context) {
 	var authenticateRequest api.AuthenticateRequest
 
 	if err := e.ShouldBindJSON(&authenticateRequest); err != nil {
+		handler.logger.Errorf("Failed to bind JSON for authentication request: %v", err)
 		e.JSON(400, gin.H{"error": "Invalid request format"})
 		return
 	}
 
 	if err := authenticateRequest.Validate(); err != nil {
+		handler.logger.Errorf("Validation error for authentication request: %v", err)
 		e.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
 
 	user, token, err := handler.authService.Authenticate(e, authenticateRequest.Email, authenticateRequest.Password)
 	if err != nil {
+		handler.logger.Errorf("Authentication failed for user %s: %v", authenticateRequest.Email, err)
 		e.JSON(401, gin.H{"error": "Authentication failed"})
 		return
 	}

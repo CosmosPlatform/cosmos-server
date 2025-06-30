@@ -10,7 +10,7 @@ type AuthenticateRequest struct {
 }
 
 func (r *AuthenticateRequest) Validate() error {
-	return validation.ValidateStruct(&AuthenticateRequest{},
+	return validation.ValidateStruct(r,
 		validation.Field(&r.Email, validation.Required),
 		validation.Field(&r.Password, validation.Required),
 	)
