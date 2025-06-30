@@ -10,6 +10,7 @@ type Config struct {
 	StorageConfig `mapstructure:"storage"`
 	AuthConfig    `mapstructure:"auth"`
 	SystemConfig  `mapstructure:"system"`
+	LogConfig     `mapstructure:"log"`
 }
 
 type ServerConfig struct {
@@ -24,6 +25,10 @@ type StorageConfig struct {
 
 type SystemConfig struct {
 	DefaultAdmin `mapstructure:"default_admin"`
+}
+
+type LogConfig struct {
+	Level string `mapstructure:"level"`
 }
 
 type DefaultAdmin struct {

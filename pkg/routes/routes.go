@@ -2,6 +2,7 @@ package routes
 
 import (
 	"cosmos-server/pkg/auth"
+	"cosmos-server/pkg/log"
 	authRoute "cosmos-server/pkg/routes/auth"
 	healthcheckRoute "cosmos-server/pkg/routes/healthcheck"
 	userRoute "cosmos-server/pkg/routes/user"
@@ -12,17 +13,19 @@ import (
 type HTTPRoutes struct {
 	AuthService auth.Service
 	UserService user.Service
+	Logger      log.Logger
 }
 
-func NewHTTPRoutes(authService auth.Service, userService user.Service) *HTTPRoutes {
+func NewHTTPRoutes(authService auth.Service, userService user.Service, logger log.Logger) *HTTPRoutes {
 	return &HTTPRoutes{
 		AuthService: authService,
 		UserService: userService,
+		Logger:      logger,
 	}
 }
 
 func (r *HTTPRoutes) RegisterUnauthenticatedRoutes(e *gin.RouterGroup) {
-	authRoute.AddAuthHandler(e, r.AuthService)
+	authRoute.AddAuthHandler(e, r.AuthService, r.Logger)
 	healthcheckRoute.AddHealthcheckHandler(e)
 }
 

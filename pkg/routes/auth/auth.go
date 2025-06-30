@@ -3,18 +3,22 @@ package auth
 import (
 	"cosmos-server/api"
 	"cosmos-server/pkg/auth"
+	"cosmos-server/pkg/log"
+	"fmt"
 	"github.com/gin-gonic/gin"
 )
 
 type handler struct {
 	authService auth.Service
 	translator  Translator
+	logger      log.Logger
 }
 
-func AddAuthHandler(e *gin.RouterGroup, authService auth.Service) {
+func AddAuthHandler(e *gin.RouterGroup, authService auth.Service, logger log.Logger) {
 	handler := &handler{
 		authService: authService,
 		translator:  NewTranslator(),
+		logger:      logger,
 	}
 
 	authRoutes := e.Group("/auth")
@@ -23,6 +27,7 @@ func AddAuthHandler(e *gin.RouterGroup, authService auth.Service) {
 }
 
 func (handler *handler) handleLogin(e *gin.Context) {
+	fmt.Printf("Handling login request\n")
 	var authenticateRequest api.AuthenticateRequest
 
 	if err := e.ShouldBindJSON(&authenticateRequest); err != nil {
@@ -35,7 +40,7 @@ func (handler *handler) handleLogin(e *gin.Context) {
 		return
 	}
 
-	user, token, err := handler.authService.Authenticate(e, authenticateRequest.Username, authenticateRequest.Password)
+	user, token, err := handler.authService.Authenticate(e, authenticateRequest.Email, authenticateRequest.Password)
 	if err != nil {
 		e.JSON(401, gin.H{"error": "Authentication failed"})
 		return

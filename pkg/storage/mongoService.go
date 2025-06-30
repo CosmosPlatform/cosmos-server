@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"cosmos-server/pkg/config"
+	"cosmos-server/pkg/log"
 	"cosmos-server/pkg/storage/obj"
 	"errors"
 	"fmt"
@@ -14,9 +15,10 @@ type MongoService struct {
 	mongo              *mongo.Client
 	databaseName       string
 	userCollectionName string
+	logger             log.Logger
 }
 
-func NewMongoService(config config.StorageConfig) (*MongoService, error) {
+func NewMongoService(config config.StorageConfig, logger log.Logger) (*MongoService, error) {
 	uri := fmt.Sprintf("mongodb://%s:%s", config.Host, config.Port)
 
 	clientOptions := options.Client().ApplyURI(uri)
@@ -29,6 +31,7 @@ func NewMongoService(config config.StorageConfig) (*MongoService, error) {
 		mongo:              mongoClient,
 		databaseName:       "cosmos",
 		userCollectionName: "users",
+		logger:             logger,
 	}, nil
 }
 

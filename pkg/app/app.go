@@ -4,6 +4,7 @@ import (
 	"context"
 	"cosmos-server/pkg/auth"
 	c "cosmos-server/pkg/config"
+	"cosmos-server/pkg/log"
 	"cosmos-server/pkg/routes"
 	"cosmos-server/pkg/server"
 	"cosmos-server/pkg/storage"
@@ -18,15 +19,20 @@ type App struct {
 }
 
 func NewApp(config *c.Config) (*App, error) {
-	storageService, err := storage.NewMongoService(config.StorageConfig)
+	logger, err := log.NewLogger(config.LogConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create logger: %v", err)
+	}
+
+	storageService, err := storage.NewMongoService(config.StorageConfig, logger)
 	if err != nil {
 		return nil, err
 	}
 
-	authService := auth.NewAuthService(config.AuthConfig, storageService)
-	userService := user.NewUserService(storageService)
+	authService := auth.NewAuthService(config.AuthConfig, storageService, logger)
+	userService := user.NewUserService(storageService, logger)
 
-	httpRoutes := routes.NewHTTPRoutes(authService, userService)
+	httpRoutes := routes.NewHTTPRoutes(authService, userService, logger)
 
 	return &App{
 		config: config,

@@ -9,6 +9,9 @@ import (
 func NewGinHandler(routes *routes.HTTPRoutes) *gin.Engine {
 	e := gin.New()
 
+	e.Use(loggingMiddleware(routes.Logger))
+	e.Use(gin.Recovery())
+
 	unauthenticatedGroup := e.Group("/")
 	routes.RegisterUnauthenticatedRoutes(unauthenticatedGroup)
 

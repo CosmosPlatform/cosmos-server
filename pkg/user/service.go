@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"cosmos-server/pkg/log"
 	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/storage"
 	"fmt"
@@ -22,12 +23,14 @@ type Service interface {
 type userService struct {
 	storageService storage.Service
 	translator     Translator
+	logger         log.Logger
 }
 
-func NewUserService(storageService storage.Service) Service {
+func NewUserService(storageService storage.Service, logger log.Logger) Service {
 	return &userService{
 		storageService: storageService,
 		translator:     NewTranslator(),
+		logger:         logger,
 	}
 }
 

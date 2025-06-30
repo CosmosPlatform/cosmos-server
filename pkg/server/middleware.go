@@ -2,11 +2,13 @@ package server
 
 import (
 	"cosmos-server/pkg/auth"
+	"cosmos-server/pkg/log"
 	"cosmos-server/pkg/user"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"net/http"
+	"time"
 )
 
 func authMiddleware(authService auth.Service) gin.HandlerFunc {
@@ -45,5 +47,28 @@ func adminMiddleware() gin.HandlerFunc {
 			return
 		}
 		c.Next()
+	}
+}
+
+func loggingMiddleware(logger log.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		start := time.Now()
+		path := c.Request.URL.Path
+
+		c.Next()
+
+		latency := time.Since(start)
+		statusCode := c.Writer.Status()
+		clientIP := c.ClientIP()
+		method := c.Request.Method
+
+		logger.Infow("Request",
+			"status", statusCode,
+			"method", method,
+			"path", path,
+			"ip", clientIP,
+			"latency", latency,
+			"errors", c.Errors.String(),
+		)
 	}
 }

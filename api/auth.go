@@ -5,13 +5,13 @@ import (
 )
 
 type AuthenticateRequest struct {
-	Username string `json:"username" binding:"required"`
+	Email    string `json:"email" binding:"required"`
 	Password string `json:"password" binding:"required"`
 }
 
 func (r *AuthenticateRequest) Validate() error {
 	return validation.ValidateStruct(&AuthenticateRequest{},
-		validation.Field(&r.Username, validation.Required),
+		validation.Field(&r.Email, validation.Required),
 		validation.Field(&r.Password, validation.Required),
 	)
 }

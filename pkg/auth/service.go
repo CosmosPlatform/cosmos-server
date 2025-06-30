@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"cosmos-server/pkg/config"
+	"cosmos-server/pkg/log"
 	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/storage"
 	"errors"
@@ -30,13 +31,15 @@ type authService struct {
 	storageService storage.Service
 	translator     Translator
 	config         config.AuthConfig
+	logger         log.Logger
 }
 
-func NewAuthService(config config.AuthConfig, storageService storage.Service) Service {
+func NewAuthService(config config.AuthConfig, storageService storage.Service, logger log.Logger) Service {
 	return &authService{
 		storageService: storageService,
 		translator:     NewTranslator(),
 		config:         config,
+		logger:         logger,
 	}
 }
 
