@@ -1,12 +1,18 @@
 package healthcheck
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
+)
+
+type handler struct{}
 
 func AddHealthcheckHandler(e *gin.RouterGroup) {
-	e.GET("/healthcheck", handleHealthcheck)
+	handler := &handler{}
+
+	e.GET("/healthcheck", handler.handleHealthcheck)
 }
 
-func handleHealthcheck(c *gin.Context) {
+func (handler *handler) handleHealthcheck(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"status": "ok",
 	})
