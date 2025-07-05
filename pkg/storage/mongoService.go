@@ -24,7 +24,7 @@ func NewMongoService(config config.StorageConfig, logger log.Logger) (*MongoServ
 	clientOptions := options.Client().ApplyURI(uri)
 	mongoClient, err := mongo.Connect(clientOptions)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
+		return nil, fmt.Errorf("failed to connect to MongoDB: %v", err)
 	}
 
 	return &MongoService{
@@ -43,7 +43,7 @@ func (s *MongoService) InsertUser(ctx context.Context, user *obj.User) error {
 	collection := s.GetUserCollection()
 	_, err := insertOne[obj.User](ctx, collection, user)
 	if err != nil {
-		return fmt.Errorf("failed to insert user: %w", err)
+		return fmt.Errorf("failed to insert user: %v", err)
 	}
 
 	return nil
@@ -75,7 +75,7 @@ func (s *MongoService) GetUserWithRole(ctx context.Context, role string) (*obj.U
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get user with role %s: %w", role, err)
+		return nil, fmt.Errorf("failed to get user with role %s: %v", role, err)
 	}
 	return user, nil
 }

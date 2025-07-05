@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -71,7 +72,10 @@ func findOne[T any](ctx context.Context, collection *mongo.Collection, filter in
 	var result T
 	err := collection.FindOne(ctx, filter).Decode(&result)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, ErrNotFound
+		}
+		return nil, ErrInternal
 	}
 	return &result, nil
 }
@@ -100,7 +104,7 @@ func findMany[T any](ctx context.Context, collection *mongo.Collection, filter i
 func insertOne[T any](ctx context.Context, collection *mongo.Collection, doc *T) (*mongo.InsertOneResult, error) {
 	result, err := collection.InsertOne(ctx, doc)
 	if err != nil {
-		return nil, fmt.Errorf("failed to insert document: %w", err)
+		return nil, fmt.Errorf("failed to insert document: %v", err)
 	}
 	return result, nil
 }
@@ -115,7 +119,7 @@ func insertMany[T any](ctx context.Context, collection *mongo.Collection, docs [
 
 	result, err := collection.InsertMany(ctx, values)
 	if err != nil {
-		return nil, fmt.Errorf("failed to insert documents: %w", err)
+		return nil, fmt.Errorf("failed to insert documents: %v", err)
 	}
 	return result, nil
 }

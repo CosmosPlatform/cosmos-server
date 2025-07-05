@@ -30,5 +30,5 @@ func (r *HTTPRoutes) RegisterUnauthenticatedRoutes(e *gin.RouterGroup) {
 }
 
 func (r *HTTPRoutes) RegisterAdminAuthenticatedRoutes(e *gin.RouterGroup) {
-	userRoute.AddAdminUserHandler(e, r.UserService)
+	userRoute.AddAdminUserHandler(e, r.UserService, r.Logger)
 }

@@ -5,6 +5,7 @@ import (
 	"cosmos-server/pkg/log"
 	"cosmos-server/pkg/user"
 	"fmt"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"net/http"
@@ -71,4 +72,26 @@ func loggingMiddleware(logger log.Logger) gin.HandlerFunc {
 			"errors", c.Errors.String(),
 		)
 	}
+}
+
+func errorMiddleware(translator Translator) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Next()
+
+		if callError := c.Errors.Last(); callError != nil {
+			apiError := translator.ToApiError(callError.Err)
+			c.JSON(apiError.StatusCode, apiError)
+		}
+	}
+}
+
+func corsMiddleware() gin.HandlerFunc {
+	return cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:3000"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	})
 }

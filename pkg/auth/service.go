@@ -3,10 +3,11 @@ package auth
 import (
 	"context"
 	"cosmos-server/pkg/config"
+	"cosmos-server/pkg/errors"
 	"cosmos-server/pkg/log"
 	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/storage"
-	"errors"
+	errorUtils "errors"
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -46,23 +47,27 @@ func NewAuthService(config config.AuthConfig, storageService storage.Service, lo
 func (s *authService) Authenticate(ctx context.Context, email, password string) (*model.User, string, error) {
 	user, err := s.storageService.GetUserWithEmail(ctx, email)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to retrieve user: %w", err)
+		s.logger.Errorf("failed to get user by email: %v", err)
+		if errorUtils.Is(err, storage.ErrNotFound) {
+			return nil, "", errors.NewUnauthorizedError("user not found")
+		}
+		return nil, "", errors.NewInternalServerError(fmt.Sprintf("failed to retrieve user: %v", err))
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.EncryptedPassword), []byte(password))
 
 	if err != nil {
-		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-			return nil, "", fmt.Errorf("invalid credentials")
+		if errorUtils.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+			return nil, "", errors.NewUnauthorizedError("Invalid credentials")
 		}
-		return nil, "", fmt.Errorf("error comparing password: %v", err)
+		return nil, "", errors.NewUnauthorizedError(fmt.Sprintf("error comparing password: %v", err))
 	}
 
 	userModel := s.translator.ToUserModel(user)
 
 	token, err := s.GenerateToken(userModel)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to generate token: %w", err)
+		return nil, "", errors.NewInternalServerError(fmt.Sprintf("failed to generate token: %v", err))
 	}
 
 	return userModel, token, nil
@@ -71,17 +76,17 @@ func (s *authService) Authenticate(ctx context.Context, email, password string) 
 func (s *authService) IsAuthenticated(tokenString string) (*jwt.Token, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method")
+			return nil, errors.NewUnauthorizedError(fmt.Sprintf("unexpected signing method"))
 		}
 		return []byte(s.config.JWTSecret), nil
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse token: %w", err)
+		return nil, errors.NewInternalServerError(fmt.Sprintf("failed to parse token: %v", err))
 	}
 
 	if !token.Valid {
-		return nil, fmt.Errorf("invalid token")
+		return nil, errors.NewUnauthorizedError(fmt.Sprintf("invalid token"))
 	}
 
 	return token, nil
@@ -97,7 +102,7 @@ func (s *authService) GenerateToken(user *model.User) (string, error) {
 
 	tokenString, err := token.SignedString([]byte(s.config.JWTSecret))
 	if err != nil {
-		return "", fmt.Errorf("failed to sign token: %w", err)
+		return "", fmt.Errorf("failed to sign token: %v", err)
 	}
 
 	return tokenString, nil

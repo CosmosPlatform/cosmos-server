@@ -11,6 +11,8 @@ func NewGinHandler(routes *routes.HTTPRoutes) *gin.Engine {
 
 	e.Use(loggingMiddleware(routes.Logger))
 	e.Use(gin.Recovery())
+	e.Use(corsMiddleware())
+	e.Use(errorMiddleware(NewTranslator()))
 
 	unauthenticatedGroup := e.Group("/")
 	routes.RegisterUnauthenticatedRoutes(unauthenticatedGroup)

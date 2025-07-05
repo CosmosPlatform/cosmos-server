@@ -2,19 +2,24 @@ package user
 
 import (
 	"cosmos-server/api"
+	"cosmos-server/pkg/errors"
+	"cosmos-server/pkg/log"
 	"cosmos-server/pkg/user"
+	"fmt"
 	"github.com/gin-gonic/gin"
 )
 
 type handler struct {
 	userService user.Service
 	translator  Translator
+	logger      log.Logger
 }
 
-func AddAdminUserHandler(e *gin.RouterGroup, userService user.Service) {
+func AddAdminUserHandler(e *gin.RouterGroup, userService user.Service, logger log.Logger) {
 	handler := &handler{
 		userService: userService,
 		translator:  NewTranslator(),
+		logger:      logger,
 	}
 
 	e.POST("/users", handler.handleRegisterUser)
@@ -25,18 +30,19 @@ func (handler *handler) handleRegisterUser(e *gin.Context) {
 	var registerUserRequest api.RegisterUserRequest
 
 	if err := e.ShouldBindJSON(&registerUserRequest); err != nil {
-		e.JSON(400, gin.H{"error": "Invalid request format"})
+		handler.logger.Errorf("Failed to bind JSON for registration request: %v", err)
+		_ = e.Error(errors.NewBadRequestError(fmt.Sprintf("Invalid request format: %v", err)))
 		return
 	}
 
 	if err := registerUserRequest.Validate(); err != nil {
-		e.JSON(400, gin.H{"error": err.Error()})
+		_ = e.Error(err)
 		return
 	}
 
 	err := handler.userService.RegisterRegularUser(e, registerUserRequest.Username, registerUserRequest.Email, registerUserRequest.Password)
 	if err != nil {
-		e.JSON(500, gin.H{"error": "Failed to register user"})
+		_ = e.Error(err)
 		return
 	}
 
@@ -47,7 +53,8 @@ func (handler *handler) handleRegisterAdminUser(e *gin.Context) {
 	var registerUserRequest api.RegisterUserRequest
 
 	if err := e.ShouldBindJSON(&registerUserRequest); err != nil {
-		e.JSON(400, gin.H{"error": "Invalid request format"})
+
+		_ = e.Error(errors.NewBadRequestError(fmt.Sprintf("Invalid request format: %v", err)))
 		return
 	}
 
@@ -58,7 +65,7 @@ func (handler *handler) handleRegisterAdminUser(e *gin.Context) {
 
 	err := handler.userService.RegisterAdminUser(e, registerUserRequest.Username, registerUserRequest.Email, registerUserRequest.Password)
 	if err != nil {
-		e.JSON(500, gin.H{"error": "Failed to register admin user"})
+		_ = e.Error(err)
 		return
 	}
 
