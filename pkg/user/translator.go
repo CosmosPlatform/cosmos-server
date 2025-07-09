@@ -7,6 +7,7 @@ import (
 
 type Translator interface {
 	ToUserObj(userModel *model.User, encryptedPassword string) *obj.User
+	ToUserModel(userObj *obj.User) *model.User
 }
 
 type translator struct{}
@@ -21,5 +22,13 @@ func (t *translator) ToUserObj(userModel *model.User, encryptedPassword string) 
 		Email:             userModel.Email,
 		EncryptedPassword: encryptedPassword,
 		Role:              userModel.Role,
+	}
+}
+
+func (t *translator) ToUserModel(userObj *obj.User) *model.User {
+	return &model.User{
+		Username: userObj.Username,
+		Email:    userObj.Email,
+		Role:     userObj.Role,
 	}
 }

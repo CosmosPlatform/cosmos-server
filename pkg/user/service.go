@@ -16,6 +16,7 @@ const (
 )
 
 type Service interface {
+	GetUserWithEmail(ctx context.Context, email string) (*model.User, error)
 	RegisterRegularUser(ctx context.Context, username, email, password string) error
 	RegisterAdminUser(ctx context.Context, username, email, password string) error
 	AdminUserPresent(ctx context.Context) (bool, error)
@@ -33,6 +34,16 @@ func NewUserService(storageService storage.Service, logger log.Logger) Service {
 		translator:     NewTranslator(),
 		logger:         logger,
 	}
+}
+
+func (s *userService) GetUserWithEmail(ctx context.Context, email string) (*model.User, error) {
+	user, err := s.storageService.GetUserWithEmail(ctx, email)
+	if err != nil {
+		s.logger.Errorf("failed to get user with email %s: %v", email, err)
+		return nil, errors.NewInternalServerError(fmt.Sprintf("failed to retrieve user with email %s: %v", email, err))
+	}
+
+	return s.translator.ToUserModel(user), nil
 }
 
 func (s *userService) RegisterRegularUser(ctx context.Context, username, email, password string) error {
