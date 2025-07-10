@@ -21,6 +21,8 @@ const (
 	UserExpirationClaimKey = "exp"
 )
 
+//go:generate mockgen -destination=./mock/service_mock.go -package=mock cosmos-server/pkg/auth Service
+
 type Service interface {
 	// Authenticate authenticates a user with the provided credentials and returns the user and a token if successful.
 	Authenticate(ctx context.Context, email, password string) (*model.User, string, error)
@@ -35,10 +37,10 @@ type authService struct {
 	logger         log.Logger
 }
 
-func NewAuthService(config config.AuthConfig, storageService storage.Service, logger log.Logger) Service {
+func NewAuthService(config config.AuthConfig, storageService storage.Service, translator Translator, logger log.Logger) Service {
 	return &authService{
 		storageService: storageService,
-		translator:     NewTranslator(),
+		translator:     translator,
 		config:         config,
 		logger:         logger,
 	}

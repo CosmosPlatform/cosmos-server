@@ -6,6 +6,8 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+//go:generate mockgen -destination=./mock/log_mock.go -package=log cosmos-server/pkg/log Logger
+
 type Logger interface {
 	Infof(format string, args ...interface{})
 	Infow(msg string, keysAndValues ...interface{})

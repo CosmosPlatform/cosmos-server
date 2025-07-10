@@ -29,7 +29,7 @@ func NewApp(config *c.Config) (*App, error) {
 		return nil, err
 	}
 
-	authService := auth.NewAuthService(config.AuthConfig, storageService, logger)
+	authService := auth.NewAuthService(config.AuthConfig, storageService, auth.NewTranslator(), logger)
 	userService := user.NewUserService(storageService, logger)
 
 	httpRoutes := routes.NewHTTPRoutes(authService, userService, logger)

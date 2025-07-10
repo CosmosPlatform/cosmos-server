@@ -5,6 +5,8 @@ import (
 	"cosmos-server/pkg/storage/obj"
 )
 
+//go:generate mockgen -destination=./mock/translator_mock.go -package=mock cosmos-server/pkg/auth Translator
+
 type Translator interface {
 	ToUserModel(userObj *obj.User) *model.User
 	ToUserObj(userModel *model.User, encryptedPassword string) *obj.User
