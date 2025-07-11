@@ -2,6 +2,7 @@ package auth
 
 import (
 	"cosmos-server/api"
+	"cosmos-server/pkg/errors"
 	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/test"
 	"encoding/json"
@@ -17,6 +18,9 @@ import (
 
 func TestHandleLogin(t *testing.T) {
 	t.Run("success - successful login", handleLoginSuccessful)
+	t.Run("failure - login error", handleLoginBadCredentials)
+	t.Run("failure - email required", handleLoginEmailRequired)
+	t.Run("failure - password required", handleLoginPasswordRequired)
 }
 
 type mocks struct {
@@ -101,4 +105,129 @@ func handleLoginSuccessful(t *testing.T) {
 
 	require.Equal(t, 200, recorder.Code, "Expected status code 200")
 	require.Equal(t, mockedAuthenticateResponse.User, actualResponse.User)
+}
+
+func handleLoginBadCredentials(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedEmail := "testErroneo@example.com"
+	mockedPassword := "test123"
+
+	mockedAuthenticateRequest := &api.AuthenticateRequest{
+		Email:    mockedEmail,
+		Password: mockedPassword,
+	}
+
+	mockedError := errors.NewUnauthorizedError("user not found")
+
+	mockedErrorResponse := api.ErrorResponse{
+		Error:      "user not found",
+		StatusCode: 401,
+	}
+
+	mocks.authServiceMock.EXPECT().
+		Authenticate(gomock.Any(), mockedEmail, mockedPassword).
+		Return(nil, "", mockedError)
+
+	mocks.loggerMock.EXPECT().
+		Errorf(gomock.Any(), gomock.Any())
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/auth/login"
+
+	request, recorder, err := test.NewHTTPRequest("POST", url, mockedAuthenticateRequest)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, 401, recorder.Code, "Expected status code 401")
+	require.Equal(t, mockedErrorResponse.Error, actualResponse.Error)
+}
+
+func handleLoginEmailRequired(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedPassword := "test123"
+
+	mockedAuthenticateRequest := &api.AuthenticateRequest{
+		Password: mockedPassword,
+	}
+
+	mockedError := api.ErrorResponse{
+		Error:      "email: cannot be blank.",
+		StatusCode: 400,
+	}
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	mocks.loggerMock.EXPECT().
+		Errorf(gomock.Any(), gomock.Any())
+
+	url := "/auth/login"
+
+	request, recorder, err := test.NewHTTPRequest("POST", url, mockedAuthenticateRequest)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, 400, recorder.Code, "Expected status code 400")
+	require.Equal(t, mockedError.Error, actualResponse.Error)
+}
+
+func handleLoginPasswordRequired(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedEmail := "test@example.com"
+
+	mockedAuthenticateRequest := &api.AuthenticateRequest{
+		Email: mockedEmail,
+	}
+
+	mockedError := api.ErrorResponse{
+		Error:      "password: cannot be blank.",
+		StatusCode: 400,
+	}
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	mocks.loggerMock.EXPECT().
+		Errorf(gomock.Any(), gomock.Any())
+
+	url := "/auth/login"
+
+	request, recorder, err := test.NewHTTPRequest("POST", url, mockedAuthenticateRequest)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, 400, recorder.Code, "Expected status code 400")
+	require.Equal(t, mockedError.Error, actualResponse.Error)
 }

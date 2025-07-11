@@ -38,7 +38,7 @@ func (handler *handler) handleLogin(e *gin.Context) {
 
 	if err := authenticateRequest.Validate(); err != nil {
 		handler.logger.Errorf("Validation error for authentication request: %v", err)
-		_ = e.Error(err)
+		_ = e.Error(errors.NewBadRequestError(err.Error()))
 		return
 	}
 
