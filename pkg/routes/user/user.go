@@ -15,10 +15,10 @@ type handler struct {
 	logger      log.Logger
 }
 
-func AddAdminUserHandler(e *gin.RouterGroup, userService user.Service, logger log.Logger) {
+func AddAdminUserHandler(e *gin.RouterGroup, userService user.Service, translator Translator, logger log.Logger) {
 	handler := &handler{
 		userService: userService,
-		translator:  NewTranslator(),
+		translator:  translator,
 		logger:      logger,
 	}
 

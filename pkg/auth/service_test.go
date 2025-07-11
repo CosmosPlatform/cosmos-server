@@ -2,18 +2,19 @@ package auth
 
 import (
 	"context"
-	authMock "cosmos-server/pkg/auth/mock"
 	"cosmos-server/pkg/config"
 	"cosmos-server/pkg/errors"
-	logMock "cosmos-server/pkg/log/mock"
 	"cosmos-server/pkg/model"
-	storageMock "cosmos-server/pkg/storage/mock"
 	"cosmos-server/pkg/storage/obj"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	"golang.org/x/crypto/bcrypt"
 	"testing"
+
+	authMock "cosmos-server/pkg/auth/mock"
+	logMock "cosmos-server/pkg/log/mock"
+	storageMock "cosmos-server/pkg/storage/mock"
 )
 
 const (

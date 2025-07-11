@@ -2,6 +2,8 @@ package test
 
 import (
 	"bytes"
+	"cosmos-server/pkg/log"
+	"cosmos-server/pkg/server/middleware"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -34,7 +36,13 @@ func NewHTTPRequest(method, url string, body interface{}) (*http.Request, *httpt
 	return request, recorder, nil
 }
 
-func NewRouter() *gin.Engine {
+func NewRouter(logger log.Logger) *gin.Engine {
 	router := gin.Default()
+
+	router.Use(middleware.LoggingMiddleware(logger))
+	router.Use(gin.Recovery())
+	router.Use(middleware.CorsMiddleware())
+	router.Use(middleware.ErrorMiddleware(middleware.NewTranslator()))
+
 	return router
 }

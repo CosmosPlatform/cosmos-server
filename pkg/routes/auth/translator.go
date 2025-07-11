@@ -5,6 +5,8 @@ import (
 	"cosmos-server/pkg/model"
 )
 
+//go:generate mockgen -destination=./mock/translator_mock.go -package=mock cosmos-server/pkg/routes/auth Translator
+
 type Translator interface {
 	ToModelUser(username, email string) *model.User
 

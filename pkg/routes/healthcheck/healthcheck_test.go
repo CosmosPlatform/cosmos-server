@@ -1,15 +1,27 @@
 package healthcheck
 
 import (
+	logMock "cosmos-server/pkg/log/mock"
 	"cosmos-server/pkg/test"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/mock/gomock"
 	"testing"
 )
 
-func setUp() *gin.Engine {
-	router := test.NewRouter()
+type mocks struct {
+	loggerMock *logMock.MockLogger
+}
+
+func setUp(t *testing.T) (*gin.Engine, *mocks) {
+	ctrl := gomock.NewController(t)
+
+	mocks := &mocks{
+		loggerMock: logMock.NewMockLogger(ctrl),
+	}
+
+	router := test.NewRouter(mocks.loggerMock)
 	AddHealthcheckHandler(router.Group("/"))
-	return router
+	return router, mocks
 }
 
 func TestRouteHealthcheck(t *testing.T) {
@@ -17,7 +29,10 @@ func TestRouteHealthcheck(t *testing.T) {
 }
 
 func healthcheckSuccess(t *testing.T) {
-	router := setUp()
+	router, mocks := setUp(t)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
 
 	request, recorder, err := test.NewHTTPRequest("GET", "/healthcheck", nil)
 	if err != nil {

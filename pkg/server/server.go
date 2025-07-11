@@ -2,6 +2,7 @@ package server
 
 import (
 	"cosmos-server/pkg/routes"
+	"cosmos-server/pkg/server/middleware"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -9,17 +10,17 @@ import (
 func NewGinHandler(routes *routes.HTTPRoutes) *gin.Engine {
 	e := gin.New()
 
-	e.Use(loggingMiddleware(routes.Logger))
+	e.Use(middleware.LoggingMiddleware(routes.Logger))
 	e.Use(gin.Recovery())
-	e.Use(corsMiddleware())
-	e.Use(errorMiddleware(NewTranslator()))
+	e.Use(middleware.CorsMiddleware())
+	e.Use(middleware.ErrorMiddleware(middleware.NewTranslator()))
 
 	unauthenticatedGroup := e.Group("/")
 	routes.RegisterUnauthenticatedRoutes(unauthenticatedGroup)
 
 	adminAuthenticatedGroup := e.Group("/",
-		authMiddleware(routes.AuthService),
-		adminMiddleware(),
+		middleware.AuthMiddleware(routes.AuthService),
+		middleware.AdminMiddleware(),
 	)
 	routes.RegisterAdminAuthenticatedRoutes(adminAuthenticatedGroup)
 

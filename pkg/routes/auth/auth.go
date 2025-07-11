@@ -28,7 +28,6 @@ func AddAuthHandler(e *gin.RouterGroup, authService auth.Service, logger log.Log
 }
 
 func (handler *handler) handleLogin(e *gin.Context) {
-	fmt.Printf("Handling login request\n")
 	var authenticateRequest api.AuthenticateRequest
 
 	if err := e.ShouldBindJSON(&authenticateRequest); err != nil {
