@@ -28,7 +28,7 @@ This program uses ``go 1.23.1`, so you should have go downloaded to run it.
 
 This program needs a Mongo compatible database to work.
 
-We use `go-migrate` so that we can easily keep the database in a valid state and it can evolve side by side with this project's needs.
+We use `go-migrate` so that we can easily keep the database in a valid state, and it can evolve side by side with this project's needs.
 
 To download `go-migrate` run
 
@@ -40,3 +40,10 @@ sudo apt-get install -y migrate
 ```
 
 To run the migrations, first start a local database with `make run-db` and then run `make migrate`
+
+### Environment Variables
+
+This program expects a set of environment variables to be inserted in order to function properly.
+
+- `JWT_SECRET`: Secret used to sign the JWT tokens.
+  -  If you are running this locally you can quickly generate one running `openssl rand -base64 32`

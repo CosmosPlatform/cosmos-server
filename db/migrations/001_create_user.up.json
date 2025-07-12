@@ -1,22 +1,27 @@
 [
     {
-        "create": "admin_users",
+        "create": "users",
         "validator": {
             "$jsonSchema": {
                 "bsonType": "object",
-                "required": ["username", "password", "email"],
+                "required": ["username", "encryptedPassword", "email"],
                 "properties": {
                     "username": {
                         "bsonType": "string",
                         "description": "must be a string and is required"
                     },
-                    "password": {
+                    "encryptedPassword": {
                         "bsonType": "string",
                         "description": "must be a string and is required"
                     },
                     "email": {
                         "bsonType": "string",
                         "description": "must be a string and is required"
+                    },
+                    "role": {
+                        "bsonType": "string",
+                        "description": "must be a string and is required",
+                        "enum": ["admin", "user"]
                     }
                 }
             }
