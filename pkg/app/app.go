@@ -24,7 +24,7 @@ func NewApp(config *c.Config) (*App, error) {
 		return nil, fmt.Errorf("failed to create logger: %v", err)
 	}
 
-	storageService, err := storage.NewMongoService(config.StorageConfig, logger)
+	storageService, err := storage.NewPostgresService(config.StorageConfig, logger)
 	if err != nil {
 		return nil, err
 	}

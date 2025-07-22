@@ -19,8 +19,11 @@ type ServerConfig struct {
 }
 
 type StorageConfig struct {
-	Host string `mapstructure:"host"`
-	Port string `mapstructure:"port"`
+	Host         string `mapstructure:"host"`
+	Port         string `mapstructure:"port"`
+	User         string `mapstructure:"user"`
+	Password     string `mapstructure:"password"`
+	DatabaseName string `mapstructure:"database"`
 }
 
 type SystemConfig struct {

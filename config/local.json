@@ -5,7 +5,10 @@
   },
   "storage": {
     "host": "localhost",
-    "port": "27017"
+    "port": "5432",
+    "user": "postgres",
+    "password": "postgres",
+    "database": "cosmos"
   },
   "log": {
     "level": "info"
