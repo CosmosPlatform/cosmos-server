@@ -3,10 +3,10 @@ tests:
 
 # Starts a database container for local development
 run-db:
-	./db/local/start-local-db.sh cosmos-mongo 27017 cosmos-mongo-data
+	./db/local/start-local-db.sh cosmos-postgres 5432 cosmos-postgres-data
 
 migrate:
-	migrate -source file://./db/migrations -database mongodb://localhost:27017/cosmos up
+	migrate -path db/migrations -database "postgres://postgres:postgres@localhost:5432/cosmos?sslmode=disable" up
 
 migrate-down:
-	migrate -source file://./db/migrations -database mongodb://localhost:27017/cosmos down
+	migrate -path db/migrations -database "postgres://postgres:postgres@localhost:5432/cosmos?sslmode=disable" down
