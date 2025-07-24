@@ -80,3 +80,39 @@ func (s *PostgresService) GetUserWithRole(ctx context.Context, role string) (*ob
 
 	return &user, nil
 }
+
+func (s *PostgresService) InsertTeam(ctx context.Context, team *obj.Team) error {
+	query := `INSERT INTO teams (name, description) 
+			 VALUES ($1, $2)`
+
+	_, err := s.db.ExecContext(ctx, query, team.Name, team.Description)
+	if err != nil {
+		if err.Error() == "pq: duplicate key value violates unique constraint" {
+			return ErrAlreadyExists
+		}
+		return fmt.Errorf("failed to insert team: %v", err)
+	}
+
+	return nil
+}
+
+func (s *PostgresService) GetTeamsWithFilter(ctx context.Context, filter string) ([]*obj.Team, error) {
+	var teams []*obj.Team
+	var query string
+	var args []interface{}
+
+	if filter == "" {
+		query = `SELECT id, name, description, created_at, updated_at FROM teams ORDER BY name`
+	} else {
+		query = `SELECT id, name, description, created_at, updated_at FROM teams 
+		         WHERE name ILIKE $1 ORDER BY name`
+		args = append(args, "%"+filter+"%")
+	}
+
+	err := s.db.SelectContext(ctx, &teams, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get teams with filter '%s': %v", filter, err)
+	}
+
+	return teams, nil
+}

@@ -1,0 +1,13 @@
+CREATE TABLE IF NOT EXISTS teams (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE users
+ADD COLUMN team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL;
+
+CREATE INDEX users_team_id_idx ON users(team_id);
+CREATE INDEX teams_name_idx ON teams(name);

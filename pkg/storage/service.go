@@ -9,6 +9,8 @@ import (
 
 type Service interface {
 	GetUserWithEmail(ctx context.Context, email string) (*obj.User, error)
-	InsertUser(ctx context.Context, user *obj.User) error
 	GetUserWithRole(ctx context.Context, role string) (*obj.User, error)
+	InsertUser(ctx context.Context, user *obj.User) error
+	InsertTeam(ctx context.Context, team *obj.Team) error
+	GetTeamsWithFilter(ctx context.Context, filter string) ([]*obj.Team, error)
 }
