@@ -8,6 +8,7 @@ import (
 type Translator interface {
 	ToModelTeam(team *obj.Team) *model.Team
 	ToModelTeams(teams []*obj.Team) []*model.Team
+	ToObjTeam(team *model.Team) *obj.Team
 }
 
 type translator struct{}
@@ -29,4 +30,11 @@ func (t *translator) ToModelTeams(teams []*obj.Team) []*model.Team {
 		modelTeams = append(modelTeams, t.ToModelTeam(team))
 	}
 	return modelTeams
+}
+
+func (t *translator) ToObjTeam(team *model.Team) *obj.Team {
+	return &obj.Team{
+		Name:        team.Name,
+		Description: team.Description,
+	}
 }

@@ -2,13 +2,17 @@ package team
 
 import (
 	"context"
+	"cosmos-server/pkg/errors"
 	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/storage"
+	errorUtils "errors"
+	"fmt"
 )
 
 type Service interface {
 	GetAllTeams(ctx context.Context) ([]*model.Team, error)
 	DeleteTeam(ctx context.Context, name string) error
+	InsertTeam(ctx context.Context, team *model.Team) error
 }
 
 type teamService struct {
@@ -31,6 +35,18 @@ func (s *teamService) GetAllTeams(ctx context.Context) ([]*model.Team, error) {
 	teamModels := s.translator.ToModelTeams(teams)
 
 	return teamModels, nil
+}
+
+func (s *teamService) InsertTeam(ctx context.Context, team *model.Team) error {
+	objTeam := s.translator.ToObjTeam(team)
+	err := s.storageService.InsertTeam(ctx, objTeam)
+	if err != nil {
+		if errorUtils.Is(err, storage.ErrAlreadyExists) {
+			return errors.NewConflictError(fmt.Sprint("team with name ", team.Name, " already exists"))
+		}
+		return err
+	}
+	return nil
 }
 
 func (s *teamService) DeleteTeam(ctx context.Context, name string) error {
