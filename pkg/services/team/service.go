@@ -8,6 +8,7 @@ import (
 
 type Service interface {
 	GetAllTeams(ctx context.Context) ([]*model.Team, error)
+	DeleteTeam(ctx context.Context, name string) error
 }
 
 type teamService struct {
@@ -30,4 +31,12 @@ func (s *teamService) GetAllTeams(ctx context.Context) ([]*model.Team, error) {
 	teamModels := s.translator.ToModelTeams(teams)
 
 	return teamModels, nil
+}
+
+func (s *teamService) DeleteTeam(ctx context.Context, name string) error {
+	err := s.storageService.DeleteTeam(ctx, name)
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"cosmos-server/pkg/config"
 	"cosmos-server/pkg/errors"
 	"cosmos-server/pkg/model"
+	authMock "cosmos-server/pkg/services/auth/mock"
 	"cosmos-server/pkg/storage/obj"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"
@@ -12,7 +13,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"testing"
 
-	authMock "cosmos-server/pkg/auth/mock"
 	logMock "cosmos-server/pkg/log/mock"
 	storageMock "cosmos-server/pkg/storage/mock"
 )

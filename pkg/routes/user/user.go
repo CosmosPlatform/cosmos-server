@@ -4,7 +4,7 @@ import (
 	"cosmos-server/api"
 	"cosmos-server/pkg/errors"
 	"cosmos-server/pkg/log"
-	"cosmos-server/pkg/user"
+	"cosmos-server/pkg/services/user"
 	"fmt"
 	"github.com/gin-gonic/gin"
 )
@@ -59,7 +59,7 @@ func (handler *handler) handleRegisterAdminUser(e *gin.Context) {
 	}
 
 	if err := registerUserRequest.Validate(); err != nil {
-		e.JSON(400, gin.H{"error": err.Error()})
+		_ = e.Error(errors.NewBadRequestError(err.Error()))
 		return
 	}
 

@@ -2,14 +2,14 @@ package app
 
 import (
 	"context"
-	"cosmos-server/pkg/auth"
 	c "cosmos-server/pkg/config"
 	"cosmos-server/pkg/log"
 	"cosmos-server/pkg/routes"
 	"cosmos-server/pkg/server"
+	auth2 "cosmos-server/pkg/services/auth"
+	"cosmos-server/pkg/services/team"
+	"cosmos-server/pkg/services/user"
 	"cosmos-server/pkg/storage"
-	"cosmos-server/pkg/team"
-	"cosmos-server/pkg/user"
 	"fmt"
 	"net/http"
 )
@@ -30,7 +30,7 @@ func NewApp(config *c.Config) (*App, error) {
 		return nil, err
 	}
 
-	authService := auth.NewAuthService(config.AuthConfig, storageService, auth.NewTranslator(), logger)
+	authService := auth2.NewAuthService(config.AuthConfig, storageService, auth2.NewTranslator(), logger)
 	userService := user.NewUserService(storageService, logger)
 	teamService := team.NewTeamService(storageService)
 

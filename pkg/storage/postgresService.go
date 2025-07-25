@@ -116,3 +116,23 @@ func (s *PostgresService) GetTeamsWithFilter(ctx context.Context, filter string)
 
 	return teams, nil
 }
+
+func (s *PostgresService) DeleteTeam(ctx context.Context, name string) error {
+	query := `DELETE FROM teams WHERE name = $1`
+
+	result, err := s.db.ExecContext(ctx, query, name)
+	if err != nil {
+		return fmt.Errorf("failed to delete team with name %s: %v", name, err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected for team %s: %v", name, err)
+	}
+
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}

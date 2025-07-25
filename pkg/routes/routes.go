@@ -1,14 +1,14 @@
 package routes
 
 import (
-	"cosmos-server/pkg/auth"
 	"cosmos-server/pkg/log"
 	authRoute "cosmos-server/pkg/routes/auth"
 	healthcheckRoute "cosmos-server/pkg/routes/healthcheck"
 	teamRoute "cosmos-server/pkg/routes/team"
 	userRoute "cosmos-server/pkg/routes/user"
-	"cosmos-server/pkg/team"
-	"cosmos-server/pkg/user"
+	"cosmos-server/pkg/services/auth"
+	"cosmos-server/pkg/services/team"
+	"cosmos-server/pkg/services/user"
 	"github.com/gin-gonic/gin"
 )
 
