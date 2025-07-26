@@ -20,9 +20,10 @@ type teamService struct {
 	translator     Translator
 }
 
-func NewTeamService(storageService storage.Service) Service {
+func NewTeamService(storageService storage.Service, translator Translator) Service {
 	return &teamService{
 		storageService: storageService,
+		translator:     translator,
 	}
 }
 

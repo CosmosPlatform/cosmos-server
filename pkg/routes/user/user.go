@@ -24,7 +24,8 @@ func AddAdminUserHandler(e *gin.RouterGroup, userService user.Service, translato
 
 	usersGroup := e.Group("/users")
 
-	usersGroup.POST("/users", handler.handleRegisterUser)
+	usersGroup.GET("", handler.handleGetUsers)
+	usersGroup.POST("", handler.handleRegisterUser)
 }
 
 func (handler *handler) handleRegisterUser(e *gin.Context) {
@@ -48,4 +49,15 @@ func (handler *handler) handleRegisterUser(e *gin.Context) {
 	}
 
 	e.JSON(201, handler.translator.ToRegisterUserResponse(registerUserRequest.Username, registerUserRequest.Email, user.RegularUserRole))
+}
+
+func (handler *handler) handleGetUsers(e *gin.Context) {
+	users, err := handler.userService.GetUsers(e)
+	if err != nil {
+		handler.logger.Errorf("Failed to get users: %v", err)
+		_ = e.Error(err)
+		return
+	}
+
+	e.JSON(200, handler.translator.ToGetUsersResponse(users))
 }

@@ -17,6 +17,7 @@ const (
 
 type Service interface {
 	GetUserWithEmail(ctx context.Context, email string) (*model.User, error)
+	GetUsers(ctx context.Context) ([]*model.User, error)
 	RegisterUser(ctx context.Context, username, email, password, role string) error
 	AdminUserPresent(ctx context.Context) (bool, error)
 }
@@ -76,4 +77,16 @@ func (s *userService) AdminUserPresent(ctx context.Context) (bool, error) {
 	}
 
 	return adminUser != nil, nil
+}
+
+func (s *userService) GetUsers(ctx context.Context) ([]*model.User, error) {
+	users, err := s.storageService.GetUsersWithFilter(ctx, "")
+	if err != nil {
+		s.logger.Errorf("failed to get users: %v", err)
+		return nil, errors.NewInternalServerError(fmt.Sprintf("failed to retrieve users: %v", err))
+	}
+
+	userModels := s.translator.ToUserModels(users)
+
+	return userModels, nil
 }

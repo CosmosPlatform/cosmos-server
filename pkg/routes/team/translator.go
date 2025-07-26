@@ -18,7 +18,7 @@ func NewTranslator() Translator {
 }
 
 func (t *translator) ToGetTeamsResponse(teams []*model.Team) *api.GetTeamsResponse {
-	var apiTeams []*api.Team
+	apiTeams := make([]*api.Team, 0)
 	for _, team := range teams {
 		apiTeams = append(apiTeams, &api.Team{
 			Name:        team.Name,

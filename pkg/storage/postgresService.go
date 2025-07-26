@@ -81,6 +81,27 @@ func (s *PostgresService) GetUserWithRole(ctx context.Context, role string) (*ob
 	return &user, nil
 }
 
+func (s *PostgresService) GetUsersWithFilter(ctx context.Context, filter string) ([]*obj.User, error) {
+	var users []*obj.User
+	var query string
+	var args []interface{}
+
+	if filter == "" {
+		query = `SELECT username, email, encrypted_password, role FROM users ORDER BY username`
+	} else {
+		query = `SELECT username, email, encrypted_password, role FROM users 
+		         WHERE username ILIKE $1 OR email ILIKE $1 ORDER BY username`
+		args = append(args, "%"+filter+"%")
+	}
+
+	err := s.db.SelectContext(ctx, &users, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get users with filter '%s': %v", filter, err)
+	}
+
+	return users, nil
+}
+
 func (s *PostgresService) InsertTeam(ctx context.Context, team *obj.Team) error {
 	query := `INSERT INTO teams (name, description) 
 			 VALUES ($1, $2)`

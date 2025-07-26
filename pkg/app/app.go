@@ -32,7 +32,7 @@ func NewApp(config *c.Config) (*App, error) {
 
 	authService := auth.NewAuthService(config.AuthConfig, storageService, auth.NewTranslator(), logger)
 	userService := user.NewUserService(storageService, logger)
-	teamService := team.NewTeamService(storageService)
+	teamService := team.NewTeamService(storageService, team.NewTranslator())
 
 	httpRoutes := routes.NewHTTPRoutes(authService, userService, teamService, logger)
 
