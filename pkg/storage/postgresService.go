@@ -157,3 +157,23 @@ func (s *PostgresService) DeleteTeam(ctx context.Context, name string) error {
 
 	return nil
 }
+
+func (s *PostgresService) DeleteUser(ctx context.Context, email string) error {
+	query := `DELETE FROM users WHERE email = $1`
+
+	result, err := s.db.ExecContext(ctx, query, email)
+	if err != nil {
+		return fmt.Errorf("failed to delete user with email %s: %v", email, err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected for user %s: %v", email, err)
+	}
+
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}

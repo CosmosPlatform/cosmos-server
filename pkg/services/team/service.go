@@ -53,7 +53,10 @@ func (s *teamService) InsertTeam(ctx context.Context, team *model.Team) error {
 func (s *teamService) DeleteTeam(ctx context.Context, name string) error {
 	err := s.storageService.DeleteTeam(ctx, name)
 	if err != nil {
-		return err
+		if errorUtils.Is(err, storage.ErrNotFound) {
+			return errors.NewNotFoundError(fmt.Sprintf("team with name %s not found", name))
+		}
+		return errors.NewInternalServerError(fmt.Sprintf("failed to delete team with name %s: %v", name, err))
 	}
 	return nil
 }

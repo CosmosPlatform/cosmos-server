@@ -4,11 +4,8 @@ import (
 	"cosmos-server/api"
 	"cosmos-server/pkg/errors"
 	"cosmos-server/pkg/services/team"
-	"cosmos-server/pkg/storage"
 	"fmt"
 	"github.com/gin-gonic/gin"
-
-	errorUtils "errors"
 )
 
 type handler struct {
@@ -24,7 +21,7 @@ func AddTeamHandler(e *gin.RouterGroup, teamService team.Service, translator Tra
 
 	e.GET("/teams", h.handleGetTeams)
 	e.POST("/teams", h.handleInsertTeam)
-	e.DELETE("/teams/:name", h.handleDeleteTeam)
+	e.DELETE("/teams", h.handleDeleteTeam)
 }
 
 func (h *handler) handleGetTeams(c *gin.Context) {
@@ -38,7 +35,7 @@ func (h *handler) handleGetTeams(c *gin.Context) {
 }
 
 func (h *handler) handleDeleteTeam(c *gin.Context) {
-	name := c.Param("name")
+	name := c.Query("name")
 	if name == "" {
 		_ = c.Error(errors.NewBadRequestError("team name is required"))
 		return
@@ -46,11 +43,7 @@ func (h *handler) handleDeleteTeam(c *gin.Context) {
 
 	err := h.teamService.DeleteTeam(c, name)
 	if err != nil {
-		if errorUtils.Is(err, storage.ErrNotFound) {
-			_ = c.Error(errors.NewNotFoundError("team not found"))
-			return
-		}
-		_ = c.Error(errors.NewInternalServerError(fmt.Sprintf("failed to delete team: %v", err)))
+		_ = c.Error(err)
 		return
 	}
 

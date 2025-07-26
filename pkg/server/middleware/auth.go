@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	auth2 "cosmos-server/pkg/services/auth"
+	"cosmos-server/pkg/services/auth"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func AuthMiddleware(authService auth2.Service) gin.HandlerFunc {
+func AuthMiddleware(authService auth.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tokenHeader := c.GetHeader("Authorization")
 		if tokenHeader == "" {
@@ -36,8 +36,12 @@ func AuthMiddleware(authService auth2.Service) gin.HandlerFunc {
 			return
 		}
 
-		if role, exists := claims[auth2.UserRoleClaimKey]; exists {
-			c.Set(auth2.UserRoleContextKey, role)
+		if role, exists := claims[auth.UserRoleClaimKey]; exists {
+			c.Set(auth.UserRoleContextKey, role)
+		}
+
+		if email, exists := claims[auth.UserEmailClaimKey]; exists {
+			c.Set(auth.UserEmailContextKet, email)
 		}
 
 		c.Next()

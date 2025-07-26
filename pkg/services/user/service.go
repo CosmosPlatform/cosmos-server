@@ -6,6 +6,7 @@ import (
 	"cosmos-server/pkg/log"
 	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/storage"
+	errorUtils "errors"
 	"fmt"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -19,6 +20,7 @@ type Service interface {
 	GetUserWithEmail(ctx context.Context, email string) (*model.User, error)
 	GetUsers(ctx context.Context) ([]*model.User, error)
 	RegisterUser(ctx context.Context, username, email, password, role string) error
+	DeleteUser(ctx context.Context, email string) error
 	AdminUserPresent(ctx context.Context) (bool, error)
 }
 
@@ -89,4 +91,21 @@ func (s *userService) GetUsers(ctx context.Context) ([]*model.User, error) {
 	userModels := s.translator.ToUserModels(users)
 
 	return userModels, nil
+}
+
+func (s *userService) DeleteUser(ctx context.Context, email string) error {
+	if email == "" {
+		return errors.NewBadRequestError("email cannot be empty")
+	}
+
+	err := s.storageService.DeleteUser(ctx, email)
+	if err != nil {
+		s.logger.Errorf("failed to delete user with email %s: %v", email, err)
+		if errorUtils.Is(err, storage.ErrNotFound) {
+			return errors.NewNotFoundError(fmt.Sprintf("user with email %s not found", email))
+		}
+		return errors.NewInternalServerError(fmt.Sprintf("failed to delete user with email %s: %v", email, err))
+	}
+
+	return nil
 }

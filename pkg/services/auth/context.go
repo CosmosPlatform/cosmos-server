@@ -1,5 +1,6 @@
 package auth
 
 const (
-	UserRoleContextKey = "userRole"
+	UserRoleContextKey  = "userRole"
+	UserEmailContextKet = "userEmail"
 )

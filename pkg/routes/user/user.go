@@ -26,6 +26,7 @@ func AddAdminUserHandler(e *gin.RouterGroup, userService user.Service, translato
 
 	usersGroup.GET("", handler.handleGetUsers)
 	usersGroup.POST("", handler.handleRegisterUser)
+	usersGroup.DELETE("", handler.handleDeleteUser)
 }
 
 func (handler *handler) handleRegisterUser(e *gin.Context) {
@@ -60,4 +61,21 @@ func (handler *handler) handleGetUsers(e *gin.Context) {
 	}
 
 	e.JSON(200, handler.translator.ToGetUsersResponse(users))
+}
+
+func (handler *handler) handleDeleteUser(e *gin.Context) {
+	email := e.Query("email")
+	if email == "" {
+		handler.logger.Errorf("Email query parameter is required for deleting a user")
+		_ = e.Error(errors.NewBadRequestError("Email query parameter is required"))
+		return
+	}
+
+	err := handler.userService.DeleteUser(e, email)
+	if err != nil {
+		_ = e.Error(err)
+		return
+	}
+
+	e.Status(204)
 }
