@@ -17,8 +17,7 @@ const (
 
 type Service interface {
 	GetUserWithEmail(ctx context.Context, email string) (*model.User, error)
-	RegisterRegularUser(ctx context.Context, username, email, password string) error
-	RegisterAdminUser(ctx context.Context, username, email, password string) error
+	RegisterUser(ctx context.Context, username, email, password, role string) error
 	AdminUserPresent(ctx context.Context) (bool, error)
 }
 
@@ -46,37 +45,16 @@ func (s *userService) GetUserWithEmail(ctx context.Context, email string) (*mode
 	return s.translator.ToUserModel(user), nil
 }
 
-func (s *userService) RegisterRegularUser(ctx context.Context, username, email, password string) error {
+func (s *userService) RegisterUser(ctx context.Context, username, email, password, role string) error {
+	if role != RegularUserRole && role != AdminUserRole {
+		return errors.NewBadRequestError(fmt.Sprintf("invalid role: %s, must be either '%s' or '%s'", role, RegularUserRole, AdminUserRole))
+	}
+
 	user := &model.User{
 		Username: username,
 		Email:    email,
-		Role:     RegularUserRole,
+		Role:     role,
 	}
-
-	err := s.registerUser(ctx, user, password)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *userService) RegisterAdminUser(ctx context.Context, username, email, password string) error {
-	user := &model.User{
-		Username: username,
-		Email:    email,
-		Role:     AdminUserRole,
-	}
-
-	err := s.registerUser(ctx, user, password)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *userService) registerUser(ctx context.Context, user *model.User, password string) error {
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {

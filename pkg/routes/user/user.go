@@ -22,8 +22,9 @@ func AddAdminUserHandler(e *gin.RouterGroup, userService user.Service, translato
 		logger:      logger,
 	}
 
-	e.POST("/users", handler.handleRegisterUser)
-	e.POST("/adminUsers", handler.handleRegisterAdminUser)
+	usersGroup := e.Group("/users")
+
+	usersGroup.POST("/users", handler.handleRegisterUser)
 }
 
 func (handler *handler) handleRegisterUser(e *gin.Context) {
@@ -40,34 +41,11 @@ func (handler *handler) handleRegisterUser(e *gin.Context) {
 		return
 	}
 
-	err := handler.userService.RegisterRegularUser(e, registerUserRequest.Username, registerUserRequest.Email, registerUserRequest.Password)
+	err := handler.userService.RegisterUser(e, registerUserRequest.Username, registerUserRequest.Email, registerUserRequest.Password, registerUserRequest.Role)
 	if err != nil {
 		_ = e.Error(err)
 		return
 	}
 
 	e.JSON(201, handler.translator.ToRegisterUserResponse(registerUserRequest.Username, registerUserRequest.Email, user.RegularUserRole))
-}
-
-func (handler *handler) handleRegisterAdminUser(e *gin.Context) {
-	var registerUserRequest api.RegisterUserRequest
-
-	if err := e.ShouldBindJSON(&registerUserRequest); err != nil {
-
-		_ = e.Error(errors.NewBadRequestError(fmt.Sprintf("Invalid request format: %v", err)))
-		return
-	}
-
-	if err := registerUserRequest.Validate(); err != nil {
-		_ = e.Error(errors.NewBadRequestError(err.Error()))
-		return
-	}
-
-	err := handler.userService.RegisterAdminUser(e, registerUserRequest.Username, registerUserRequest.Email, registerUserRequest.Password)
-	if err != nil {
-		_ = e.Error(err)
-		return
-	}
-
-	e.JSON(201, handler.translator.ToRegisterUserResponse(registerUserRequest.Username, registerUserRequest.Email, user.AdminUserRole))
 }

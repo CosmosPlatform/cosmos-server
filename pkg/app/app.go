@@ -6,7 +6,7 @@ import (
 	"cosmos-server/pkg/log"
 	"cosmos-server/pkg/routes"
 	"cosmos-server/pkg/server"
-	auth2 "cosmos-server/pkg/services/auth"
+	"cosmos-server/pkg/services/auth"
 	"cosmos-server/pkg/services/team"
 	"cosmos-server/pkg/services/user"
 	"cosmos-server/pkg/storage"
@@ -30,7 +30,7 @@ func NewApp(config *c.Config) (*App, error) {
 		return nil, err
 	}
 
-	authService := auth2.NewAuthService(config.AuthConfig, storageService, auth2.NewTranslator(), logger)
+	authService := auth.NewAuthService(config.AuthConfig, storageService, auth.NewTranslator(), logger)
 	userService := user.NewUserService(storageService, logger)
 	teamService := team.NewTeamService(storageService)
 
@@ -51,7 +51,7 @@ func (app *App) SetUpDatabase() error {
 			adminEmail := app.config.SystemConfig.DefaultAdmin.Email
 			adminPassword := app.config.SystemConfig.DefaultAdmin.Password
 
-			if err := app.routes.UserService.RegisterAdminUser(context.Background(), adminUsername, adminEmail, adminPassword); err != nil {
+			if err := app.routes.UserService.RegisterUser(context.Background(), adminUsername, adminEmail, adminPassword, user.AdminUserRole); err != nil {
 				return fmt.Errorf("failed to register admin user: %v", err)
 			}
 		}
