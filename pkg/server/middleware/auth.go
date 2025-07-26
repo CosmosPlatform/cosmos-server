@@ -41,7 +41,7 @@ func AuthMiddleware(authService auth.Service) gin.HandlerFunc {
 		}
 
 		if email, exists := claims[auth.UserEmailClaimKey]; exists {
-			c.Set(auth.UserEmailContextKet, email)
+			c.Set(auth.UserEmailContextKey, email)
 		}
 
 		c.Next()
