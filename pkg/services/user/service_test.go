@@ -37,6 +37,12 @@ func TestGetUserWithEmail(t *testing.T) {
 	t.Run("get user with email - internal error", getUserWithEmailInternalError)
 }
 
+func TestAdminUserPresent(t *testing.T) {
+	t.Run("admin user present - admin exists", adminUserPresentAdminExists)
+	t.Run("admin user present - no admin", adminUserPresentNoAdmin)
+	t.Run("admin user present - internal error", adminUserPresentInternalError)
+}
+
 type mocks struct {
 	controller         *gomock.Controller
 	storageServiceMock *storageMock.MockService
@@ -377,5 +383,55 @@ func getUserWithEmailInternalError(t *testing.T) {
 
 	require.Error(t, err)
 	require.Nil(t, result)
+	require.Equal(t, expectedError.Error(), err.Error())
+}
+
+func adminUserPresentAdminExists(t *testing.T) {
+	userService, mocks := setUp(t)
+
+	adminUser := &obj.User{
+		Username:          "admin",
+		Email:             "admin@example.com",
+		EncryptedPassword: "hashedpassword",
+		Role:              AdminUserRole,
+	}
+
+	mocks.storageServiceMock.EXPECT().
+		GetUserWithRole(gomock.Any(), AdminUserRole).
+		Return(adminUser, nil)
+
+	result, err := userService.AdminUserPresent(context.Background())
+
+	require.NoError(t, err)
+	require.True(t, result)
+}
+
+func adminUserPresentNoAdmin(t *testing.T) {
+	userService, mocks := setUp(t)
+
+	mocks.storageServiceMock.EXPECT().
+		GetUserWithRole(gomock.Any(), AdminUserRole).
+		Return(nil, nil)
+
+	result, err := userService.AdminUserPresent(context.Background())
+
+	require.NoError(t, err)
+	require.False(t, result)
+}
+
+func adminUserPresentInternalError(t *testing.T) {
+	userService, mocks := setUp(t)
+
+	mockedError := fmt.Errorf("database connection failed")
+
+	mocks.storageServiceMock.EXPECT().
+		GetUserWithRole(gomock.Any(), AdminUserRole).
+		Return(nil, mockedError)
+
+	expectedError := errors.NewInternalServerError(fmt.Sprintf("failed to check for admin user: %v", mockedError))
+	result, err := userService.AdminUserPresent(context.Background())
+
+	require.Error(t, err)
+	require.False(t, result)
 	require.Equal(t, expectedError.Error(), err.Error())
 }
