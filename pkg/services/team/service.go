@@ -9,6 +9,8 @@ import (
 	"fmt"
 )
 
+//go:generate mockgen -destination=./mock/service_mock.go -package=mock cosmos-server/pkg/services/team Service
+
 type Service interface {
 	GetAllTeams(ctx context.Context) ([]*model.Team, error)
 	DeleteTeam(ctx context.Context, name string) error

@@ -3,17 +3,18 @@ package user
 import (
 	"context"
 	"cosmos-server/pkg/errors"
-	logMock "cosmos-server/pkg/log/mock"
 	"cosmos-server/pkg/model"
-	userMock "cosmos-server/pkg/services/user/mock"
 	"cosmos-server/pkg/storage"
-	storageMock "cosmos-server/pkg/storage/mock"
 	"cosmos-server/pkg/storage/obj"
 	"fmt"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	"golang.org/x/crypto/bcrypt"
 	"testing"
+
+	logMock "cosmos-server/pkg/log/mock"
+	userMock "cosmos-server/pkg/services/user/mock"
+	storageMock "cosmos-server/pkg/storage/mock"
 )
 
 func TestRegisterUser(t *testing.T) {

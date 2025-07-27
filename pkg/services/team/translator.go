@@ -5,6 +5,8 @@ import (
 	"cosmos-server/pkg/storage/obj"
 )
 
+//go:generate mockgen -destination=./mock/translator_mock.go -package=mock cosmos-server/pkg/services/team Translator
+
 type Translator interface {
 	ToModelTeam(team *obj.Team) *model.Team
 	ToModelTeams(teams []*obj.Team) []*model.Team
