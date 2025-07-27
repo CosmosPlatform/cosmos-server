@@ -73,7 +73,7 @@ func (s *PostgresService) GetUserWithRole(ctx context.Context, role string) (*ob
 	err := s.db.GetContext(ctx, &user, query, role)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
+			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to get user with role %s: %v", role, err)
 	}

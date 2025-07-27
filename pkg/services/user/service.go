@@ -90,6 +90,9 @@ func (s *userService) RegisterUser(ctx context.Context, username, email, passwor
 func (s *userService) AdminUserPresent(ctx context.Context) (bool, error) {
 	adminUser, err := s.storageService.GetUserWithRole(ctx, AdminUserRole)
 	if err != nil {
+		if errorUtils.Is(err, storage.ErrNotFound) {
+			return false, nil
+		}
 		return false, errors.NewInternalServerError(fmt.Sprintf("failed to check for admin user: %v", err))
 	}
 

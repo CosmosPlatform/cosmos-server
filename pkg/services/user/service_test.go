@@ -411,7 +411,7 @@ func adminUserPresentNoAdmin(t *testing.T) {
 
 	mocks.storageServiceMock.EXPECT().
 		GetUserWithRole(gomock.Any(), AdminUserRole).
-		Return(nil, nil)
+		Return(nil, storage.ErrNotFound)
 
 	result, err := userService.AdminUserPresent(context.Background())
 
