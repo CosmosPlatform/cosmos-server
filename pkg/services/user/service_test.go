@@ -24,6 +24,19 @@ func TestRegisterUser(t *testing.T) {
 	t.Run("register user - internal error", registerUserInternalError)
 }
 
+func TestDeleteUser(t *testing.T) {
+	t.Run("delete user - success", deleteUserSuccess)
+	t.Run("delete user - empty email", deleteUserEmptyEmail)
+	t.Run("delete user - not found", deleteUserNotFound)
+	t.Run("delete user - internal error", deleteUserInternalError)
+}
+
+func TestGetUserWithEmail(t *testing.T) {
+	t.Run("get user with email - success", getUserWithEmailSuccess)
+	t.Run("get user with email - email not found", getUserWithEmailEmailNotFound)
+	t.Run("get user with email - internal error", getUserWithEmailInternalError)
+}
+
 type mocks struct {
 	controller         *gomock.Controller
 	storageServiceMock *storageMock.MockService
@@ -224,5 +237,145 @@ func registerUserInternalError(t *testing.T) {
 	err = userService.RegisterUser(context.Background(), username, email, password, role)
 
 	require.Error(t, err)
+	require.Equal(t, expectedError.Error(), err.Error())
+}
+
+func deleteUserSuccess(t *testing.T) {
+	userService, mocks := setUp(t)
+
+	email := "test@example.com"
+
+	mocks.storageServiceMock.EXPECT().
+		DeleteUser(gomock.Any(), email).
+		Return(nil)
+
+	err := userService.DeleteUser(context.Background(), email)
+
+	require.NoError(t, err)
+}
+
+func deleteUserEmptyEmail(t *testing.T) {
+	userService, _ := setUp(t)
+
+	email := ""
+
+	expectedError := errors.NewBadRequestError("email cannot be empty")
+	err := userService.DeleteUser(context.Background(), email)
+
+	require.Error(t, err)
+	require.Equal(t, expectedError.Error(), err.Error())
+}
+
+func deleteUserNotFound(t *testing.T) {
+	userService, mocks := setUp(t)
+
+	email := "nonexistent@example.com"
+
+	mocks.loggerMocks.EXPECT().
+		Errorf(gomock.Any(), gomock.Any())
+
+	mocks.storageServiceMock.EXPECT().
+		DeleteUser(gomock.Any(), email).
+		Return(storage.ErrNotFound)
+
+	expectedError := errors.NewNotFoundError(fmt.Sprintf("user with email %s not found", email))
+	err := userService.DeleteUser(context.Background(), email)
+
+	require.Error(t, err)
+	require.Equal(t, expectedError.Error(), err.Error())
+}
+
+func deleteUserInternalError(t *testing.T) {
+	userService, mocks := setUp(t)
+
+	email := "test@example.com"
+	mockedError := fmt.Errorf("database connection failed")
+
+	mocks.loggerMocks.EXPECT().
+		Errorf(gomock.Any(), gomock.Any())
+
+	mocks.storageServiceMock.EXPECT().
+		DeleteUser(gomock.Any(), email).
+		Return(mockedError)
+
+	expectedError := errors.NewInternalServerError(fmt.Sprintf("failed to delete user with email %s: %v", email, mockedError))
+	err := userService.DeleteUser(context.Background(), email)
+
+	require.Error(t, err)
+	require.Equal(t, expectedError.Error(), err.Error())
+}
+
+func getUserWithEmailSuccess(t *testing.T) {
+	userService, mocks := setUp(t)
+
+	email := "test@example.com"
+	username := "testuser"
+	role := "user"
+
+	userObj := &obj.User{
+		Username:          username,
+		Email:             email,
+		EncryptedPassword: "hashedpassword",
+		Role:              role,
+	}
+
+	userModel := &model.User{
+		Username: username,
+		Email:    email,
+		Role:     role,
+	}
+
+	mocks.storageServiceMock.EXPECT().
+		GetUserWithEmail(gomock.Any(), email).
+		Return(userObj, nil)
+
+	mocks.translatorMocks.EXPECT().
+		ToUserModel(userObj).
+		Return(userModel)
+
+	result, err := userService.GetUserWithEmail(context.Background(), email)
+
+	require.NoError(t, err)
+	require.Equal(t, userModel, result)
+}
+
+func getUserWithEmailEmailNotFound(t *testing.T) {
+	userService, mocks := setUp(t)
+
+	email := "test@example.com"
+
+	mocks.loggerMocks.EXPECT().
+		Errorf(gomock.Any(), gomock.Any())
+
+	mocks.storageServiceMock.EXPECT().
+		GetUserWithEmail(gomock.Any(), email).
+		Return(nil, storage.ErrNotFound)
+
+	expectedError := errors.NewNotFoundError(fmt.Sprintf("user with email %s not found", email))
+	result, err := userService.GetUserWithEmail(context.Background(), email)
+
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.Equal(t, expectedError.Error(), err.Error())
+}
+
+func getUserWithEmailInternalError(t *testing.T) {
+	userService, mocks := setUp(t)
+
+	email := "test@example.com"
+	mockedError := fmt.Errorf("database connection failed")
+
+	mocks.loggerMocks.EXPECT().
+		Errorf(gomock.Any(), gomock.Any())
+
+	mocks.storageServiceMock.EXPECT().
+		GetUserWithEmail(gomock.Any(), email).
+		Return(nil, mockedError)
+
+	expectedError := errors.NewInternalServerError(fmt.Sprintf("failed to retrieve user with email %s: %v", email, mockedError))
+	result, err := userService.GetUserWithEmail(context.Background(), email)
+
+	require.Error(t, err)
+	require.Nil(t, result)
 	require.Equal(t, expectedError.Error(), err.Error())
 }

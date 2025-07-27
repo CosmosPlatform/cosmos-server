@@ -44,6 +44,9 @@ func (s *userService) GetUserWithEmail(ctx context.Context, email string) (*mode
 	user, err := s.storageService.GetUserWithEmail(ctx, email)
 	if err != nil {
 		s.logger.Errorf("failed to get user with email %s: %v", email, err)
+		if errorUtils.Is(err, storage.ErrNotFound) {
+			return nil, errors.NewNotFoundError(fmt.Sprintf("user with email %s not found", email))
+		}
 		return nil, errors.NewInternalServerError(fmt.Sprintf("failed to retrieve user with email %s: %v", email, err))
 	}
 
