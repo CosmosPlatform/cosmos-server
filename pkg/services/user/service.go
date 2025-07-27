@@ -16,6 +16,8 @@ const (
 	AdminUserRole   = "admin"
 )
 
+//go:generate mockgen -destination=./mock/service_mock.go -package=mock cosmos-server/pkg/services/user Service
+
 type Service interface {
 	GetUserWithEmail(ctx context.Context, email string) (*model.User, error)
 	GetUsers(ctx context.Context) ([]*model.User, error)
@@ -30,10 +32,10 @@ type userService struct {
 	logger         log.Logger
 }
 
-func NewUserService(storageService storage.Service, logger log.Logger) Service {
+func NewUserService(storageService storage.Service, translator Translator, logger log.Logger) Service {
 	return &userService{
 		storageService: storageService,
-		translator:     NewTranslator(),
+		translator:     translator,
 		logger:         logger,
 	}
 }
@@ -62,6 +64,16 @@ func (s *userService) RegisterUser(ctx context.Context, username, email, passwor
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return errors.NewInternalServerError(fmt.Sprintf("failed to hash password: %v", err))
+	}
+
+	if existingUser, err := s.storageService.GetUserWithEmail(ctx, email); err != nil {
+		if !errorUtils.Is(err, storage.ErrNotFound) {
+			s.logger.Errorf("failed to check for existing user with email %s: %v", email, err)
+			return errors.NewInternalServerError(fmt.Sprintf("failed to check for existing user: %v", err))
+		}
+	} else if existingUser != nil {
+		s.logger.Errorf("user with email %s already exists", email)
+		return errors.NewBadRequestError(fmt.Sprintf("user with email %s already exists", email))
 	}
 
 	err = s.storageService.InsertUser(ctx, s.translator.ToUserObj(user, string(hashedPassword)))
