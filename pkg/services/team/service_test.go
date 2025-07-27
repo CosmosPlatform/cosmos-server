@@ -25,6 +25,12 @@ func TestInsertTeam(t *testing.T) {
 	t.Run("insert team - storage error", insertTeamStorageError)
 }
 
+func TestDeleteTeam(t *testing.T) {
+	t.Run("delete team - success", deleteTeamSuccess)
+	t.Run("delete team - not found error", deleteTeamNotFoundError)
+	t.Run("delete team - storage error", deleteTeamStorageError)
+}
+
 type mocks struct {
 	controller         *gomock.Controller
 	storageServiceMock *storageMock.MockService
@@ -175,4 +181,53 @@ func insertTeamStorageError(t *testing.T) {
 
 	require.Error(t, err)
 	require.Equal(t, mockedError, err)
+}
+
+func deleteTeamSuccess(t *testing.T) {
+	service, mocks := setUp(t)
+
+	teamName := "Team A"
+
+	mocks.storageServiceMock.EXPECT().
+		DeleteTeam(gomock.Any(), teamName).
+		Return(nil)
+
+	err := service.DeleteTeam(context.Background(), teamName)
+
+	require.NoError(t, err)
+}
+
+func deleteTeamNotFoundError(t *testing.T) {
+	service, mocks := setUp(t)
+
+	teamName := "NonExistent Team"
+
+	mocks.storageServiceMock.EXPECT().
+		DeleteTeam(gomock.Any(), teamName).
+		Return(storage.ErrNotFound)
+
+	expectedError := errors.NewNotFoundError(fmt.Sprintf("team with name %s not found", teamName))
+
+	err := service.DeleteTeam(context.Background(), teamName)
+
+	require.Error(t, err)
+	require.Equal(t, expectedError, err)
+}
+
+func deleteTeamStorageError(t *testing.T) {
+	service, mocks := setUp(t)
+
+	teamName := "Team A"
+	mockedError := fmt.Errorf("database connection failed")
+
+	mocks.storageServiceMock.EXPECT().
+		DeleteTeam(gomock.Any(), teamName).
+		Return(mockedError)
+
+	expectedError := errors.NewInternalServerError(fmt.Sprintf("failed to delete team with name %s: %v", teamName, mockedError))
+
+	err := service.DeleteTeam(context.Background(), teamName)
+
+	require.Error(t, err)
+	require.Equal(t, expectedError, err)
 }
