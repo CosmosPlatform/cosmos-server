@@ -43,6 +43,12 @@ func TestAdminUserPresent(t *testing.T) {
 	t.Run("admin user present - internal error", adminUserPresentInternalError)
 }
 
+func TestGetUsers(t *testing.T) {
+	t.Run("get users - success", getUsersSuccess)
+	t.Run("get users - empty list", getUsersEmptyList)
+	t.Run("get users - internal error", getUsersInternalError)
+}
+
 type mocks struct {
 	controller         *gomock.Controller
 	storageServiceMock *storageMock.MockService
@@ -433,5 +439,94 @@ func adminUserPresentInternalError(t *testing.T) {
 
 	require.Error(t, err)
 	require.False(t, result)
+	require.Equal(t, expectedError.Error(), err.Error())
+}
+
+func getUsersSuccess(t *testing.T) {
+	userService, mocks := setUp(t)
+
+	userObj1 := &obj.User{
+		Username:          "testuser1",
+		Email:             "test1@example.com",
+		EncryptedPassword: "hashedpassword1",
+		Role:              "user",
+	}
+
+	userObj2 := &obj.User{
+		Username:          "testuser2",
+		Email:             "test2@example.com",
+		EncryptedPassword: "hashedpassword2",
+		Role:              "admin",
+	}
+
+	userObjs := []*obj.User{userObj1, userObj2}
+
+	userModel1 := &model.User{
+		Username: "testuser1",
+		Email:    "test1@example.com",
+		Role:     "user",
+	}
+
+	userModel2 := &model.User{
+		Username: "testuser2",
+		Email:    "test2@example.com",
+		Role:     "admin",
+	}
+
+	userModels := []*model.User{userModel1, userModel2}
+
+	mocks.storageServiceMock.EXPECT().
+		GetUsersWithFilter(gomock.Any(), "").
+		Return(userObjs, nil)
+
+	mocks.translatorMocks.EXPECT().
+		ToUserModels(userObjs).
+		Return(userModels)
+
+	result, err := userService.GetUsers(context.Background())
+
+	require.NoError(t, err)
+	require.Equal(t, userModels, result)
+	require.Len(t, result, 2)
+}
+
+func getUsersEmptyList(t *testing.T) {
+	userService, mocks := setUp(t)
+
+	var userObjs []*obj.User
+	var userModels []*model.User
+
+	mocks.storageServiceMock.EXPECT().
+		GetUsersWithFilter(gomock.Any(), "").
+		Return(userObjs, nil)
+
+	mocks.translatorMocks.EXPECT().
+		ToUserModels(userObjs).
+		Return(userModels)
+
+	result, err := userService.GetUsers(context.Background())
+
+	require.NoError(t, err)
+	require.Equal(t, userModels, result)
+	require.Len(t, result, 0)
+}
+
+func getUsersInternalError(t *testing.T) {
+	userService, mocks := setUp(t)
+
+	mockedError := fmt.Errorf("database connection failed")
+
+	mocks.loggerMocks.EXPECT().
+		Errorf(gomock.Any(), gomock.Any())
+
+	mocks.storageServiceMock.EXPECT().
+		GetUsersWithFilter(gomock.Any(), "").
+		Return(nil, mockedError)
+
+	expectedError := errors.NewInternalServerError(fmt.Sprintf("failed to retrieve users: %v", mockedError))
+	result, err := userService.GetUsers(context.Background())
+
+	require.Error(t, err)
+	require.Nil(t, result)
 	require.Equal(t, expectedError.Error(), err.Error())
 }
