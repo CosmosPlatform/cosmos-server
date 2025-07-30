@@ -2,9 +2,9 @@ package auth
 
 import (
 	"cosmos-server/api"
-	"cosmos-server/pkg/auth"
 	"cosmos-server/pkg/errors"
 	"cosmos-server/pkg/log"
+	"cosmos-server/pkg/services/auth"
 	"fmt"
 	"github.com/gin-gonic/gin"
 )

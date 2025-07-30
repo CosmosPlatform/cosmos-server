@@ -21,7 +21,7 @@ const (
 	UserExpirationClaimKey = "exp"
 )
 
-//go:generate mockgen -destination=./mock/service_mock.go -package=mock cosmos-server/pkg/auth Service
+//go:generate mockgen -destination=./mock/service_mock.go -package=mock cosmos-server/pkg/services/auth Service
 
 type Service interface {
 	// Authenticate authenticates a user with the provided credentials and returns the user and a token if successful.

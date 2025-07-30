@@ -2,13 +2,14 @@ package app
 
 import (
 	"context"
-	"cosmos-server/pkg/auth"
 	c "cosmos-server/pkg/config"
 	"cosmos-server/pkg/log"
 	"cosmos-server/pkg/routes"
 	"cosmos-server/pkg/server"
+	"cosmos-server/pkg/services/auth"
+	"cosmos-server/pkg/services/team"
+	"cosmos-server/pkg/services/user"
 	"cosmos-server/pkg/storage"
-	"cosmos-server/pkg/user"
 	"fmt"
 	"net/http"
 )
@@ -30,9 +31,10 @@ func NewApp(config *c.Config) (*App, error) {
 	}
 
 	authService := auth.NewAuthService(config.AuthConfig, storageService, auth.NewTranslator(), logger)
-	userService := user.NewUserService(storageService, logger)
+	userService := user.NewUserService(storageService, user.NewTranslator(), logger)
+	teamService := team.NewTeamService(storageService, team.NewTranslator())
 
-	httpRoutes := routes.NewHTTPRoutes(authService, userService, logger)
+	httpRoutes := routes.NewHTTPRoutes(authService, userService, teamService, logger)
 
 	return &App{
 		config: config,
@@ -49,7 +51,7 @@ func (app *App) SetUpDatabase() error {
 			adminEmail := app.config.SystemConfig.DefaultAdmin.Email
 			adminPassword := app.config.SystemConfig.DefaultAdmin.Password
 
-			if err := app.routes.UserService.RegisterAdminUser(context.Background(), adminUsername, adminEmail, adminPassword); err != nil {
+			if err := app.routes.UserService.RegisterUser(context.Background(), adminUsername, adminEmail, adminPassword, user.AdminUserRole); err != nil {
 				return fmt.Errorf("failed to register admin user: %v", err)
 			}
 		}

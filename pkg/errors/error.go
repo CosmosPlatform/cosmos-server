@@ -135,3 +135,27 @@ func (e *internalServerError) Error() string {
 func (e *internalServerError) Details() []string {
 	return e.details
 }
+
+type conflictError struct {
+	error   string
+	details []string
+}
+
+func NewConflictError(error string, details ...string) ProgramError {
+	return &conflictError{
+		error:   error,
+		details: details,
+	}
+}
+
+func (e *conflictError) Type() ErrorType {
+	return InternalServerError
+}
+
+func (e *conflictError) Error() string {
+	return e.error
+}
+
+func (e *conflictError) Details() []string {
+	return e.details
+}

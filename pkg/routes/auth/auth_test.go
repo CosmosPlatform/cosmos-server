@@ -4,6 +4,7 @@ import (
 	"cosmos-server/api"
 	"cosmos-server/pkg/errors"
 	"cosmos-server/pkg/model"
+	authMock "cosmos-server/pkg/services/auth/mock"
 	"cosmos-server/pkg/test"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
@@ -11,7 +12,6 @@ import (
 	"go.uber.org/mock/gomock"
 	"testing"
 
-	authMock "cosmos-server/pkg/auth/mock"
 	logMock "cosmos-server/pkg/log/mock"
 	authRouteMock "cosmos-server/pkg/routes/auth/mock"
 )

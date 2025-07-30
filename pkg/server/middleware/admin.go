@@ -1,8 +1,8 @@
 package middleware
 
 import (
-	"cosmos-server/pkg/auth"
-	"cosmos-server/pkg/user"
+	"cosmos-server/pkg/services/auth"
+	"cosmos-server/pkg/services/user"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
