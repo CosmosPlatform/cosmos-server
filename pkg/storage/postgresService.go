@@ -5,29 +5,25 @@ import (
 	"cosmos-server/pkg/config"
 	"cosmos-server/pkg/log"
 	"cosmos-server/pkg/storage/obj"
-	"database/sql"
-	"errors"
+	errorUtils "errors"
 	"fmt"
-	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 type PostgresService struct {
-	db     *sqlx.DB
+	db     *gorm.DB
 	logger log.Logger
 }
 
 func NewPostgresService(config config.StorageConfig, logger log.Logger) (*PostgresService, error) {
-	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		config.Host, config.Port, config.User, config.Password, config.DatabaseName)
 
-	db, err := sqlx.Connect("postgres", connStr)
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to PostgreSQL: %v", err)
-	}
-
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to ping PostgreSQL: %v", err)
 	}
 
 	return &PostgresService{
@@ -37,12 +33,9 @@ func NewPostgresService(config config.StorageConfig, logger log.Logger) (*Postgr
 }
 
 func (s *PostgresService) InsertUser(ctx context.Context, user *obj.User) error {
-	query := `INSERT INTO users (username, email, encrypted_password, role) 
-             VALUES ($1, $2, $3, $4)`
-
-	_, err := s.db.ExecContext(ctx, query, user.Username, user.Email, user.EncryptedPassword, user.Role)
+	err := gorm.G[obj.User](s.db).Create(ctx, user)
 	if err != nil {
-		if err.Error() == "pq: duplicate key value violates unique constraint" {
+		if errorUtils.Is(err, gorm.ErrDuplicatedKey) {
 			return ErrAlreadyExists
 		}
 		return fmt.Errorf("failed to insert user: %v", err)
@@ -52,12 +45,10 @@ func (s *PostgresService) InsertUser(ctx context.Context, user *obj.User) error 
 }
 
 func (s *PostgresService) GetUserWithEmail(ctx context.Context, email string) (*obj.User, error) {
-	var user obj.User
-	query := `SELECT username, email, encrypted_password, role FROM users WHERE email = $1`
+	user, err := gorm.G[obj.User](s.db).Where("email = ?", email).First(ctx)
 
-	err := s.db.GetContext(ctx, &user, query, email)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errorUtils.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to get user with email %s: %v", email, err)
@@ -67,34 +58,20 @@ func (s *PostgresService) GetUserWithEmail(ctx context.Context, email string) (*
 }
 
 func (s *PostgresService) GetUserWithRole(ctx context.Context, role string) (*obj.User, error) {
-	var user obj.User
-	query := `SELECT username, email, encrypted_password, role FROM users WHERE role = $1 LIMIT 1`
-
-	err := s.db.GetContext(ctx, &user, query, role)
+	user, err := gorm.G[*obj.User](s.db).Where("role = ?", role).First(ctx)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errorUtils.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to get user with role %s: %v", role, err)
 	}
 
-	return &user, nil
+	return user, nil
 }
 
 func (s *PostgresService) GetUsersWithFilter(ctx context.Context, filter string) ([]*obj.User, error) {
-	var users []*obj.User
-	var query string
-	var args []interface{}
+	users, err := gorm.G[*obj.User](s.db).Where("username ILIKE ? OR email ILIKE ?", "%"+filter+"%", "%"+filter+"%").Order("username").Find(ctx)
 
-	if filter == "" {
-		query = `SELECT username, email, encrypted_password, role FROM users ORDER BY username`
-	} else {
-		query = `SELECT username, email, encrypted_password, role FROM users 
-		         WHERE username ILIKE $1 OR email ILIKE $1 ORDER BY username`
-		args = append(args, "%"+filter+"%")
-	}
-
-	err := s.db.SelectContext(ctx, &users, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get users with filter '%s': %v", filter, err)
 	}
@@ -103,12 +80,9 @@ func (s *PostgresService) GetUsersWithFilter(ctx context.Context, filter string)
 }
 
 func (s *PostgresService) InsertTeam(ctx context.Context, team *obj.Team) error {
-	query := `INSERT INTO teams (name, description) 
-			 VALUES ($1, $2)`
-
-	_, err := s.db.ExecContext(ctx, query, team.Name, team.Description)
+	err := gorm.G[obj.Team](s.db).Create(ctx, team)
 	if err != nil {
-		if err.Error() == "pq: duplicate key value violates unique constraint" {
+		if errorUtils.Is(err, gorm.ErrDuplicatedKey) {
 			return ErrAlreadyExists
 		}
 		return fmt.Errorf("failed to insert team: %v", err)
@@ -118,19 +92,7 @@ func (s *PostgresService) InsertTeam(ctx context.Context, team *obj.Team) error 
 }
 
 func (s *PostgresService) GetTeamsWithFilter(ctx context.Context, filter string) ([]*obj.Team, error) {
-	var teams []*obj.Team
-	var query string
-	var args []interface{}
-
-	if filter == "" {
-		query = `SELECT id, name, description, created_at, updated_at FROM teams ORDER BY name`
-	} else {
-		query = `SELECT id, name, description, created_at, updated_at FROM teams 
-		         WHERE name ILIKE $1 ORDER BY name`
-		args = append(args, "%"+filter+"%")
-	}
-
-	err := s.db.SelectContext(ctx, &teams, query, args...)
+	teams, err := gorm.G[*obj.Team](s.db).Where("name ILIKE ?", "%"+filter+"%").Order("name").Find(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get teams with filter '%s': %v", filter, err)
 	}
@@ -139,14 +101,7 @@ func (s *PostgresService) GetTeamsWithFilter(ctx context.Context, filter string)
 }
 
 func (s *PostgresService) DeleteTeam(ctx context.Context, name string) error {
-	query := `DELETE FROM teams WHERE name = $1`
-
-	result, err := s.db.ExecContext(ctx, query, name)
-	if err != nil {
-		return fmt.Errorf("failed to delete team with name %s: %v", name, err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
+	rowsAffected, err := gorm.G[obj.Team](s.db).Where("name = ?", name).Delete(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get rows affected for team %s: %v", name, err)
 	}
@@ -159,16 +114,9 @@ func (s *PostgresService) DeleteTeam(ctx context.Context, name string) error {
 }
 
 func (s *PostgresService) DeleteUser(ctx context.Context, email string) error {
-	query := `DELETE FROM users WHERE email = $1`
-
-	result, err := s.db.ExecContext(ctx, query, email)
+	rowsAffected, err := gorm.G[obj.User](s.db).Where("email = ?", email).Delete(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to delete user with email %s: %v", email, err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected for user %s: %v", email, err)
 	}
 
 	if rowsAffected == 0 {
