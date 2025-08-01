@@ -4,4 +4,5 @@ type User struct {
 	Username string
 	Email    string
 	Role     string
+	Team     *Team
 }

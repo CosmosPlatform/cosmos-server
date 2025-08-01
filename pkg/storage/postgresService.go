@@ -70,11 +70,13 @@ func (s *PostgresService) GetUserWithRole(ctx context.Context, role string) (*ob
 }
 
 func (s *PostgresService) GetUsersWithFilter(ctx context.Context, filter string) ([]*obj.User, error) {
-	users, err := gorm.G[*obj.User](s.db).Where("username ILIKE ? OR email ILIKE ?", "%"+filter+"%", "%"+filter+"%").Order("username").Find(ctx)
+	users, err := gorm.G[*obj.User](s.db).Preload("Team", nil).Where("username ILIKE ? OR email ILIKE ?", "%"+filter+"%", "%"+filter+"%").Order("username").Find(ctx)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get users with filter '%s': %v", filter, err)
 	}
+
+	s.logger.Infow("got users with filter", "filter", filter, "users", users)
 
 	return users, nil
 }
@@ -124,4 +126,50 @@ func (s *PostgresService) DeleteUser(ctx context.Context, email string) error {
 	}
 
 	return nil
+}
+
+func (s *PostgresService) AddUserToTeam(ctx context.Context, userEmail, teamName string) error {
+	team, err := gorm.G[obj.Team](s.db).Where("name = ?", teamName).First(ctx)
+	if err != nil {
+		if errorUtils.Is(err, gorm.ErrRecordNotFound) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("failed to get team with name %s: %v", teamName, err)
+	}
+
+	rowsAffected, err := gorm.G[obj.User](s.db).Where("email = ?", userEmail).Update(ctx, "team_id", team.ID)
+	if err != nil {
+		return fmt.Errorf("failed to add user %s to team %s: %v", userEmail, teamName, err)
+	}
+
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}
+
+func (s *PostgresService) RemoveUserFromTeam(ctx context.Context, userEmail string) error {
+	rowsAffected, err := gorm.G[obj.User](s.db).Where("email = ?", userEmail).Update(ctx, "team_id", nil)
+	if err != nil {
+		return fmt.Errorf("failed to remove user %s from team: %v", userEmail, err)
+	}
+
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}
+
+func (s *PostgresService) GetTeamWithName(ctx context.Context, name string) (*obj.Team, error) {
+	team, err := gorm.G[*obj.Team](s.db).Where("name = ?", name).First(ctx)
+	if err != nil {
+		if errorUtils.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to get team with name %s: %v", name, err)
+	}
+
+	return team, nil
 }

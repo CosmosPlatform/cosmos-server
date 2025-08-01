@@ -15,6 +15,9 @@ type Service interface {
 	GetAllTeams(ctx context.Context) ([]*model.Team, error)
 	DeleteTeam(ctx context.Context, name string) error
 	InsertTeam(ctx context.Context, team *model.Team) error
+	AddUserToTeam(ctx context.Context, userEmail, teamName string) error
+	RemoveUserFromTeam(ctx context.Context, userEmail string) error
+	GetTeamByName(ctx context.Context, name string) (*model.Team, error)
 }
 
 type teamService struct {
@@ -61,4 +64,35 @@ func (s *teamService) DeleteTeam(ctx context.Context, name string) error {
 		return errors.NewInternalServerError(fmt.Sprintf("failed to delete team with name %s: %v", name, err))
 	}
 	return nil
+}
+
+func (s *teamService) AddUserToTeam(ctx context.Context, userEmail, teamName string) error {
+	err := s.storageService.AddUserToTeam(ctx, userEmail, teamName)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *teamService) RemoveUserFromTeam(ctx context.Context, userEmail string) error {
+	err := s.storageService.RemoveUserFromTeam(ctx, userEmail)
+	if err != nil {
+		if errorUtils.Is(err, storage.ErrNotFound) {
+			return errors.NewNotFoundError(fmt.Sprintf("user with email %s not found", userEmail))
+		}
+		return errors.NewInternalServerError(fmt.Sprintf("failed to remove user %s from team: %v", userEmail, err))
+	}
+	return nil
+}
+
+func (s *teamService) GetTeamByName(ctx context.Context, name string) (*model.Team, error) {
+	team, err := s.storageService.GetTeamWithName(ctx, name)
+	if err != nil {
+		if errorUtils.Is(err, storage.ErrNotFound) {
+			return nil, errors.NewNotFoundError(fmt.Sprintf("team with name %s not found", name))
+		}
+		return nil, errors.NewInternalServerError(fmt.Sprintf("failed to get team with name %s: %v", name, err))
+	}
+
+	return s.translator.ToModelTeam(team), nil
 }
