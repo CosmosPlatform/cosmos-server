@@ -1,8 +1,11 @@
 package obj
 
 type User struct {
-	Email             string `db:"email"`
-	Username          string `db:"username"`
-	EncryptedPassword string `db:"encrypted_password"`
-	Role              string `db:"role"`
+	CosmosObj
+	Email             string `gorm:"uniqueIndex"`
+	Username          string `gorm:"unique"`
+	EncryptedPassword string
+	Role              string
+	TeamID            *int
+	Team              *Team `gorm:"foreignKey:TeamID"`
 }
