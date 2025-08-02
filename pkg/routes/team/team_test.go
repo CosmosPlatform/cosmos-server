@@ -2,6 +2,7 @@ package team
 
 import (
 	"cosmos-server/api"
+	"cosmos-server/pkg/errors"
 	logMock "cosmos-server/pkg/log/mock"
 	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/test"
@@ -19,6 +20,12 @@ func TestHandleCreateTeam(t *testing.T) {
 	t.Run("success - create team", handleCreateTeamSuccess)
 	t.Run("failure - team name is required", handleCreateTeamNameRequiredFailure)
 	t.Run("success- create team without description", handleCreateTeamWithoutDescription)
+}
+
+func TestHandleGetTeams(t *testing.T) {
+	t.Run("success - get teams", handleGetTeamsSuccess)
+	t.Run("success - get empty teams list", handleGetTeamsEmptySuccess)
+	t.Run("failure - get teams with service error", handleGetTeamsServiceError)
 }
 
 type mocks struct {
@@ -166,4 +173,125 @@ func handleCreateTeamWithoutDescription(t *testing.T) {
 
 	require.Equal(t, http.StatusCreated, recorder.Code)
 	require.Equal(t, mockedCreateTeamResponse.Team.Name, actualResponse.Team.Name)
+}
+
+func handleGetTeamsSuccess(t *testing.T) {
+	router, mocks := setUp(t)
+
+	teams := []*model.Team{
+		{
+			Name:        "Team 1",
+			Description: "First team",
+		},
+		{
+			Name:        "Team 2",
+			Description: "Second team",
+		},
+	}
+
+	expectedResponse := &api.GetTeamsResponse{
+		Teams: []*api.Team{
+			{
+				Name:        "Team 1",
+				Description: "First team",
+			},
+			{
+				Name:        "Team 2",
+				Description: "Second team",
+			},
+		},
+	}
+
+	mocks.teamServiceMock.EXPECT().
+		GetAllTeams(gomock.Any()).
+		Return(teams, nil)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/teams"
+
+	request, recorder, err := test.NewHTTPRequest("GET", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := &api.GetTeamsResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	require.Equal(t, len(expectedResponse.Teams), len(actualResponse.Teams))
+	require.Equal(t, expectedResponse.Teams[0].Name, actualResponse.Teams[0].Name)
+	require.Equal(t, expectedResponse.Teams[1].Name, actualResponse.Teams[1].Name)
+}
+
+func handleGetTeamsEmptySuccess(t *testing.T) {
+	router, mocks := setUp(t)
+
+	var teams []*model.Team
+
+	expectedResponse := &api.GetTeamsResponse{
+		Teams: []*api.Team{},
+	}
+
+	mocks.teamServiceMock.EXPECT().
+		GetAllTeams(gomock.Any()).
+		Return(teams, nil)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/teams"
+
+	request, recorder, err := test.NewHTTPRequest("GET", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := &api.GetTeamsResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	require.Equal(t, len(expectedResponse.Teams), len(actualResponse.Teams))
+}
+
+func handleGetTeamsServiceError(t *testing.T) {
+	router, mocks := setUp(t)
+
+	expectedError := errors.NewInternalServerError("test error")
+
+	mocks.teamServiceMock.EXPECT().
+		GetAllTeams(gomock.Any()).
+		Return(nil, expectedError)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/teams"
+
+	request, recorder, err := test.NewHTTPRequest("GET", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := &api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusInternalServerError, recorder.Code)
+	require.Equal(t, expectedError.Error(), actualResponse.Error)
 }
