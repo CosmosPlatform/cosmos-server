@@ -31,6 +31,23 @@ func TestDeleteTeam(t *testing.T) {
 	t.Run("delete team - storage error", deleteTeamStorageError)
 }
 
+func TestAddUserToTeam(t *testing.T) {
+	t.Run("add user to team - success", addUserToTeamSuccess)
+	t.Run("add user to team - storage error", addUserToTeamStorageError)
+}
+
+func TestRemoveUserFromTeam(t *testing.T) {
+	t.Run("remove user from team - success", removeUserFromTeamSuccess)
+	t.Run("remove user from team - not found error", removeUserFromTeamNotFoundError)
+	t.Run("remove user from team - storage error", removeUserFromTeamStorageError)
+}
+
+func TestGetTeamByName(t *testing.T) {
+	t.Run("get team by name - success", getTeamByNameSuccess)
+	t.Run("get team by name - not found error", getTeamByNameNotFoundError)
+	t.Run("get team by name - storage error", getTeamByNameStorageError)
+}
+
 type mocks struct {
 	controller         *gomock.Controller
 	storageServiceMock *storageMock.MockService
@@ -229,5 +246,150 @@ func deleteTeamStorageError(t *testing.T) {
 	err := service.DeleteTeam(context.Background(), teamName)
 
 	require.Error(t, err)
+	require.Equal(t, expectedError, err)
+}
+
+func addUserToTeamSuccess(t *testing.T) {
+	service, mocks := setUp(t)
+
+	userEmail := "user@example.com"
+	teamName := "Team A"
+
+	mocks.storageServiceMock.EXPECT().
+		AddUserToTeam(gomock.Any(), userEmail, teamName).
+		Return(nil)
+
+	err := service.AddUserToTeam(context.Background(), userEmail, teamName)
+
+	require.NoError(t, err)
+}
+
+func addUserToTeamStorageError(t *testing.T) {
+	service, mocks := setUp(t)
+
+	userEmail := "user@example.com"
+	teamName := "Team A"
+	mockedError := fmt.Errorf("database connection failed")
+
+	mocks.storageServiceMock.EXPECT().
+		AddUserToTeam(gomock.Any(), userEmail, teamName).
+		Return(mockedError)
+
+	err := service.AddUserToTeam(context.Background(), userEmail, teamName)
+
+	require.Error(t, err)
+	require.Equal(t, mockedError, err)
+}
+
+func removeUserFromTeamSuccess(t *testing.T) {
+	service, mocks := setUp(t)
+
+	userEmail := "user@example.com"
+
+	mocks.storageServiceMock.EXPECT().
+		RemoveUserFromTeam(gomock.Any(), userEmail).
+		Return(nil)
+
+	err := service.RemoveUserFromTeam(context.Background(), userEmail)
+
+	require.NoError(t, err)
+}
+
+func removeUserFromTeamNotFoundError(t *testing.T) {
+	service, mocks := setUp(t)
+
+	userEmail := "nonexistent@example.com"
+
+	mocks.storageServiceMock.EXPECT().
+		RemoveUserFromTeam(gomock.Any(), userEmail).
+		Return(storage.ErrNotFound)
+
+	expectedError := errors.NewNotFoundError(fmt.Sprintf("user with email %s not found", userEmail))
+
+	err := service.RemoveUserFromTeam(context.Background(), userEmail)
+
+	require.Error(t, err)
+	require.Equal(t, expectedError, err)
+}
+
+func removeUserFromTeamStorageError(t *testing.T) {
+	service, mocks := setUp(t)
+
+	userEmail := "user@example.com"
+	mockedError := fmt.Errorf("database connection failed")
+
+	mocks.storageServiceMock.EXPECT().
+		RemoveUserFromTeam(gomock.Any(), userEmail).
+		Return(mockedError)
+
+	expectedError := errors.NewInternalServerError(fmt.Sprintf("failed to remove user %s from team: %v", userEmail, mockedError))
+
+	err := service.RemoveUserFromTeam(context.Background(), userEmail)
+
+	require.Error(t, err)
+	require.Equal(t, expectedError, err)
+}
+
+func getTeamByNameSuccess(t *testing.T) {
+	service, mocks := setUp(t)
+
+	teamName := "Team A"
+	objTeam := &obj.Team{
+		Name:        "Team A",
+		Description: "Description A",
+	}
+	modelTeam := &model.Team{
+		Name:        "Team A",
+		Description: "Description A",
+	}
+
+	mocks.storageServiceMock.EXPECT().
+		GetTeamWithName(gomock.Any(), teamName).
+		Return(objTeam, nil)
+
+	mocks.translatorMock.EXPECT().
+		ToModelTeam(objTeam).
+		Return(modelTeam)
+
+	team, err := service.GetTeamByName(context.Background(), teamName)
+
+	require.NoError(t, err)
+	require.Equal(t, modelTeam, team)
+}
+
+func getTeamByNameNotFoundError(t *testing.T) {
+	service, mocks := setUp(t)
+
+	teamName := "NonExistent Team"
+
+	mocks.storageServiceMock.EXPECT().
+		GetTeamWithName(gomock.Any(), teamName).
+		Return(nil, storage.ErrNotFound)
+
+	expectedError := errors.NewNotFoundError(fmt.Sprintf("team with name %s not found", teamName))
+
+	team, err := service.GetTeamByName(context.Background(), teamName)
+
+	require.Error(t, err)
+	require.Nil(t, team)
+	require.Equal(t, expectedError, err)
+}
+
+func getTeamByNameStorageError(t *testing.T) {
+	service, mocks := setUp(t)
+
+	teamName := "Team A"
+	mockedError := fmt.Errorf("database connection failed")
+
+	mocks.storageServiceMock.EXPECT().
+		GetTeamWithName(gomock.Any(), teamName).
+		Return(nil, mockedError)
+
+	expectedError := errors.NewInternalServerError(fmt.Sprintf("failed to get team with name %s: %v", teamName, mockedError))
+
+	team, err := service.GetTeamByName(context.Background(), teamName)
+
+	require.Error(t, err)
+	require.Nil(t, team)
 	require.Equal(t, expectedError, err)
 }
