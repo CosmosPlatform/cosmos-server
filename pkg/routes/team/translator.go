@@ -5,6 +5,8 @@ import (
 	"cosmos-server/pkg/model"
 )
 
+//go:generate mockgen -destination=./mock/translator_mock.go -package=mock cosmos-server/pkg/routes/team Translator
+
 type Translator interface {
 	ToGetTeamsResponse(teams []*model.Team) *api.GetTeamsResponse
 	ToInsertTeamResponse(name, description string) *api.InsertTeamResponse

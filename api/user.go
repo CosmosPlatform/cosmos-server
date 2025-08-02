@@ -18,7 +18,7 @@ func (r *RegisterUserRequest) Validate() error {
 		validation.Field(&r.Username, validation.Required),
 		validation.Field(&r.Email, validation.Required, validation.Length(5, 100), is.EmailFormat),
 		validation.Field(&r.Password, validation.Required, validation.Length(8, 100)),
-		validation.Field(&r.Role, validation.In(user.AdminUserRole, user.RegularUserRole)),
+		validation.Field(&r.Role, validation.Required, validation.In(user.AdminUserRole, user.RegularUserRole)),
 	)
 }
 

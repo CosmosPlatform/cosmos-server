@@ -39,7 +39,7 @@ func (handler *handler) handleRegisterUser(e *gin.Context) {
 	}
 
 	if err := registerUserRequest.Validate(); err != nil {
-		_ = e.Error(err)
+		_ = e.Error(errors.NewBadRequestError(err.Error()))
 		return
 	}
 

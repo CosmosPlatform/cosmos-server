@@ -13,7 +13,7 @@ type handler struct {
 	translator  Translator
 }
 
-func AddTeamHandler(e *gin.RouterGroup, teamService team.Service, translator Translator) {
+func AddAdminTeamHandler(e *gin.RouterGroup, teamService team.Service, translator Translator) {
 	h := &handler{
 		teamService: teamService,
 		translator:  translator,

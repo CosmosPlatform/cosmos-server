@@ -5,6 +5,8 @@ import (
 	"cosmos-server/pkg/model"
 )
 
+//go:generate mockgen -destination=./mock/translator_mock.go -package=mock cosmos-server/pkg/routes/user Translator
+
 type Translator interface {
 	ToRegisterUserResponse(username, email, role string) *api.RegisterUserResponse
 	ToGetUsersResponse(users []*model.User) *api.GetUsersResponse
