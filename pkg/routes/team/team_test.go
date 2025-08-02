@@ -18,14 +18,20 @@ import (
 
 func TestHandleCreateTeam(t *testing.T) {
 	t.Run("success - create team", handleCreateTeamSuccess)
-	t.Run("failure - team name is required", handleCreateTeamNameRequiredFailure)
 	t.Run("success- create team without description", handleCreateTeamWithoutDescription)
+	t.Run("failure - team name is required", handleCreateTeamNameRequiredFailure)
 }
 
 func TestHandleGetTeams(t *testing.T) {
 	t.Run("success - get teams", handleGetTeamsSuccess)
 	t.Run("success - get empty teams list", handleGetTeamsEmptySuccess)
 	t.Run("failure - get teams with service error", handleGetTeamsServiceError)
+}
+
+func TestHandleDeleteTeam(t *testing.T) {
+	t.Run("success - delete team", handleDeleteTeamSuccess)
+	t.Run("failure - team name is required", handleDeleteTeamNameRequiredFailure)
+	t.Run("failure - delete team with service error", handleDeleteTeamServiceError)
 }
 
 type mocks struct {
@@ -280,6 +286,86 @@ func handleGetTeamsServiceError(t *testing.T) {
 	url := "/teams"
 
 	request, recorder, err := test.NewHTTPRequest("GET", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := &api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusInternalServerError, recorder.Code)
+	require.Equal(t, expectedError.Error(), actualResponse.Error)
+}
+
+func handleDeleteTeamSuccess(t *testing.T) {
+	router, mocks := setUp(t)
+
+	teamName := "Test Team"
+
+	mocks.teamServiceMock.EXPECT().
+		DeleteTeam(gomock.Any(), teamName).
+		Return(nil)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/teams?name=" + teamName
+
+	request, recorder, err := test.NewHTTPRequest("DELETE", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	require.Equal(t, http.StatusNoContent, recorder.Code)
+}
+
+func handleDeleteTeamNameRequiredFailure(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/teams"
+
+	request, recorder, err := test.NewHTTPRequest("DELETE", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := &api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusBadRequest, recorder.Code)
+}
+
+func handleDeleteTeamServiceError(t *testing.T) {
+	router, mocks := setUp(t)
+
+	teamName := "Test Team"
+	expectedError := errors.NewInternalServerError("test error")
+
+	mocks.teamServiceMock.EXPECT().
+		DeleteTeam(gomock.Any(), teamName).
+		Return(expectedError)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/teams?name=" + teamName
+
+	request, recorder, err := test.NewHTTPRequest("DELETE", url, nil)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
 	}
