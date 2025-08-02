@@ -4,6 +4,7 @@ import (
 	"cosmos-server/api"
 	"cosmos-server/pkg/errors"
 	logMock "cosmos-server/pkg/log/mock"
+	"cosmos-server/pkg/model"
 	userMock "cosmos-server/pkg/services/user/mock"
 	"cosmos-server/pkg/test"
 	"encoding/json"
@@ -24,6 +25,17 @@ func TestHandleRegisterUser(t *testing.T) {
 	t.Run("failure - role invalid", handleRegisterUserRoleInvalid)
 	t.Run("failure - role required", handleRegisterUserRoleRequired)
 	t.Run("failure - register user internal error", handleRegisterUserInternalError)
+}
+
+func TestHandleGetUsers(t *testing.T) {
+	t.Run("success - get users", handleGetUsersSuccessful)
+	t.Run("failure - get users internal error", handleGetUsersInternalError)
+}
+
+func TestHandleDeleteUser(t *testing.T) {
+	t.Run("success - delete user", handleDeleteUserSuccessful)
+	t.Run("failure - email required", handleDeleteUserEmailRequired)
+	t.Run("failure - delete user internal error", handleDeleteUserInternalError)
 }
 
 type mocks struct {
@@ -333,4 +345,183 @@ func handleRegisterUserInternalError(t *testing.T) {
 
 	require.Equal(t, http.StatusInternalServerError, recorder.Code)
 	require.Equal(t, mockedErrorResponse, &actualResponse)
+}
+
+func handleGetUsersSuccessful(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedUsers := []*model.User{
+		{
+			Username: "user1",
+			Email:    "user1@example.com",
+			Role:     "user",
+		},
+		{
+			Username: "user2",
+			Email:    "user2@example.com",
+			Role:     "admin",
+		},
+	}
+
+	mocks.userServiceMock.EXPECT().
+		GetUsers(gomock.Any()).
+		Return(mockedUsers, nil)
+
+	mockedGetUsersResponse := &api.GetUsersResponse{
+		Users: []*api.User{
+			{
+				Username: "user1",
+				Email:    "user1@example.com",
+				Role:     "user",
+			},
+			{
+				Username: "user2",
+				Email:    "user2@example.com",
+				Role:     "admin",
+			},
+		},
+	}
+
+	mocks.translatorMock.EXPECT().
+		ToGetUsersResponse(mockedUsers).
+		Return(mockedGetUsersResponse)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/users"
+
+	request, recorder, err := test.NewHTTPRequest("GET", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.GetUsersResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusOK, recorder.Code, "Expected status code 200")
+	require.Equal(t, mockedGetUsersResponse, &actualResponse, "Expected response to match mocked response")
+}
+
+func handleGetUsersInternalError(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedError := errors.NewInternalServerError("Internal test error")
+
+	mocks.userServiceMock.EXPECT().
+		GetUsers(gomock.Any()).
+		Return(nil, mockedError)
+
+	mocks.loggerMock.EXPECT().
+		Errorf(gomock.Any(), gomock.Any())
+
+	url := "/users"
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	request, recorder, err := test.NewHTTPRequest("GET", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusInternalServerError, recorder.Code)
+	require.Equal(t, "Internal test error", actualResponse.Error)
+}
+
+func handleDeleteUserSuccessful(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedEmail := "test@example.com"
+
+	mocks.userServiceMock.EXPECT().
+		DeleteUser(gomock.Any(), mockedEmail).
+		Return(nil)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/users?email=" + mockedEmail
+
+	request, recorder, err := test.NewHTTPRequest("DELETE", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	require.Equal(t, http.StatusNoContent, recorder.Code, "Expected status code 204")
+}
+
+func handleDeleteUserEmailRequired(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mocks.loggerMock.EXPECT().
+		Errorf(gomock.Any(), gomock.Any())
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/users"
+
+	request, recorder, err := test.NewHTTPRequest("DELETE", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusBadRequest, recorder.Code, "Expected status code 400")
+	require.Equal(t, "Email query parameter is required", actualResponse.Error)
+}
+
+func handleDeleteUserInternalError(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedEmail := "test@example.com"
+	mockedError := errors.NewInternalServerError("Internal test error")
+
+	mocks.userServiceMock.EXPECT().
+		DeleteUser(gomock.Any(), mockedEmail).
+		Return(mockedError)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/users?email=" + mockedEmail
+
+	request, recorder, err := test.NewHTTPRequest("DELETE", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusInternalServerError, recorder.Code)
+	require.Equal(t, "Internal test error", actualResponse.Error)
 }
