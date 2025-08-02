@@ -14,19 +14,19 @@ type GetTeamsResponse struct {
 	Teams []*Team `json:"teams"`
 }
 
-type InsertTeamRequest struct {
+type CreateTeamRequest struct {
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
 }
 
-func (r *InsertTeamRequest) Validate() error {
+func (r *CreateTeamRequest) Validate() error {
 	return validation.ValidateStruct(r,
 		validation.Field(&r.Name, validation.Required, validation.Length(1, 100)),
 		validation.Field(&r.Description, validation.Length(0, 500)),
 	)
 }
 
-type InsertTeamResponse struct {
+type CreateTeamResponse struct {
 	Team *Team `json:"team"`
 }
 

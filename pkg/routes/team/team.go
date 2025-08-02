@@ -20,7 +20,7 @@ func AddAdminTeamHandler(e *gin.RouterGroup, teamService team.Service, translato
 	}
 
 	e.GET("/teams", h.handleGetTeams)
-	e.POST("/teams", h.handleInsertTeam)
+	e.POST("/teams", h.handleCreateTeam)
 	e.DELETE("/teams", h.handleDeleteTeam)
 
 	e.POST("/teams/:teamName/members", h.handleAddUserToTeam)
@@ -53,8 +53,8 @@ func (h *handler) handleDeleteTeam(c *gin.Context) {
 	c.Status(204)
 }
 
-func (h *handler) handleInsertTeam(c *gin.Context) {
-	var teamRequest api.InsertTeamRequest
+func (h *handler) handleCreateTeam(c *gin.Context) {
+	var teamRequest api.CreateTeamRequest
 
 	if err := c.ShouldBindJSON(&teamRequest); err != nil {
 		_ = c.Error(errors.NewBadRequestError(fmt.Sprintf("Invalid request format: %v", err)))
@@ -62,7 +62,7 @@ func (h *handler) handleInsertTeam(c *gin.Context) {
 	}
 
 	if err := teamRequest.Validate(); err != nil {
-		_ = c.Error(err)
+		_ = c.Error(errors.NewBadRequestError(err.Error()))
 		return
 	}
 
