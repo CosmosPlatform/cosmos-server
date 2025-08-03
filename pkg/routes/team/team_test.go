@@ -34,6 +34,14 @@ func TestHandleDeleteTeam(t *testing.T) {
 	t.Run("failure - delete team with service error", handleDeleteTeamServiceError)
 }
 
+func TestHandleAddUserToTeam(t *testing.T) {
+	t.Run("success - add user to team", handleAddUserToTeamSuccess)
+	t.Run("failure - team name is required", handleAddUserToTeamNameRequiredFailure)
+	t.Run("failure - invalid request format", handleAddUserToTeamInvalidRequestFailure)
+	t.Run("failure - email validation error", handleAddUserToTeamEmailValidationFailure)
+	t.Run("failure - add user with service error", handleAddUserToTeamServiceError)
+}
+
 type mocks struct {
 	controller      *gomock.Controller
 	teamServiceMock *teamMock.MockService
@@ -366,6 +374,158 @@ func handleDeleteTeamServiceError(t *testing.T) {
 	url := "/teams?name=" + teamName
 
 	request, recorder, err := test.NewHTTPRequest("DELETE", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := &api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusInternalServerError, recorder.Code)
+	require.Equal(t, expectedError.Error(), actualResponse.Error)
+}
+
+func handleAddUserToTeamSuccess(t *testing.T) {
+	router, mocks := setUp(t)
+
+	teamName := "Test Team"
+	userEmail := "test@example.com"
+
+	addUserRequest := &api.AddUserToTeamRequest{
+		Email: userEmail,
+	}
+
+	mocks.teamServiceMock.EXPECT().
+		AddUserToTeam(gomock.Any(), userEmail, teamName).
+		Return(nil)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/teams/" + teamName + "/members"
+
+	request, recorder, err := test.NewHTTPRequest("POST", url, addUserRequest)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	require.Equal(t, http.StatusNoContent, recorder.Code)
+}
+
+func handleAddUserToTeamNameRequiredFailure(t *testing.T) {
+	router, mocks := setUp(t)
+
+	userEmail := "test@example.com"
+
+	addUserRequest := &api.AddUserToTeamRequest{
+		Email: userEmail,
+	}
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/teams//members"
+
+	request, recorder, err := test.NewHTTPRequest("POST", url, addUserRequest)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := &api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusBadRequest, recorder.Code)
+}
+
+func handleAddUserToTeamInvalidRequestFailure(t *testing.T) {
+	router, mocks := setUp(t)
+
+	teamName := "Test Team"
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/teams/" + teamName + "/members"
+
+	request, recorder, err := test.NewHTTPRequest("POST", url, "invalid json")
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := &api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusBadRequest, recorder.Code)
+}
+
+func handleAddUserToTeamEmailValidationFailure(t *testing.T) {
+	router, mocks := setUp(t)
+
+	teamName := "Test Team"
+
+	addUserRequest := &api.AddUserToTeamRequest{
+		Email: "invalid-email",
+	}
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/teams/" + teamName + "/members"
+
+	request, recorder, err := test.NewHTTPRequest("POST", url, addUserRequest)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := &api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusBadRequest, recorder.Code)
+}
+
+func handleAddUserToTeamServiceError(t *testing.T) {
+	router, mocks := setUp(t)
+
+	teamName := "Test Team"
+	userEmail := "test@example.com"
+	expectedError := errors.NewInternalServerError("test error")
+
+	addUserRequest := &api.AddUserToTeamRequest{
+		Email: userEmail,
+	}
+
+	mocks.teamServiceMock.EXPECT().
+		AddUserToTeam(gomock.Any(), userEmail, teamName).
+		Return(expectedError)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/teams/" + teamName + "/members"
+
+	request, recorder, err := test.NewHTTPRequest("POST", url, addUserRequest)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
 	}

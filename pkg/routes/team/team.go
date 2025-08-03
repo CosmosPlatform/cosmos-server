@@ -90,7 +90,7 @@ func (h *handler) handleAddUserToTeam(c *gin.Context) {
 	}
 
 	if err := addUserRequest.Validate(); err != nil {
-		_ = c.Error(err)
+		_ = c.Error(errors.NewBadRequestError(err.Error()))
 		return
 	}
 
