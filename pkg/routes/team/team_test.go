@@ -42,6 +42,14 @@ func TestHandleAddUserToTeam(t *testing.T) {
 	t.Run("failure - add user with service error", handleAddUserToTeamServiceError)
 }
 
+func TestHandleRemoveUserFromTeam(t *testing.T) {
+	t.Run("success - remove user from team", handleRemoveUserFromTeamSuccess)
+	t.Run("failure - team name is required", handleRemoveUserFromTeamNameRequiredFailure)
+	t.Run("failure - email query parameter is required", handleRemoveUserFromTeamEmailRequiredFailure)
+	t.Run("failure - team not found", handleRemoveUserFromTeamTeamNotFoundFailure)
+	t.Run("failure - remove user with service error", handleRemoveUserFromTeamServiceError)
+}
+
 type mocks struct {
 	controller      *gomock.Controller
 	teamServiceMock *teamMock.MockService
@@ -526,6 +534,167 @@ func handleAddUserToTeamServiceError(t *testing.T) {
 	url := "/teams/" + teamName + "/members"
 
 	request, recorder, err := test.NewHTTPRequest("POST", url, addUserRequest)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := &api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusInternalServerError, recorder.Code)
+	require.Equal(t, expectedError.Error(), actualResponse.Error)
+}
+
+func handleRemoveUserFromTeamSuccess(t *testing.T) {
+	router, mocks := setUp(t)
+
+	teamName := "Test Team"
+	userEmail := "test@example.com"
+
+	teamModel := &model.Team{
+		Name:        teamName,
+		Description: "Test description",
+	}
+
+	mocks.teamServiceMock.EXPECT().
+		GetTeamByName(gomock.Any(), teamName).
+		Return(teamModel, nil)
+
+	mocks.teamServiceMock.EXPECT().
+		RemoveUserFromTeam(gomock.Any(), userEmail).
+		Return(nil)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/teams/" + teamName + "/members?email=" + userEmail
+
+	request, recorder, err := test.NewHTTPRequest("DELETE", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	require.Equal(t, http.StatusNoContent, recorder.Code)
+}
+
+func handleRemoveUserFromTeamNameRequiredFailure(t *testing.T) {
+	router, mocks := setUp(t)
+
+	userEmail := "test@example.com"
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/teams//members?email=" + userEmail
+
+	request, recorder, err := test.NewHTTPRequest("DELETE", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := &api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusBadRequest, recorder.Code)
+}
+
+func handleRemoveUserFromTeamEmailRequiredFailure(t *testing.T) {
+	router, mocks := setUp(t)
+
+	teamName := "Test Team"
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/teams/" + teamName + "/members"
+
+	request, recorder, err := test.NewHTTPRequest("DELETE", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := &api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusBadRequest, recorder.Code)
+}
+
+func handleRemoveUserFromTeamTeamNotFoundFailure(t *testing.T) {
+	router, mocks := setUp(t)
+
+	teamName := "Nonexistent Team"
+	userEmail := "test@example.com"
+	expectedError := errors.NewNotFoundError("team not found")
+
+	mocks.teamServiceMock.EXPECT().
+		GetTeamByName(gomock.Any(), teamName).
+		Return(nil, expectedError)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/teams/" + teamName + "/members?email=" + userEmail
+
+	request, recorder, err := test.NewHTTPRequest("DELETE", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := &api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusNotFound, recorder.Code)
+	require.Equal(t, expectedError.Error(), actualResponse.Error)
+}
+
+func handleRemoveUserFromTeamServiceError(t *testing.T) {
+	router, mocks := setUp(t)
+
+	teamName := "Test Team"
+	userEmail := "test@example.com"
+	expectedError := errors.NewInternalServerError("test error")
+
+	teamModel := &model.Team{
+		Name:        teamName,
+		Description: "Test description",
+	}
+
+	mocks.teamServiceMock.EXPECT().
+		GetTeamByName(gomock.Any(), teamName).
+		Return(teamModel, nil)
+
+	mocks.teamServiceMock.EXPECT().
+		RemoveUserFromTeam(gomock.Any(), userEmail).
+		Return(expectedError)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/teams/" + teamName + "/members?email=" + userEmail
+
+	request, recorder, err := test.NewHTTPRequest("DELETE", url, nil)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
 	}
