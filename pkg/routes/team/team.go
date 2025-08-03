@@ -13,15 +13,18 @@ type handler struct {
 	translator  Translator
 }
 
-func AddTeamHandler(e *gin.RouterGroup, teamService team.Service, translator Translator) {
+func AddAdminTeamHandler(e *gin.RouterGroup, teamService team.Service, translator Translator) {
 	h := &handler{
 		teamService: teamService,
 		translator:  translator,
 	}
 
 	e.GET("/teams", h.handleGetTeams)
-	e.POST("/teams", h.handleInsertTeam)
+	e.POST("/teams", h.handleCreateTeam)
 	e.DELETE("/teams", h.handleDeleteTeam)
+
+	e.POST("/teams/:teamName/members", h.handleAddUserToTeam)
+	e.DELETE("/teams/:teamName/members", h.handleRemoveUserFromTeam)
 }
 
 func (h *handler) handleGetTeams(c *gin.Context) {
@@ -50,8 +53,8 @@ func (h *handler) handleDeleteTeam(c *gin.Context) {
 	c.Status(204)
 }
 
-func (h *handler) handleInsertTeam(c *gin.Context) {
-	var teamRequest api.InsertTeamRequest
+func (h *handler) handleCreateTeam(c *gin.Context) {
+	var teamRequest api.CreateTeamRequest
 
 	if err := c.ShouldBindJSON(&teamRequest); err != nil {
 		_ = c.Error(errors.NewBadRequestError(fmt.Sprintf("Invalid request format: %v", err)))
@@ -59,7 +62,7 @@ func (h *handler) handleInsertTeam(c *gin.Context) {
 	}
 
 	if err := teamRequest.Validate(); err != nil {
-		_ = c.Error(err)
+		_ = c.Error(errors.NewBadRequestError(err.Error()))
 		return
 	}
 
@@ -71,4 +74,59 @@ func (h *handler) handleInsertTeam(c *gin.Context) {
 	}
 
 	c.JSON(201, h.translator.ToInsertTeamResponse(teamRequest.Name, teamRequest.Description))
+}
+
+func (h *handler) handleAddUserToTeam(c *gin.Context) {
+	teamName := c.Param("teamName")
+	if teamName == "" {
+		_ = c.Error(errors.NewBadRequestError("team name is required"))
+		return
+	}
+
+	var addUserRequest api.AddUserToTeamRequest
+	if err := c.ShouldBindJSON(&addUserRequest); err != nil {
+		_ = c.Error(errors.NewBadRequestError(fmt.Sprintf("Invalid request format: %v", err)))
+		return
+	}
+
+	if err := addUserRequest.Validate(); err != nil {
+		_ = c.Error(errors.NewBadRequestError(err.Error()))
+		return
+	}
+
+	err := h.teamService.AddUserToTeam(c, addUserRequest.Email, teamName)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.Status(204)
+}
+
+func (h *handler) handleRemoveUserFromTeam(c *gin.Context) {
+	teamName := c.Param("teamName")
+	if teamName == "" {
+		_ = c.Error(errors.NewBadRequestError("team name is required"))
+		return
+	}
+
+	email := c.Query("email")
+	if email == "" {
+		_ = c.Error(errors.NewBadRequestError("email query parameter is required"))
+		return
+	}
+
+	_, err := h.teamService.GetTeamByName(c, teamName)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	err = h.teamService.RemoveUserFromTeam(c, email)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.Status(204)
 }

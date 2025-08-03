@@ -5,6 +5,8 @@ import (
 	"cosmos-server/pkg/model"
 )
 
+//go:generate mockgen -destination=./mock/translator_mock.go -package=mock cosmos-server/pkg/routes/user Translator
+
 type Translator interface {
 	ToRegisterUserResponse(username, email, role string) *api.RegisterUserResponse
 	ToGetUsersResponse(users []*model.User) *api.GetUsersResponse
@@ -29,10 +31,18 @@ func (t *translator) ToRegisterUserResponse(username, email, role string) *api.R
 func (t *translator) ToGetUsersResponse(users []*model.User) *api.GetUsersResponse {
 	apiUsers := make([]*api.User, 0)
 	for _, user := range users {
+		var apiTeam *api.Team
+		if user.Team != nil {
+			apiTeam = &api.Team{
+				Name:        user.Team.Name,
+				Description: user.Team.Description,
+			}
+		}
 		apiUsers = append(apiUsers, &api.User{
 			Username: user.Username,
 			Email:    user.Email,
 			Role:     user.Role,
+			Team:     apiTeam,
 		})
 	}
 	return &api.GetUsersResponse{

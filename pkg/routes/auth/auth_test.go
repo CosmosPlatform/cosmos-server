@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+	"net/http"
 	"testing"
 
 	logMock "cosmos-server/pkg/log/mock"
@@ -103,7 +104,7 @@ func handleLoginSuccessful(t *testing.T) {
 		t.Fatalf("Failed to decode response: %v", err)
 	}
 
-	require.Equal(t, 200, recorder.Code, "Expected status code 200")
+	require.Equal(t, http.StatusOK, recorder.Code, "Expected status code 200")
 	require.Equal(t, mockedAuthenticateResponse.User, actualResponse.User)
 }
 

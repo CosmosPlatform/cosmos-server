@@ -29,10 +29,15 @@ func (t *translator) ToUserObj(userModel *model.User, encryptedPassword string) 
 }
 
 func (t *translator) ToUserModel(userObj *obj.User) *model.User {
+	var teamModel *model.Team
+	if userObj.Team != nil {
+		teamModel = t.ToModelTeam(userObj.Team)
+	}
 	return &model.User{
 		Username: userObj.Username,
 		Email:    userObj.Email,
 		Role:     userObj.Role,
+		Team:     teamModel,
 	}
 }
 
@@ -42,4 +47,11 @@ func (t *translator) ToUserModels(userObjs []*obj.User) []*model.User {
 		userModels = append(userModels, t.ToUserModel(userObj))
 	}
 	return userModels
+}
+
+func (t *translator) ToModelTeam(teamObj *obj.Team) *model.Team {
+	return &model.Team{
+		Name:        teamObj.Name,
+		Description: teamObj.Description,
+	}
 }
