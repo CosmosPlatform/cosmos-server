@@ -1,10 +1,5 @@
 package config
 
-import (
-	"fmt"
-	"os"
-)
-
 type Config struct {
 	ServerConfig  `mapstructure:"server"`
 	StorageConfig `mapstructure:"storage"`
@@ -14,16 +9,11 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Host string `mapstructure:"host"`
 	Port string `mapstructure:"port"`
 }
 
 type StorageConfig struct {
-	Host         string `mapstructure:"host"`
-	Port         string `mapstructure:"port"`
-	User         string `mapstructure:"user"`
-	Password     string `mapstructure:"password"`
-	DatabaseName string `mapstructure:"database"`
+	DatabaseURL string `mapstructure:"database_url"`
 }
 
 type SystemConfig struct {
@@ -45,14 +35,9 @@ type AuthConfig struct {
 }
 
 func NewConfiguration() (*Config, error) {
-	env := os.Getenv("ENVIRONMENT")
-	if env == "LOCAL" {
-		if conf, err := readConfig("config/local.json"); err != nil {
-			return nil, err
-		} else {
-			return conf, nil
-		}
+	if conf, err := readConfig("config/local.json"); err != nil {
+		return nil, err
+	} else {
+		return conf, nil
 	}
-
-	return nil, fmt.Errorf("unsupported environment: %s", env)
 }

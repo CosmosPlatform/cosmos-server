@@ -1,14 +1,9 @@
 {
-  "server":  {
-    "host": "localhost",
+  "server": {
     "port": "8080"
   },
   "storage": {
-    "host": "localhost",
-    "port": "5432",
-    "user": "postgres",
-    "password": "postgres",
-    "database": "cosmos"
+    "database_url": "postgres://postgres:postgres@localhost:5432/cosmos?sslmode=disable"
   },
   "log": {
     "level": "info"
