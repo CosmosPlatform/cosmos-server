@@ -27,7 +27,7 @@ func readConfig(path string) (*Config, error) {
 		{"system.default_admin.username", "DEFAULT_ADMIN_USERNAME"},
 		{"system.default_admin.email", "DEFAULT_ADMIN_EMAIL"},
 		{"system.default_admin.password", "DEFAULT_ADMIN_PASSWORD"},
-		{"server.port", "SERVER_PORT"},
+		{"server.port", "PORT"},
 		{"log.level", "LOG_LEVEL"},
 	})
 	if err != nil {
