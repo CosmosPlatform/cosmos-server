@@ -61,7 +61,7 @@ func (app *App) SetUpDatabase() error {
 }
 
 func (app *App) RunServer() error {
-	address := app.config.ServerConfig.Host + ":" + app.config.ServerConfig.Port
+	address := ":" + app.config.ServerConfig.Port
 	s := &http.Server{
 		Addr:    address,
 		Handler: server.NewGinHandler(app.routes),
