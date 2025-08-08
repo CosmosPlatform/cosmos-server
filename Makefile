@@ -10,3 +10,10 @@ migrate:
 
 migrate-down:
 	migrate -path db/migrations -database "postgres://postgres:postgres@localhost:5432/cosmos?sslmode=disable" down
+
+migrate_uri_up:
+	migrate -path db/migrations -database "$(uri)" up
+
+migrate_uri_down:
+	migrate -path db/migrations -database "$(uri)" down
+
