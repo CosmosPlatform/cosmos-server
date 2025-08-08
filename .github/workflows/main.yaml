@@ -27,6 +27,10 @@ jobs:
       - name: Verify dependencies
         run: go mod verify
 
+      - name: Install mockgen
+        run: |
+          GO111MODULE=on go install go.uber.org/mock/mockgen@latest
+
       - name: Build
         run: |
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v .
