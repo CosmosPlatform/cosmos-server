@@ -42,5 +42,11 @@ jobs:
         env:
           HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
 
+      - name: Install migrate tool
+        run: |
+          curl -L https://github.com/golang-migrate/migrate/releases/latest/download/migrate.linux-amd64.tar.gz | tar xvz
+          sudo mv migrate /usr/local/bin/
+          which migrate
+
       - name: Run migrations
         run: make migrate_uri_up uri=${{ secrets.HEROKU_POSTGRES_URI }}
