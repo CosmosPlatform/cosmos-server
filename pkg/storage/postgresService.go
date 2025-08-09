@@ -170,3 +170,15 @@ func (s *PostgresService) GetTeamWithName(ctx context.Context, name string) (*ob
 
 	return team, nil
 }
+
+func (s *PostgresService) InsertApplication(ctx context.Context, application *obj.Application) error {
+	err := gorm.G[obj.Application](s.db).Create(ctx, application)
+	if err != nil {
+		if errorUtils.Is(err, gorm.ErrDuplicatedKey) {
+			return ErrAlreadyExists
+		}
+		return fmt.Errorf("failed to insert application: %v", err)
+	}
+
+	return nil
+}
