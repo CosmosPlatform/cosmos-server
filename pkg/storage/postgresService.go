@@ -194,3 +194,12 @@ func (s *PostgresService) GetApplicationWithName(ctx context.Context, name strin
 
 	return application, nil
 }
+
+func (s *PostgresService) GetApplicationsWithFilter(ctx context.Context, filter string) ([]*obj.Application, error) {
+	applications, err := gorm.G[*obj.Application](s.db).Preload("Team", nil).Where("name ILIKE ?", "%"+filter+"%").Order("name").Find(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get applications with filter '%s': %v", filter, err)
+	}
+
+	return applications, nil
+}

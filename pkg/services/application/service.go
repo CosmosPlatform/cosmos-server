@@ -13,6 +13,7 @@ import (
 type Service interface {
 	AddApplication(ctx context.Context, name, description, team string) error
 	GetApplication(ctx context.Context, name string) (*model.Application, error)
+	GetApplicationsWithFilter(ctx context.Context, filter string) ([]*model.Application, error)
 }
 
 type applicationService struct {
@@ -69,4 +70,13 @@ func (s *applicationService) GetApplication(ctx context.Context, name string) (*
 	}
 
 	return s.translator.ToApplicationModel(application), nil
+}
+
+func (s *applicationService) GetApplicationsWithFilter(ctx context.Context, filter string) ([]*model.Application, error) {
+	applications, err := s.storageService.GetApplicationsWithFilter(ctx, filter)
+	if err != nil {
+		return nil, errors.NewInternalServerError("failed to retrieve applications: " + err.Error())
+	}
+
+	return s.translator.ToApplicationModels(applications), nil
 }

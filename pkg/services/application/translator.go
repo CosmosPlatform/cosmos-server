@@ -7,6 +7,7 @@ import (
 
 type Translator interface {
 	ToApplicationModel(applicationObj *obj.Application) *model.Application
+	ToApplicationModels(applicationObjs []*obj.Application) []*model.Application
 }
 
 type translator struct{}
@@ -31,4 +32,12 @@ func (t *translator) ToModelTeam(teamObj *obj.Team) *model.Team {
 		Name:        teamObj.Name,
 		Description: teamObj.Description,
 	}
+}
+
+func (t *translator) ToApplicationModels(applicationObjs []*obj.Application) []*model.Application {
+	var applicationModels []*model.Application
+	for _, applicationObj := range applicationObjs {
+		applicationModels = append(applicationModels, t.ToApplicationModel(applicationObj))
+	}
+	return applicationModels
 }

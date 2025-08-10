@@ -8,6 +8,7 @@ import (
 type Translator interface {
 	ToCreateApplicationResponse(name, description, team string) *api.CreateApplicationResponse
 	ToGetApplicationResponse(applicationObj *model.Application) *api.Application
+	ToGetApplicationsResponse(applicationObj []*model.Application) *api.GetApplicationsResponse
 }
 
 type translator struct{}
@@ -41,5 +42,15 @@ func (t *translator) ToApiTeam(teamModel *model.Team) *api.Team {
 	return &api.Team{
 		Name:        teamModel.Name,
 		Description: teamModel.Description,
+	}
+}
+
+func (t *translator) ToGetApplicationsResponse(applicationModels []*model.Application) *api.GetApplicationsResponse {
+	var applications []*api.Application
+	for _, applicationModel := range applicationModels {
+		applications = append(applications, t.ToGetApplicationResponse(applicationModel))
+	}
+	return &api.GetApplicationsResponse{
+		Applications: applications,
 	}
 }
