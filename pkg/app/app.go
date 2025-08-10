@@ -34,7 +34,7 @@ func NewApp(config *c.Config) (*App, error) {
 	authService := auth.NewAuthService(config.AuthConfig, storageService, auth.NewTranslator(), logger)
 	userService := user.NewUserService(storageService, user.NewTranslator(), logger)
 	teamService := team.NewTeamService(storageService, team.NewTranslator())
-	applicationService := application.NewApplicationService(storageService, team.NewTranslator(), logger)
+	applicationService := application.NewApplicationService(storageService, application.NewTranslator(), logger)
 
 	httpRoutes := routes.NewHTTPRoutes(authService, userService, teamService, applicationService, logger)
 

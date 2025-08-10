@@ -182,3 +182,15 @@ func (s *PostgresService) InsertApplication(ctx context.Context, application *ob
 
 	return nil
 }
+
+func (s *PostgresService) GetApplicationWithName(ctx context.Context, name string) (*obj.Application, error) {
+	application, err := gorm.G[*obj.Application](s.db).Preload("Team", nil).Where("name = ?", name).First(ctx)
+	if err != nil {
+		if errorUtils.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to get application with name %s: %v", name, err)
+	}
+
+	return application, nil
+}

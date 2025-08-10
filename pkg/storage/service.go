@@ -22,4 +22,5 @@ type Service interface {
 	RemoveUserFromTeam(ctx context.Context, username string) error
 
 	InsertApplication(ctx context.Context, application *obj.Application) error
+	GetApplicationWithName(ctx context.Context, name string) (*obj.Application, error)
 }

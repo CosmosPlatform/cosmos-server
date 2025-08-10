@@ -23,5 +23,5 @@ type CreateApplicationResponse struct {
 type Application struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
-	Team        string `json:"team,omitempty"`
+	Team        *Team  `json:"team,omitempty"`
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"cosmos-server/pkg/errors"
 	"cosmos-server/pkg/log"
+	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/storage"
 	"cosmos-server/pkg/storage/obj"
 	errorUtils "errors"
@@ -11,6 +12,7 @@ import (
 
 type Service interface {
 	AddApplication(ctx context.Context, name, description, team string) error
+	GetApplication(ctx context.Context, name string) (*model.Application, error)
 }
 
 type applicationService struct {
@@ -55,4 +57,16 @@ func (s *applicationService) AddApplication(ctx context.Context, name, descripti
 
 	s.logger.Infof("Application %s added successfully", name)
 	return nil
+}
+
+func (s *applicationService) GetApplication(ctx context.Context, name string) (*model.Application, error) {
+	application, err := s.storageService.GetApplicationWithName(ctx, name)
+	if err != nil {
+		if errorUtils.Is(err, storage.ErrNotFound) {
+			return nil, errors.NewNotFoundError("application not found")
+		}
+		return nil, errors.NewInternalServerError("failed to retrieve application: " + err.Error())
+	}
+
+	return s.translator.ToApplicationModel(application), nil
 }

@@ -7,6 +7,7 @@ import (
 	"cosmos-server/pkg/services/application"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"net/http"
 )
 
 type handler struct {
@@ -24,7 +25,7 @@ func AddApplicationHandler(e *gin.RouterGroup, applicationService application.Se
 
 	applicationsGroup := e.Group("/applications")
 
-	//applicationsGroup.GET("", handler.handleGetApplications)
+	applicationsGroup.GET("/:application", handler.handleGetApplication)
 	applicationsGroup.POST("", handler.handleCreateApplication)
 	//applicationsGroup.DELETE("/:id", handler.handleDeleteApplication)
 }
@@ -49,5 +50,22 @@ func (handler *handler) handleCreateApplication(e *gin.Context) {
 		return
 	}
 
-	e.JSON(201, handler.translator.ToCreateApplicationResponse(createApplicationRequest.Name, createApplicationRequest.Description, createApplicationRequest.Team))
+	e.JSON(http.StatusCreated, handler.translator.ToCreateApplicationResponse(createApplicationRequest.Name, createApplicationRequest.Description, createApplicationRequest.Team))
+}
+
+func (handler *handler) handleGetApplication(e *gin.Context) {
+
+	applicationName := e.Param("application")
+	if applicationName == "" {
+		_ = e.Error(errors.NewBadRequestError("application name missing"))
+	}
+
+	app, err := handler.applicationService.GetApplication(e, applicationName)
+	if err != nil {
+		_ = e.Error(err)
+		return
+	}
+
+	e.JSON(http.StatusOK, handler.translator.ToGetApplicationResponse(app))
+
 }
