@@ -31,7 +31,7 @@ func NewApplicationService(storageService storage.Service, translator Translator
 }
 
 func (s *applicationService) AddApplication(ctx context.Context, name, description, team string) error {
-	serviceObj := &obj.Application{
+	applicationObj := &obj.Application{
 		Name:        name,
 		Description: description,
 	}
@@ -45,10 +45,10 @@ func (s *applicationService) AddApplication(ctx context.Context, name, descripti
 			return errors.NewInternalServerError("failed to retrieve team: " + err.Error())
 		}
 		teamIDInt := int(teamObj.ID)
-		serviceObj.TeamID = &teamIDInt
+		applicationObj.TeamID = &teamIDInt
 	}
 
-	err := s.storageService.InsertApplication(ctx, serviceObj)
+	err := s.storageService.InsertApplication(ctx, applicationObj)
 	if err != nil {
 		if errorUtils.Is(err, storage.ErrAlreadyExists) {
 			return errors.NewConflictError("application with name " + name + " already exists")
