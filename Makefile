@@ -1,6 +1,6 @@
 SHELL=/bin/bash
 
-tests: mocks
+tests:
 	go test ./...
 
 mocks: clean-mocks
