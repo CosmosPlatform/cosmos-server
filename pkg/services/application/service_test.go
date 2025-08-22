@@ -19,6 +19,12 @@ func TestAddApplication(t *testing.T) {
 	t.Run("add application - insert application error", addApplicationInsertApplicationError)
 }
 
+func TestGetApplication(t *testing.T) {
+	t.Run("get application - success", getApplicationSuccess)
+	t.Run("get application - not found error", getApplicationNotFoundError)
+	t.Run("get application - storage error", getApplicationStorageError)
+}
+
 type mocks struct {
 	controller         *gomock.Controller
 	storageServiceMock *storageMock.MockService
@@ -149,4 +155,56 @@ func addApplicationInsertApplicationError(t *testing.T) {
 	err := applicationService.AddApplication(context.Background(), applicationName, applicationDescription, applicationTeam)
 	require.Error(t, err)
 	require.True(t, strings.Contains(err.Error(), "application with name "+applicationName+" already exists"))
+}
+
+func getApplicationSuccess(t *testing.T) {
+	applicationService, mocks := setUp(t)
+
+	applicationName := "test-application"
+	applicationDescription := "test-description"
+
+	objApplication := &obj.Application{
+		Name:        applicationName,
+		Description: applicationDescription,
+	}
+
+	mocks.storageServiceMock.EXPECT().
+		GetApplicationWithName(gomock.Any(), applicationName).
+		Return(objApplication, nil)
+
+	result, err := applicationService.GetApplication(context.Background(), applicationName)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Equal(t, applicationName, result.Name)
+	require.Equal(t, applicationDescription, result.Description)
+}
+
+func getApplicationNotFoundError(t *testing.T) {
+	applicationService, mocks := setUp(t)
+
+	applicationName := "non-existent-application"
+
+	mocks.storageServiceMock.EXPECT().
+		GetApplicationWithName(gomock.Any(), applicationName).
+		Return(nil, storage.ErrNotFound)
+
+	result, err := applicationService.GetApplication(context.Background(), applicationName)
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.True(t, strings.Contains(err.Error(), "application not found"))
+}
+
+func getApplicationStorageError(t *testing.T) {
+	applicationService, mocks := setUp(t)
+
+	applicationName := "test-application"
+
+	mocks.storageServiceMock.EXPECT().
+		GetApplicationWithName(gomock.Any(), applicationName).
+		Return(nil, storage.ErrInternal)
+
+	result, err := applicationService.GetApplication(context.Background(), applicationName)
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.True(t, strings.Contains(err.Error(), "failed to retrieve application"))
 }
