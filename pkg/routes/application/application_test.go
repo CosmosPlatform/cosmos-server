@@ -4,6 +4,7 @@ import (
 	"cosmos-server/api"
 	"cosmos-server/pkg/errors"
 	log "cosmos-server/pkg/log/mock"
+	"cosmos-server/pkg/model"
 	applicationMock "cosmos-server/pkg/services/application/mock"
 	"cosmos-server/pkg/test"
 	"encoding/json"
@@ -13,6 +14,18 @@ import (
 	"net/http"
 	"testing"
 )
+
+func TestHandleCreateApplication(t *testing.T) {
+	t.Run("success - create application", handleCreateApplicationSuccess)
+	t.Run("failure - name required", handleCreateApplicationNameRequired)
+	t.Run("failure - insert application error", handleCreateApplicationInsertApplicationError)
+}
+
+func TestHandleGetApplication(t *testing.T) {
+	t.Run("success - get application", handleGetApplicationSuccess)
+	t.Run("failure - get application error", handleGetApplicationError)
+	t.Run("failure - get application error does not exist", handleGetApplicationErrorDoesNotExist)
+}
 
 type mocks struct {
 	controller             *gomock.Controller
@@ -37,12 +50,6 @@ func setUp(t *testing.T) (*gin.Engine, *mocks) {
 	AddApplicationHandler(router.Group("/"), applicationServiceMock, NewTranslator(), loggerMock)
 
 	return router, mocks
-}
-
-func TestHandleCreateApplication(t *testing.T) {
-	t.Run("success - create application", handleCreateApplicationSuccess)
-	t.Run("failure - name required", handleCreateApplicationNameRequired)
-	t.Run("failure - insert application error", handleCreateApplicationInsertApplicationError)
 }
 
 func handleCreateApplicationSuccess(t *testing.T) {
@@ -163,4 +170,113 @@ func handleCreateApplicationInsertApplicationError(t *testing.T) {
 
 	require.Equal(t, http.StatusInternalServerError, recorder.Code)
 	require.Equal(t, "Internal test error", actualResponse.Error)
+}
+
+func handleGetApplicationSuccess(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedName := "test-app"
+	mockedDescription := "Test application description"
+	mockedTeam := "test-team"
+
+	mockedApplication := &api.Application{
+		Name:        mockedName,
+		Description: mockedDescription,
+		Team:        &api.Team{Name: mockedTeam},
+	}
+
+	mockedApplicationModel := &model.Application{
+		Name:        mockedName,
+		Description: mockedDescription,
+		Team:        &model.Team{Name: mockedTeam},
+	}
+
+	mocks.applicationServiceMock.EXPECT().
+		GetApplication(gomock.Any(), mockedName).
+		Return(mockedApplicationModel, nil)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/applications/" + mockedName
+
+	request, recorder, err := test.NewHTTPRequest("GET", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.Application{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusOK, recorder.Code, "Expected status code 200")
+	require.Equal(t, mockedApplication, &actualResponse, "Response body mismatch")
+}
+
+func handleGetApplicationError(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedName := "test-app"
+	mockedError := errors.NewInternalServerError("Internal test error")
+
+	mocks.applicationServiceMock.EXPECT().
+		GetApplication(gomock.Any(), mockedName).
+		Return(nil, mockedError)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/applications/" + mockedName
+
+	request, recorder, err := test.NewHTTPRequest("GET", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusInternalServerError, recorder.Code)
+	require.Equal(t, "Internal test error", actualResponse.Error)
+}
+
+func handleGetApplicationErrorDoesNotExist(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedName := "nonexistent-app"
+	mockedError := errors.NewNotFoundError("Application does not exist")
+
+	mocks.applicationServiceMock.EXPECT().
+		GetApplication(gomock.Any(), mockedName).
+		Return(nil, mockedError)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/applications/" + mockedName
+
+	request, recorder, err := test.NewHTTPRequest("GET", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusNotFound, recorder.Code)
+	require.Equal(t, "Application does not exist", actualResponse.Error)
 }
