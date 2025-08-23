@@ -40,7 +40,7 @@ func setUp(t *testing.T) (*gin.Engine, *mocks) {
 
 func TestHandleCreateApplication(t *testing.T) {
 	t.Run("success - create application", handleCreateApplicationSuccess)
-	//t.Run("failure - name required", handleCreateApplicationNameRequired)
+	t.Run("failure - name required", handleCreateApplicationNameRequired)
 	//t.Run("failure - description required", handleCreateApplicationDescriptionRequired)
 	//t.Run("failure - team required", handleCreateApplicationTeamRequired)
 	//t.Run("failure - insert application error", handleCreateApplicationInsertApplicationError)
@@ -93,38 +93,38 @@ func handleCreateApplicationSuccess(t *testing.T) {
 	require.Equal(t, expectedResponse, &actualResponse, "Response body mismatch")
 }
 
-//func handleCreateApplicationNameRequired(t *testing.T) {
-//	router, mocks := setUp(t)
-//
-//	mockedDescription := "Test application description"
-//	mockedTeam := "test-team"
-//
-//	mockedCreateApplicationRequest := &api.CreateApplicationRequest{
-//		Description: mockedDescription,
-//		Team:        mockedTeam,
-//	}
-//
-//	mocks.loggerMock.EXPECT().
-//		Errorf(gomock.Any(), gomock.Any())
-//
-//	url := "/applications"
-//
-//	request, recorder, err := test.NewHTTPRequest("POST", url, mockedCreateApplicationRequest)
-//	if err != nil {
-//		t.Fatalf("Failed to create request: %v", err)
-//	}
-//
-//	router.ServeHTTP(recorder, request)
-//
-//	actualResponse := api.ErrorResponse{}
-//	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
-//	if err != nil {
-//		t.Fatalf("Failed to decode response: %v", err)
-//	}
-//
-//	require.Equal(t, http.StatusBadRequest, recorder.Code, "Expected status code 400")
-//}
-//
+func handleCreateApplicationNameRequired(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedDescription := "Test application description"
+	mockedTeam := "test-team"
+
+	mockedCreateApplicationRequest := &api.CreateApplicationRequest{
+		Description: mockedDescription,
+		Team:        mockedTeam,
+	}
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/applications"
+
+	request, recorder, err := test.NewHTTPRequest("POST", url, mockedCreateApplicationRequest)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusBadRequest, recorder.Code, "Expected status code 400")
+}
+
 //func handleCreateApplicationDescriptionRequired(t *testing.T) {
 //	router, mocks := setUp(t)
 //
