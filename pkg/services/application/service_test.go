@@ -25,6 +25,12 @@ func TestGetApplication(t *testing.T) {
 	t.Run("get application - storage error", getApplicationStorageError)
 }
 
+func TestGetApplicationsWithFilter(t *testing.T) {
+	t.Run("get applications with filter - success", getApplicationsWithFilterSuccess)
+	t.Run("get applications with filter - empty result", getApplicationsWithFilterEmptyResult)
+	t.Run("get applications with filter - storage error", getApplicationsWithFilterStorageError)
+}
+
 type mocks struct {
 	controller         *gomock.Controller
 	storageServiceMock *storageMock.MockService
@@ -207,4 +213,64 @@ func getApplicationStorageError(t *testing.T) {
 	require.Error(t, err)
 	require.Nil(t, result)
 	require.True(t, strings.Contains(err.Error(), "failed to retrieve application"))
+}
+
+func getApplicationsWithFilterSuccess(t *testing.T) {
+	applicationService, mocks := setUp(t)
+
+	filter := "test"
+
+	objApplications := []*obj.Application{
+		{
+			Name:        "test-application-1",
+			Description: "first test description",
+		},
+		{
+			Name:        "test-application-2",
+			Description: "second test description",
+		},
+	}
+
+	mocks.storageServiceMock.EXPECT().
+		GetApplicationsWithFilter(gomock.Any(), filter).
+		Return(objApplications, nil)
+
+	result, err := applicationService.GetApplicationsWithFilter(context.Background(), filter)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Len(t, result, 2)
+	require.Equal(t, "test-application-1", result[0].Name)
+	require.Equal(t, "first test description", result[0].Description)
+	require.Equal(t, "test-application-2", result[1].Name)
+	require.Equal(t, "second test description", result[1].Description)
+}
+
+func getApplicationsWithFilterEmptyResult(t *testing.T) {
+	applicationService, mocks := setUp(t)
+
+	filter := "nonexistent"
+
+	mocks.storageServiceMock.EXPECT().
+		GetApplicationsWithFilter(gomock.Any(), filter).
+		Return([]*obj.Application{}, nil)
+
+	result, err := applicationService.GetApplicationsWithFilter(context.Background(), filter)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Len(t, result, 0)
+}
+
+func getApplicationsWithFilterStorageError(t *testing.T) {
+	applicationService, mocks := setUp(t)
+
+	filter := "test"
+
+	mocks.storageServiceMock.EXPECT().
+		GetApplicationsWithFilter(gomock.Any(), filter).
+		Return(nil, storage.ErrInternal)
+
+	result, err := applicationService.GetApplicationsWithFilter(context.Background(), filter)
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.True(t, strings.Contains(err.Error(), "failed to retrieve applications"))
 }

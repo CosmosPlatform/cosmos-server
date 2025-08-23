@@ -35,7 +35,7 @@ func (t *translator) ToModelTeam(teamObj *obj.Team) *model.Team {
 }
 
 func (t *translator) ToApplicationModels(applicationObjs []*obj.Application) []*model.Application {
-	var applicationModels []*model.Application
+	applicationModels := make([]*model.Application, 0, len(applicationObjs))
 	for _, applicationObj := range applicationObjs {
 		applicationModels = append(applicationModels, t.ToApplicationModel(applicationObj))
 	}
