@@ -10,6 +10,8 @@ import (
 	errorUtils "errors"
 )
 
+//go:generate mockgen -destination=./mock/service_mock.go -package=mock cosmos-server/pkg/services/application Service
+
 type Service interface {
 	AddApplication(ctx context.Context, name, description, team string) error
 	GetApplication(ctx context.Context, name string) (*model.Application, error)
