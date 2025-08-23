@@ -27,6 +27,12 @@ func TestHandleGetApplication(t *testing.T) {
 	t.Run("failure - get application error does not exist", handleGetApplicationErrorDoesNotExist)
 }
 
+func TestHandleGetApplications(t *testing.T) {
+	t.Run("success - get applications", handleGetApplicationsSuccess)
+	t.Run("success - get applications with name filter", handleGetApplicationsWithNameFilter)
+	t.Run("failure - get applications error", handleGetApplicationsError)
+}
+
 type mocks struct {
 	controller             *gomock.Controller
 	applicationServiceMock *applicationMock.MockService
@@ -279,4 +285,141 @@ func handleGetApplicationErrorDoesNotExist(t *testing.T) {
 
 	require.Equal(t, http.StatusNotFound, recorder.Code)
 	require.Equal(t, "Application does not exist", actualResponse.Error)
+}
+
+func handleGetApplicationsSuccess(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedApplication1 := &model.Application{
+		Name:        "test-app-1",
+		Description: "Test application 1 description",
+		Team:        &model.Team{Name: "test-team-1"},
+	}
+
+	mockedApplication2 := &model.Application{
+		Name:        "test-app-2",
+		Description: "Test application 2 description",
+		Team:        &model.Team{Name: "test-team-2"},
+	}
+
+	mockedApplications := []*model.Application{mockedApplication1, mockedApplication2}
+
+	expectedResponse := &api.GetApplicationsResponse{
+		Applications: []*api.Application{
+			{
+				Name:        "test-app-1",
+				Description: "Test application 1 description",
+				Team:        &api.Team{Name: "test-team-1"},
+			},
+			{
+				Name:        "test-app-2",
+				Description: "Test application 2 description",
+				Team:        &api.Team{Name: "test-team-2"},
+			},
+		},
+	}
+
+	mocks.applicationServiceMock.EXPECT().
+		GetApplicationsWithFilter(gomock.Any(), "").
+		Return(mockedApplications, nil)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/applications"
+
+	request, recorder, err := test.NewHTTPRequest("GET", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.GetApplicationsResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusOK, recorder.Code, "Expected status code 200")
+	require.Equal(t, expectedResponse, &actualResponse, "Response body mismatch")
+}
+
+func handleGetApplicationsWithNameFilter(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedNameFilter := "test-app"
+	mockedApplication := &model.Application{
+		Name:        "test-app-1",
+		Description: "Test application description",
+		Team:        &model.Team{Name: "test-team"},
+	}
+
+	mockedApplications := []*model.Application{mockedApplication}
+
+	expectedResponse := &api.GetApplicationsResponse{
+		Applications: []*api.Application{
+			{
+				Name:        "test-app-1",
+				Description: "Test application description",
+				Team:        &api.Team{Name: "test-team"},
+			},
+		},
+	}
+
+	mocks.applicationServiceMock.EXPECT().
+		GetApplicationsWithFilter(gomock.Any(), mockedNameFilter).
+		Return(mockedApplications, nil)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/applications?name=" + mockedNameFilter
+
+	request, recorder, err := test.NewHTTPRequest("GET", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.GetApplicationsResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusOK, recorder.Code, "Expected status code 200")
+	require.Equal(t, expectedResponse, &actualResponse, "Response body mismatch")
+}
+
+func handleGetApplicationsError(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedError := errors.NewInternalServerError("Internal test error")
+
+	mocks.applicationServiceMock.EXPECT().
+		GetApplicationsWithFilter(gomock.Any(), "").
+		Return(nil, mockedError)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/applications"
+
+	request, recorder, err := test.NewHTTPRequest("GET", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusInternalServerError, recorder.Code)
+	require.Equal(t, "Internal test error", actualResponse.Error)
 }
