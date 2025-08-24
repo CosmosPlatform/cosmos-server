@@ -24,4 +24,5 @@ type Service interface {
 	InsertApplication(ctx context.Context, application *obj.Application) error
 	GetApplicationWithName(ctx context.Context, name string) (*obj.Application, error)
 	GetApplicationsWithFilter(ctx context.Context, filter string) ([]*obj.Application, error)
+	DeleteApplicationWithName(ctx context.Context, name string) error
 }

@@ -33,6 +33,12 @@ func TestHandleGetApplications(t *testing.T) {
 	t.Run("failure - get applications error", handleGetApplicationsError)
 }
 
+func TestHandleDeleteApplication(t *testing.T) {
+	t.Run("success - delete application", handleDeleteApplicationSuccess)
+	t.Run("failure - delete application error", handleDeleteApplicationError)
+	t.Run("failure - delete application not found", handleDeleteApplicationNotFound)
+}
+
 type mocks struct {
 	controller             *gomock.Controller
 	applicationServiceMock *applicationMock.MockService
@@ -422,4 +428,93 @@ func handleGetApplicationsError(t *testing.T) {
 
 	require.Equal(t, http.StatusInternalServerError, recorder.Code)
 	require.Equal(t, "Internal test error", actualResponse.Error)
+}
+
+func handleDeleteApplicationSuccess(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedName := "test-app"
+
+	mocks.applicationServiceMock.EXPECT().
+		DeleteApplication(gomock.Any(), mockedName).
+		Return(nil)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/applications/" + mockedName
+
+	request, recorder, err := test.NewHTTPRequest("DELETE", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	require.Equal(t, http.StatusNoContent, recorder.Code, "Expected status code 204")
+	require.Empty(t, recorder.Body.String(), "Expected empty response body")
+}
+
+func handleDeleteApplicationError(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedName := "test-app"
+	mockedError := errors.NewInternalServerError("Internal test error")
+
+	mocks.applicationServiceMock.EXPECT().
+		DeleteApplication(gomock.Any(), mockedName).
+		Return(mockedError)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/applications/" + mockedName
+
+	request, recorder, err := test.NewHTTPRequest("DELETE", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusInternalServerError, recorder.Code)
+	require.Equal(t, "Internal test error", actualResponse.Error)
+}
+
+func handleDeleteApplicationNotFound(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedName := "nonexistent-app"
+	mockedError := errors.NewNotFoundError("Application not found")
+
+	mocks.applicationServiceMock.EXPECT().
+		DeleteApplication(gomock.Any(), mockedName).
+		Return(mockedError)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/applications/" + mockedName
+
+	request, recorder, err := test.NewHTTPRequest("DELETE", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusNotFound, recorder.Code)
+	require.Equal(t, "Application not found", actualResponse.Error)
 }

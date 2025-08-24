@@ -16,6 +16,7 @@ type Service interface {
 	AddApplication(ctx context.Context, name, description, team string) error
 	GetApplication(ctx context.Context, name string) (*model.Application, error)
 	GetApplicationsWithFilter(ctx context.Context, filter string) ([]*model.Application, error)
+	DeleteApplication(ctx context.Context, name string) error
 }
 
 type applicationService struct {
@@ -81,4 +82,17 @@ func (s *applicationService) GetApplicationsWithFilter(ctx context.Context, filt
 	}
 
 	return s.translator.ToApplicationModels(applications), nil
+}
+
+func (s *applicationService) DeleteApplication(ctx context.Context, name string) error {
+	err := s.storageService.DeleteApplicationWithName(ctx, name)
+	if err != nil {
+		if errorUtils.Is(err, storage.ErrNotFound) {
+			return errors.NewNotFoundError("application not found")
+		}
+		return errors.NewInternalServerError("failed to delete application: " + err.Error())
+	}
+
+	s.logger.Infof("Application %s deleted successfully", name)
+	return nil
 }

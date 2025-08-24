@@ -28,7 +28,7 @@ func AddApplicationHandler(e *gin.RouterGroup, applicationService application.Se
 	applicationsGroup.GET("/:application", handler.handleGetApplication)
 	applicationsGroup.GET("", handler.handleGetApplications)
 	applicationsGroup.POST("", handler.handleCreateApplication)
-	//applicationsGroup.DELETE("/:id", handler.handleDeleteApplication)
+	applicationsGroup.DELETE("/:application", handler.handleDeleteApplication)
 }
 
 func (handler *handler) handleCreateApplication(e *gin.Context) {
@@ -80,4 +80,20 @@ func (handler *handler) handleGetApplications(e *gin.Context) {
 	}
 
 	e.JSON(http.StatusOK, handler.translator.ToGetApplicationsResponse(applications))
+}
+
+func (handler *handler) handleDeleteApplication(e *gin.Context) {
+	applicationName := e.Param("application")
+	if applicationName == "" {
+		_ = e.Error(errors.NewBadRequestError("application name missing"))
+		return
+	}
+
+	err := handler.applicationService.DeleteApplication(e, applicationName)
+	if err != nil {
+		_ = e.Error(err)
+		return
+	}
+
+	e.Status(http.StatusNoContent)
 }

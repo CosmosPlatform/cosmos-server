@@ -203,3 +203,16 @@ func (s *PostgresService) GetApplicationsWithFilter(ctx context.Context, filter 
 
 	return applications, nil
 }
+
+func (s *PostgresService) DeleteApplicationWithName(ctx context.Context, name string) error {
+	rowsAffected, err := gorm.G[obj.Application](s.db).Where("name = ?", name).Delete(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to delete application with name %s: %v", name, err)
+	}
+
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}

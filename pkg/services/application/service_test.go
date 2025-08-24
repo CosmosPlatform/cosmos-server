@@ -31,6 +31,12 @@ func TestGetApplicationsWithFilter(t *testing.T) {
 	t.Run("get applications with filter - storage error", getApplicationsWithFilterStorageError)
 }
 
+func TestDeleteApplication(t *testing.T) {
+	t.Run("delete application - success", deleteApplicationSuccess)
+	t.Run("delete application - not found error", deleteApplicationNotFoundError)
+	t.Run("delete application - storage error", deleteApplicationStorageError)
+}
+
 type mocks struct {
 	controller         *gomock.Controller
 	storageServiceMock *storageMock.MockService
@@ -273,4 +279,48 @@ func getApplicationsWithFilterStorageError(t *testing.T) {
 	require.Error(t, err)
 	require.Nil(t, result)
 	require.True(t, strings.Contains(err.Error(), "failed to retrieve applications"))
+}
+
+func deleteApplicationSuccess(t *testing.T) {
+	applicationService, mocks := setUp(t)
+
+	applicationName := "test-application"
+
+	mocks.storageServiceMock.EXPECT().
+		DeleteApplicationWithName(gomock.Any(), applicationName).
+		Return(nil)
+
+	mocks.loggerMocks.EXPECT().
+		Infof(gomock.Any(), gomock.Any())
+
+	err := applicationService.DeleteApplication(context.Background(), applicationName)
+	require.NoError(t, err)
+}
+
+func deleteApplicationNotFoundError(t *testing.T) {
+	applicationService, mocks := setUp(t)
+
+	applicationName := "non-existent-application"
+
+	mocks.storageServiceMock.EXPECT().
+		DeleteApplicationWithName(gomock.Any(), applicationName).
+		Return(storage.ErrNotFound)
+
+	err := applicationService.DeleteApplication(context.Background(), applicationName)
+	require.Error(t, err)
+	require.True(t, strings.Contains(err.Error(), "application not found"))
+}
+
+func deleteApplicationStorageError(t *testing.T) {
+	applicationService, mocks := setUp(t)
+
+	applicationName := "test-application"
+
+	mocks.storageServiceMock.EXPECT().
+		DeleteApplicationWithName(gomock.Any(), applicationName).
+		Return(storage.ErrInternal)
+
+	err := applicationService.DeleteApplication(context.Background(), applicationName)
+	require.Error(t, err)
+	require.True(t, strings.Contains(err.Error(), "failed to delete application"))
 }

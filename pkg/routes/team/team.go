@@ -6,6 +6,7 @@ import (
 	"cosmos-server/pkg/services/team"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"net/http"
 )
 
 type handler struct {
@@ -50,7 +51,7 @@ func (h *handler) handleDeleteTeam(c *gin.Context) {
 		return
 	}
 
-	c.Status(204)
+	c.Status(http.StatusNoContent)
 }
 
 func (h *handler) handleCreateTeam(c *gin.Context) {
@@ -73,7 +74,7 @@ func (h *handler) handleCreateTeam(c *gin.Context) {
 		return
 	}
 
-	c.JSON(201, h.translator.ToInsertTeamResponse(teamRequest.Name, teamRequest.Description))
+	c.JSON(http.StatusCreated, h.translator.ToInsertTeamResponse(teamRequest.Name, teamRequest.Description))
 }
 
 func (h *handler) handleAddUserToTeam(c *gin.Context) {
@@ -100,7 +101,7 @@ func (h *handler) handleAddUserToTeam(c *gin.Context) {
 		return
 	}
 
-	c.Status(204)
+	c.Status(http.StatusNoContent)
 }
 
 func (h *handler) handleRemoveUserFromTeam(c *gin.Context) {
@@ -128,5 +129,5 @@ func (h *handler) handleRemoveUserFromTeam(c *gin.Context) {
 		return
 	}
 
-	c.Status(204)
+	c.Status(http.StatusNoContent)
 }
