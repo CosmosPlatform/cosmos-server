@@ -6,16 +6,21 @@ Server for the cosmos platform
 
 ```
 cosmos-server
+├── config              // Local configuration files
+├── api                   // Structs and validations of the server api requests and responses
+├── db                   // Utilities and migrations for the postgress database
 ├── pkg
-│   ├── app                  // Package where the app is defined and has the functions to be initialized.
-│   ├── api                  // Package where the API is defined
-│   │   ├── routes           // Package where the routes are defined.
-│   │   └── dto              // Package where the data transfer objects are defined.
-│   ├── config               // Package where the configuration format is defined.
-│   ├── server               // Package where the server is defined.
+│   ├── app            // Package where the app is defined and has the functions to be initialized.
+│   ├── config        // Package where there are structs and utilities for parsing configuration..
+│   ├── errors        // Package where there are definitions for various kinds of general errors.
+│   ├── log             // Package where the logger is defined.
+│   ├── model        // Package where the various model of our application are defined..
+│   ├── routes                  // Package where the route handlers for aour application are defined
+│   ├── server               // Package where the server and its middleware is defined.
 │   ├── services             // Package where the services are defined.
+│   ├── storage             // Package where the storage service is defined.
 │   └── test                 // Package where test utilities are defined
-└── config                   // Configuration files
+└── Makefile
 ```
 
 ## Requisites
