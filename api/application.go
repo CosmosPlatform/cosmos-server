@@ -26,6 +26,10 @@ type Application struct {
 	Team        *Team  `json:"team,omitempty"`
 }
 
+type GetApplicationResponse struct {
+	Application *Application `json:"application"`
+}
+
 type GetApplicationsResponse struct {
 	Applications []*Application `json:"applications"`
 }

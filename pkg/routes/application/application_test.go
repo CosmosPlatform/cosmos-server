@@ -203,6 +203,10 @@ func handleGetApplicationSuccess(t *testing.T) {
 		Team:        &model.Team{Name: mockedTeam},
 	}
 
+	expectedResponse := &api.GetApplicationResponse{
+		Application: mockedApplication,
+	}
+
 	mocks.applicationServiceMock.EXPECT().
 		GetApplication(gomock.Any(), mockedName).
 		Return(mockedApplicationModel, nil)
@@ -219,14 +223,14 @@ func handleGetApplicationSuccess(t *testing.T) {
 
 	router.ServeHTTP(recorder, request)
 
-	actualResponse := api.Application{}
+	actualResponse := api.GetApplicationResponse{}
 	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
 	if err != nil {
 		t.Fatalf("Failed to decode response: %v", err)
 	}
 
 	require.Equal(t, http.StatusOK, recorder.Code, "Expected status code 200")
-	require.Equal(t, mockedApplication, &actualResponse, "Response body mismatch")
+	require.Equal(t, expectedResponse, &actualResponse, "Response body mismatch")
 }
 
 func handleGetApplicationError(t *testing.T) {

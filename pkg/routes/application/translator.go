@@ -7,7 +7,7 @@ import (
 
 type Translator interface {
 	ToCreateApplicationResponse(name, description, team string) *api.CreateApplicationResponse
-	ToGetApplicationResponse(applicationObj *model.Application) *api.Application
+	ToGetApplicationResponse(applicationObj *model.Application) *api.GetApplicationResponse
 	ToGetApplicationsResponse(applicationObj []*model.Application) *api.GetApplicationsResponse
 }
 
@@ -27,11 +27,9 @@ func (t *translator) ToCreateApplicationResponse(name, description, team string)
 	}
 }
 
-func (t *translator) ToGetApplicationResponse(applicationModel *model.Application) *api.Application {
-	return &api.Application{
-		Name:        applicationModel.Name,
-		Description: applicationModel.Description,
-		Team:        t.ToApiTeam(applicationModel.Team),
+func (t *translator) ToGetApplicationResponse(applicationModel *model.Application) *api.GetApplicationResponse {
+	return &api.GetApplicationResponse{
+		Application: t.ToApplicationApi(applicationModel),
 	}
 }
 
@@ -48,9 +46,17 @@ func (t *translator) ToApiTeam(teamModel *model.Team) *api.Team {
 func (t *translator) ToGetApplicationsResponse(applicationModels []*model.Application) *api.GetApplicationsResponse {
 	var applications []*api.Application
 	for _, applicationModel := range applicationModels {
-		applications = append(applications, t.ToGetApplicationResponse(applicationModel))
+		applications = append(applications, t.ToApplicationApi(applicationModel))
 	}
 	return &api.GetApplicationsResponse{
 		Applications: applications,
+	}
+}
+
+func (t *translator) ToApplicationApi(applicationModel *model.Application) *api.Application {
+	return &api.Application{
+		Name:        applicationModel.Name,
+		Description: applicationModel.Description,
+		Team:        t.ToApiTeam(applicationModel.Team),
 	}
 }
