@@ -37,6 +37,13 @@ func TestDeleteApplication(t *testing.T) {
 	t.Run("delete application - storage error", deleteApplicationStorageError)
 }
 
+func TestGetApplicationsByTeam(t *testing.T) {
+	t.Run("get applications by team - success", getApplicationsByTeamSuccess)
+	t.Run("get applications by team - empty result", getApplicationsByTeamEmptyResult)
+	t.Run("get applications by team - team not found error", getApplicationsByTeamNotFoundError)
+	t.Run("get applications by team - storage error", getApplicationsByTeamStorageError)
+}
+
 type mocks struct {
 	controller         *gomock.Controller
 	storageServiceMock *storageMock.MockService
@@ -323,4 +330,79 @@ func deleteApplicationStorageError(t *testing.T) {
 	err := applicationService.DeleteApplication(context.Background(), applicationName)
 	require.Error(t, err)
 	require.True(t, strings.Contains(err.Error(), "failed to delete application"))
+}
+
+func getApplicationsByTeamSuccess(t *testing.T) {
+	applicationService, mocks := setUp(t)
+
+	teamName := "test-team"
+
+	objApplications := []*obj.Application{
+		{
+			Name:        "test-application-1",
+			Description: "first team application",
+		},
+		{
+			Name:        "test-application-2",
+			Description: "second team application",
+		},
+	}
+
+	mocks.storageServiceMock.EXPECT().
+		GetApplicationsByTeam(gomock.Any(), teamName).
+		Return(objApplications, nil)
+
+	result, err := applicationService.GetApplicationsByTeam(context.Background(), teamName)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Len(t, result, 2)
+	require.Equal(t, "test-application-1", result[0].Name)
+	require.Equal(t, "first team application", result[0].Description)
+	require.Equal(t, "test-application-2", result[1].Name)
+	require.Equal(t, "second team application", result[1].Description)
+}
+
+func getApplicationsByTeamEmptyResult(t *testing.T) {
+	applicationService, mocks := setUp(t)
+
+	teamName := "empty-team"
+
+	mocks.storageServiceMock.EXPECT().
+		GetApplicationsByTeam(gomock.Any(), teamName).
+		Return([]*obj.Application{}, nil)
+
+	result, err := applicationService.GetApplicationsByTeam(context.Background(), teamName)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Len(t, result, 0)
+}
+
+func getApplicationsByTeamNotFoundError(t *testing.T) {
+	applicationService, mocks := setUp(t)
+
+	teamName := "non-existent-team"
+
+	mocks.storageServiceMock.EXPECT().
+		GetApplicationsByTeam(gomock.Any(), teamName).
+		Return(nil, storage.ErrNotFound)
+
+	result, err := applicationService.GetApplicationsByTeam(context.Background(), teamName)
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.True(t, strings.Contains(err.Error(), "team not found"))
+}
+
+func getApplicationsByTeamStorageError(t *testing.T) {
+	applicationService, mocks := setUp(t)
+
+	teamName := "test-team"
+
+	mocks.storageServiceMock.EXPECT().
+		GetApplicationsByTeam(gomock.Any(), teamName).
+		Return(nil, storage.ErrInternal)
+
+	result, err := applicationService.GetApplicationsByTeam(context.Background(), teamName)
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.True(t, strings.Contains(err.Error(), "failed to retrieve applications by team"))
 }

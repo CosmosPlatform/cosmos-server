@@ -216,3 +216,17 @@ func (s *PostgresService) DeleteApplicationWithName(ctx context.Context, name st
 
 	return nil
 }
+
+func (s *PostgresService) GetApplicationsByTeam(ctx context.Context, team string) ([]*obj.Application, error) {
+	teamObj, err := s.GetTeamWithName(ctx, team)
+	if err != nil {
+		return nil, err
+	}
+
+	applications, err := gorm.G[*obj.Application](s.db).Preload("Team", nil).Where("team_id = ?", teamObj.ID).Order("name").Find(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get applications for team %s: %v", team, err)
+	}
+
+	return applications, nil
+}

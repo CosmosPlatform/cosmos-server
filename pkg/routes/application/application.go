@@ -27,6 +27,7 @@ func AddApplicationHandler(e *gin.RouterGroup, applicationService application.Se
 
 	applicationsGroup.GET("/:application", handler.handleGetApplication)
 	applicationsGroup.GET("", handler.handleGetApplications)
+	applicationsGroup.GET("/team/:teamName", handler.handleGetApplicationByTeam)
 	applicationsGroup.POST("", handler.handleCreateApplication)
 	applicationsGroup.DELETE("/:application", handler.handleDeleteApplication)
 }
@@ -74,6 +75,22 @@ func (handler *handler) handleGetApplications(e *gin.Context) {
 	name := e.Query("name")
 
 	applications, err := handler.applicationService.GetApplicationsWithFilter(e, name)
+	if err != nil {
+		_ = e.Error(err)
+		return
+	}
+
+	e.JSON(http.StatusOK, handler.translator.ToGetApplicationsResponse(applications))
+}
+
+func (handler *handler) handleGetApplicationByTeam(e *gin.Context) {
+	teamName := e.Param("teamName")
+	if teamName == "" {
+		_ = e.Error(errors.NewBadRequestError("team name missing"))
+		return
+	}
+
+	applications, err := handler.applicationService.GetApplicationsByTeam(e, teamName)
 	if err != nil {
 		_ = e.Error(err)
 		return

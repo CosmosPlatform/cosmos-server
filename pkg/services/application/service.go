@@ -15,6 +15,7 @@ import (
 type Service interface {
 	AddApplication(ctx context.Context, name, description, team string) error
 	GetApplication(ctx context.Context, name string) (*model.Application, error)
+	GetApplicationsByTeam(ctx context.Context, team string) ([]*model.Application, error)
 	GetApplicationsWithFilter(ctx context.Context, filter string) ([]*model.Application, error)
 	DeleteApplication(ctx context.Context, name string) error
 }
@@ -79,6 +80,18 @@ func (s *applicationService) GetApplicationsWithFilter(ctx context.Context, filt
 	applications, err := s.storageService.GetApplicationsWithFilter(ctx, filter)
 	if err != nil {
 		return nil, errors.NewInternalServerError("failed to retrieve applications: " + err.Error())
+	}
+
+	return s.translator.ToApplicationModels(applications), nil
+}
+
+func (s *applicationService) GetApplicationsByTeam(ctx context.Context, team string) ([]*model.Application, error) {
+	applications, err := s.storageService.GetApplicationsByTeam(ctx, team)
+	if err != nil {
+		if errorUtils.Is(err, storage.ErrNotFound) {
+			return nil, errors.NewNotFoundError("team not found")
+		}
+		return nil, errors.NewInternalServerError("failed to retrieve applications by team: " + err.Error())
 	}
 
 	return s.translator.ToApplicationModels(applications), nil
