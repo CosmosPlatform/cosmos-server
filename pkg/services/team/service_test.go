@@ -134,6 +134,10 @@ func insertTeamSuccess(t *testing.T) {
 		Return(objTeam)
 
 	mocks.storageServiceMock.EXPECT().
+		GetTeamWithName(gomock.Any(), modelTeam.Name).
+		Return(nil, storage.ErrNotFound)
+
+	mocks.storageServiceMock.EXPECT().
 		InsertTeam(gomock.Any(), objTeam).
 		Return(nil)
 
@@ -160,8 +164,8 @@ func insertTeamAlreadyExistsError(t *testing.T) {
 		Return(objTeam)
 
 	mocks.storageServiceMock.EXPECT().
-		InsertTeam(gomock.Any(), objTeam).
-		Return(storage.ErrAlreadyExists)
+		GetTeamWithName(gomock.Any(), modelTeam.Name).
+		Return(objTeam, nil)
 
 	expectedError := errors.NewConflictError(fmt.Sprint("team with name ", modelTeam.Name, " already exists"))
 
@@ -185,10 +189,15 @@ func insertTeamStorageError(t *testing.T) {
 	}
 
 	mockedError := fmt.Errorf("database connection failed")
+	expectedError := errors.NewInternalServerError(fmt.Sprintf("failed to insert team: %v", mockedError))
 
 	mocks.translatorMock.EXPECT().
 		ToObjTeam(modelTeam).
 		Return(objTeam)
+
+	mocks.storageServiceMock.EXPECT().
+		GetTeamWithName(gomock.Any(), modelTeam.Name).
+		Return(nil, storage.ErrNotFound)
 
 	mocks.storageServiceMock.EXPECT().
 		InsertTeam(gomock.Any(), objTeam).
@@ -197,7 +206,7 @@ func insertTeamStorageError(t *testing.T) {
 	err := service.InsertTeam(context.Background(), modelTeam)
 
 	require.Error(t, err)
-	require.Equal(t, mockedError, err)
+	require.Equal(t, expectedError, err)
 }
 
 func deleteTeamSuccess(t *testing.T) {

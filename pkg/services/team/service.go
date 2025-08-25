@@ -45,12 +45,21 @@ func (s *teamService) GetAllTeams(ctx context.Context) ([]*model.Team, error) {
 
 func (s *teamService) InsertTeam(ctx context.Context, team *model.Team) error {
 	objTeam := s.translator.ToObjTeam(team)
+
+	if existingTeam, err := s.storageService.GetTeamWithName(ctx, team.Name); err != nil {
+		if !errorUtils.Is(err, storage.ErrNotFound) {
+			return errors.NewInternalServerError(fmt.Sprintf("failed to check for existing team: %v", err))
+		}
+	} else if existingTeam != nil {
+		return errors.NewConflictError(fmt.Sprint("team with name ", team.Name, " already exists"))
+	}
+
 	err := s.storageService.InsertTeam(ctx, objTeam)
 	if err != nil {
 		if errorUtils.Is(err, storage.ErrAlreadyExists) {
 			return errors.NewConflictError(fmt.Sprint("team with name ", team.Name, " already exists"))
 		}
-		return err
+		return errors.NewInternalServerError(fmt.Sprintf("failed to insert team: %v", err))
 	}
 	return nil
 }

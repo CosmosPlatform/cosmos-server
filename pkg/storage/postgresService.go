@@ -10,6 +10,7 @@ import (
 	_ "github.com/lib/pq"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"strings"
 )
 
 type PostgresService struct {
@@ -81,7 +82,9 @@ func (s *PostgresService) GetUsersWithFilter(ctx context.Context, filter string)
 func (s *PostgresService) InsertTeam(ctx context.Context, team *obj.Team) error {
 	err := gorm.G[obj.Team](s.db).Create(ctx, team)
 	if err != nil {
-		if errorUtils.Is(err, gorm.ErrDuplicatedKey) {
+		if strings.Contains(err.Error(), "duplicate key") ||
+			strings.Contains(err.Error(), "violates unique constraint") ||
+			strings.Contains(err.Error(), "23505") {
 			return ErrAlreadyExists
 		}
 		return fmt.Errorf("failed to insert team: %v", err)
