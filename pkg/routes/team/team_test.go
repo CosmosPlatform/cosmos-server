@@ -7,6 +7,7 @@ import (
 	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/test"
 	"encoding/json"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -30,7 +31,6 @@ func TestHandleGetTeams(t *testing.T) {
 
 func TestHandleDeleteTeam(t *testing.T) {
 	t.Run("success - delete team", handleDeleteTeamSuccess)
-	t.Run("failure - team name is required", handleDeleteTeamNameRequiredFailure)
 	t.Run("failure - delete team with service error", handleDeleteTeamServiceError)
 }
 
@@ -330,7 +330,7 @@ func handleDeleteTeamSuccess(t *testing.T) {
 	mocks.loggerMock.EXPECT().
 		Infow(gomock.Any(), gomock.Any())
 
-	url := "/teams?name=" + teamName
+	url := fmt.Sprintf("/teams/%s", teamName)
 
 	request, recorder, err := test.NewHTTPRequest("DELETE", url, nil)
 	if err != nil {
@@ -340,30 +340,6 @@ func handleDeleteTeamSuccess(t *testing.T) {
 	router.ServeHTTP(recorder, request)
 
 	require.Equal(t, http.StatusNoContent, recorder.Code)
-}
-
-func handleDeleteTeamNameRequiredFailure(t *testing.T) {
-	router, mocks := setUp(t)
-
-	mocks.loggerMock.EXPECT().
-		Infow(gomock.Any(), gomock.Any())
-
-	url := "/teams"
-
-	request, recorder, err := test.NewHTTPRequest("DELETE", url, nil)
-	if err != nil {
-		t.Fatalf("Failed to create request: %v", err)
-	}
-
-	router.ServeHTTP(recorder, request)
-
-	actualResponse := &api.ErrorResponse{}
-	err = json.NewDecoder(recorder.Body).Decode(actualResponse)
-	if err != nil {
-		t.Fatalf("Failed to decode response: %v", err)
-	}
-
-	require.Equal(t, http.StatusBadRequest, recorder.Code)
 }
 
 func handleDeleteTeamServiceError(t *testing.T) {
@@ -379,7 +355,7 @@ func handleDeleteTeamServiceError(t *testing.T) {
 	mocks.loggerMock.EXPECT().
 		Infow(gomock.Any(), gomock.Any())
 
-	url := "/teams?name=" + teamName
+	url := fmt.Sprintf("/teams/%s", teamName)
 
 	request, recorder, err := test.NewHTTPRequest("DELETE", url, nil)
 	if err != nil {
