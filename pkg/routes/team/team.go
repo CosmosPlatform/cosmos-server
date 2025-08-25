@@ -21,6 +21,7 @@ func AddAdminTeamHandler(e *gin.RouterGroup, teamService team.Service, translato
 	}
 
 	e.GET("/teams", h.handleGetTeams)
+	e.GET("/teams/:teamName", h.handleGetTeam)
 	e.POST("/teams", h.handleCreateTeam)
 	e.DELETE("/teams/:teamName", h.handleDeleteTeam)
 
@@ -130,4 +131,20 @@ func (h *handler) handleRemoveUserFromTeam(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+func (h *handler) handleGetTeam(c *gin.Context) {
+	teamName := c.Param("teamName")
+	if teamName == "" {
+		_ = c.Error(errors.NewBadRequestError("team name is required"))
+		return
+	}
+
+	teamModel, err := h.teamService.GetTeamByName(c, teamName)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(200, h.translator.ToGetTeamResponse(teamModel))
 }
