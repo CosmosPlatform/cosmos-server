@@ -5,6 +5,7 @@ import (
 	"cosmos-server/pkg/errors"
 	logMock "cosmos-server/pkg/log/mock"
 	"cosmos-server/pkg/model"
+	"cosmos-server/pkg/services/auth"
 	userMock "cosmos-server/pkg/services/user/mock"
 	"cosmos-server/pkg/test"
 	"encoding/json"
@@ -38,6 +39,12 @@ func TestHandleDeleteUser(t *testing.T) {
 	t.Run("failure - delete user internal error", handleDeleteUserInternalError)
 }
 
+func TestHandleGetCurrentUser(t *testing.T) {
+	t.Run("success - get current user", handleGetCurrentUserSuccessful)
+	t.Run("failure - user email not found in context", handleGetCurrentUserEmailNotInContext)
+	t.Run("failure - get current user internal error", handleGetCurrentUserInternalError)
+}
+
 type mocks struct {
 	controller      *gomock.Controller
 	userServiceMock *userMock.MockService
@@ -45,7 +52,7 @@ type mocks struct {
 	loggerMock      *logMock.MockLogger
 }
 
-func setUp(t *testing.T) (*gin.Engine, *mocks) {
+func setUp(t *testing.T, mockedEmailForCtx string) (*gin.Engine, *mocks) {
 	ctrl := gomock.NewController(t)
 
 	userServiceMock := userMock.NewMockService(ctrl)
@@ -61,13 +68,21 @@ func setUp(t *testing.T) (*gin.Engine, *mocks) {
 
 	router := test.NewRouter(loggerMock)
 
+	if mockedEmailForCtx != "" {
+		// Add user email to context by creating a middleware
+		router.Use(func(c *gin.Context) {
+			c.Set(auth.UserEmailContextKey, mockedEmailForCtx)
+			c.Next()
+		})
+	}
+
 	AddAdminUserHandler(router.Group("/"), userServiceMock, translatorMock, loggerMock)
 
 	return router, mocks
 }
 
 func handleRegisterUserSuccessful(t *testing.T) {
-	router, mocks := setUp(t)
+	router, mocks := setUp(t, "")
 
 	mockedUsername := "testUser"
 	mockedEmail := "test@example.com"
@@ -120,7 +135,7 @@ func handleRegisterUserSuccessful(t *testing.T) {
 }
 
 func handleRegisterUserUsernameRequired(t *testing.T) {
-	router, mocks := setUp(t)
+	router, mocks := setUp(t, "")
 
 	mockedEmail := "test@example.com"
 	mockedPassword := "test12345678"
@@ -157,7 +172,7 @@ func handleRegisterUserUsernameRequired(t *testing.T) {
 }
 
 func handleRegisterUserEmailRequired(t *testing.T) {
-	router, mocks := setUp(t)
+	router, mocks := setUp(t, "")
 
 	mockedUsername := "testUser"
 	mockedPassword := "test12345678"
@@ -194,7 +209,7 @@ func handleRegisterUserEmailRequired(t *testing.T) {
 }
 
 func handleRegisterUserPasswordRequired(t *testing.T) {
-	router, mocks := setUp(t)
+	router, mocks := setUp(t, "")
 
 	mockedUsername := "testUser"
 	mockedEmail := "test@example.com"
@@ -231,7 +246,7 @@ func handleRegisterUserPasswordRequired(t *testing.T) {
 }
 
 func handleRegisterUserRoleInvalid(t *testing.T) {
-	router, mocks := setUp(t)
+	router, mocks := setUp(t, "")
 
 	mockedUsername := "testUser"
 	mockedEmail := "test@example.com"
@@ -267,7 +282,7 @@ func handleRegisterUserRoleInvalid(t *testing.T) {
 }
 
 func handleRegisterUserRoleRequired(t *testing.T) {
-	router, mocks := setUp(t)
+	router, mocks := setUp(t, "")
 
 	mockedUsername := "testUser"
 	mockedEmail := "test@example.com"
@@ -301,7 +316,7 @@ func handleRegisterUserRoleRequired(t *testing.T) {
 }
 
 func handleRegisterUserInternalError(t *testing.T) {
-	router, mocks := setUp(t)
+	router, mocks := setUp(t, "")
 
 	mockedUsername := "testUser"
 	mockedEmail := "test@example.com"
@@ -348,7 +363,7 @@ func handleRegisterUserInternalError(t *testing.T) {
 }
 
 func handleGetUsersSuccessful(t *testing.T) {
-	router, mocks := setUp(t)
+	router, mocks := setUp(t, "")
 
 	mockedUsers := []*model.User{
 		{
@@ -409,7 +424,7 @@ func handleGetUsersSuccessful(t *testing.T) {
 }
 
 func handleGetUsersInternalError(t *testing.T) {
-	router, mocks := setUp(t)
+	router, mocks := setUp(t, "")
 
 	mockedError := errors.NewInternalServerError("Internal test error")
 
@@ -443,7 +458,7 @@ func handleGetUsersInternalError(t *testing.T) {
 }
 
 func handleDeleteUserSuccessful(t *testing.T) {
-	router, mocks := setUp(t)
+	router, mocks := setUp(t, "")
 
 	mockedEmail := "test@example.com"
 
@@ -467,7 +482,7 @@ func handleDeleteUserSuccessful(t *testing.T) {
 }
 
 func handleDeleteUserEmailRequired(t *testing.T) {
-	router, mocks := setUp(t)
+	router, mocks := setUp(t, "")
 
 	mocks.loggerMock.EXPECT().
 		Errorf(gomock.Any(), gomock.Any())
@@ -495,7 +510,7 @@ func handleDeleteUserEmailRequired(t *testing.T) {
 }
 
 func handleDeleteUserInternalError(t *testing.T) {
-	router, mocks := setUp(t)
+	router, mocks := setUp(t, "")
 
 	mockedEmail := "test@example.com"
 	mockedError := errors.NewInternalServerError("Internal test error")
@@ -510,6 +525,113 @@ func handleDeleteUserInternalError(t *testing.T) {
 	url := "/users?email=" + mockedEmail
 
 	request, recorder, err := test.NewHTTPRequest("DELETE", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusInternalServerError, recorder.Code)
+	require.Equal(t, "Internal test error", actualResponse.Error)
+}
+
+func handleGetCurrentUserSuccessful(t *testing.T) {
+	mockedUserEmail := "test@example.com"
+
+	router, mocks := setUp(t, mockedUserEmail)
+
+	mockedUser := &model.User{
+		Username: "testUser",
+		Email:    mockedUserEmail,
+		Role:     "user",
+	}
+
+	mocks.userServiceMock.EXPECT().
+		GetUserWithEmail(gomock.Any(), mockedUserEmail).
+		Return(mockedUser, nil)
+
+	mockedGetCurrentUserResponse := &api.GetCurrentUserResponse{
+		User: api.User{
+			Username: "testUser",
+			Email:    mockedUserEmail,
+			Role:     "user",
+		},
+	}
+
+	mocks.translatorMock.EXPECT().
+		ToGetCurrentUserResponse(mockedUser).
+		Return(mockedGetCurrentUserResponse)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/users/me"
+
+	request, recorder, err := test.NewHTTPRequest("GET", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.GetCurrentUserResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusOK, recorder.Code, "Expected status code 200")
+	require.Equal(t, mockedGetCurrentUserResponse, &actualResponse, "Expected response to match mocked response")
+}
+
+func handleGetCurrentUserEmailNotInContext(t *testing.T) {
+	router, mocks := setUp(t, "")
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/users/me"
+
+	request, recorder, err := test.NewHTTPRequest("GET", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusUnauthorized, recorder.Code, "Expected status code 401")
+	require.Equal(t, "user email not found in context", actualResponse.Error)
+}
+
+func handleGetCurrentUserInternalError(t *testing.T) {
+	mockedUserEmail := "test@example.com"
+
+	router, mocks := setUp(t, mockedUserEmail)
+
+	mockedError := errors.NewInternalServerError("Internal test error")
+
+	mocks.userServiceMock.EXPECT().
+		GetUserWithEmail(gomock.Any(), mockedUserEmail).
+		Return(nil, mockedError)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/users/me"
+
+	request, recorder, err := test.NewHTTPRequest("GET", url, nil)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
 	}

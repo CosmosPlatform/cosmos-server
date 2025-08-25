@@ -4,6 +4,7 @@ import (
 	"cosmos-server/api"
 	"cosmos-server/pkg/errors"
 	"cosmos-server/pkg/log"
+	"cosmos-server/pkg/services/auth"
 	"cosmos-server/pkg/services/user"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -25,6 +26,7 @@ func AddAdminUserHandler(e *gin.RouterGroup, userService user.Service, translato
 	usersGroup := e.Group("/users")
 
 	usersGroup.GET("", handler.handleGetUsers)
+	usersGroup.GET("/me", handler.handleGetCurrentUser)
 	usersGroup.POST("", handler.handleRegisterUser)
 	usersGroup.DELETE("", handler.handleDeleteUser)
 }
@@ -78,4 +80,20 @@ func (handler *handler) handleDeleteUser(e *gin.Context) {
 	}
 
 	e.Status(204)
+}
+
+func (handler *handler) handleGetCurrentUser(c *gin.Context) {
+	userEmail, exists := c.Get(auth.UserEmailContextKey)
+	if !exists {
+		_ = c.Error(errors.NewUnauthorizedError("user email not found in context"))
+		return
+	}
+
+	userModel, err := handler.userService.GetUserWithEmail(c, userEmail.(string))
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(200, handler.translator.ToGetCurrentUserResponse(userModel))
 }

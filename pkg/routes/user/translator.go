@@ -10,6 +10,7 @@ import (
 type Translator interface {
 	ToRegisterUserResponse(username, email, role string) *api.RegisterUserResponse
 	ToGetUsersResponse(users []*model.User) *api.GetUsersResponse
+	ToGetCurrentUserResponse(userModel *model.User) *api.GetCurrentUserResponse
 }
 
 type translator struct{}
@@ -47,5 +48,23 @@ func (t *translator) ToGetUsersResponse(users []*model.User) *api.GetUsersRespon
 	}
 	return &api.GetUsersResponse{
 		Users: apiUsers,
+	}
+}
+
+func (t *translator) ToGetCurrentUserResponse(userModel *model.User) *api.GetCurrentUserResponse {
+	var apiTeam *api.Team
+	if userModel.Team != nil {
+		apiTeam = &api.Team{
+			Name:        userModel.Team.Name,
+			Description: userModel.Team.Description,
+		}
+	}
+	return &api.GetCurrentUserResponse{
+		User: api.User{
+			Username: userModel.Username,
+			Email:    userModel.Email,
+			Role:     userModel.Role,
+			Team:     apiTeam,
+		},
 	}
 }
