@@ -42,7 +42,7 @@ func (s *PostgresService) InsertUser(ctx context.Context, user *obj.User) error 
 }
 
 func (s *PostgresService) GetUserWithEmail(ctx context.Context, email string) (*obj.User, error) {
-	user, err := gorm.G[obj.User](s.db).Where("email = ?", email).First(ctx)
+	user, err := gorm.G[obj.User](s.db).Preload("Team", nil).Where("email = ?", email).First(ctx)
 
 	if err != nil {
 		if errorUtils.Is(err, gorm.ErrRecordNotFound) {
