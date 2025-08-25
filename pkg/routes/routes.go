@@ -39,7 +39,9 @@ func (r *HTTPRoutes) RegisterUnauthenticatedRoutes(e *gin.RouterGroup) {
 }
 
 func (r *HTTPRoutes) RegisterAuthenticatedRoutes(e *gin.RouterGroup) {
-	applicationRoute.AddApplicationHandler(e, r.ApplicationService, applicationRoute.NewTranslator(), r.Logger)
+	applicationRoute.AddAuthenticatedApplicationHandler(e, r.ApplicationService, applicationRoute.NewTranslator(), r.Logger)
+	userRoute.AddAuthenticatedUserHandler(e, r.UserService, userRoute.NewTranslator(), r.Logger)
+	teamRoute.AddAuthenticatedTeamHandler(e, r.TeamService, teamRoute.NewTranslator())
 }
 
 func (r *HTTPRoutes) RegisterAdminAuthenticatedRoutes(e *gin.RouterGroup) {

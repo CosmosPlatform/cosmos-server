@@ -64,7 +64,7 @@ func setUp(t *testing.T) (*gin.Engine, *mocks) {
 
 	router := test.NewRouter(loggerMock)
 
-	AddApplicationHandler(router.Group("/"), applicationServiceMock, NewTranslator(), loggerMock)
+	AddAuthenticatedApplicationHandler(router.Group("/"), applicationServiceMock, NewTranslator(), loggerMock)
 
 	return router, mocks
 }

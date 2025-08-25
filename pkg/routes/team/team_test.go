@@ -75,6 +75,7 @@ func setUp(t *testing.T) (*gin.Engine, *mocks) {
 
 	router := test.NewRouter(loggerMock)
 	AddAdminTeamHandler(router.Group("/"), teamServiceMock, NewTranslator())
+	AddAuthenticatedTeamHandler(router.Group("/"), teamServiceMock, NewTranslator())
 
 	return router, mocks
 }

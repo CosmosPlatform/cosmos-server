@@ -26,9 +26,19 @@ func AddAdminUserHandler(e *gin.RouterGroup, userService user.Service, translato
 	usersGroup := e.Group("/users")
 
 	usersGroup.GET("", handler.handleGetUsers)
-	usersGroup.GET("/me", handler.handleGetCurrentUser)
 	usersGroup.POST("", handler.handleRegisterUser)
 	usersGroup.DELETE("", handler.handleDeleteUser)
+}
+
+func AddAuthenticatedUserHandler(e *gin.RouterGroup, userService user.Service, translator Translator, logger log.Logger) {
+	handler := &handler{
+		userService: userService,
+		translator:  translator,
+		logger:      logger,
+	}
+
+	usersGroup := e.Group("/users")
+	usersGroup.GET("/me", handler.handleGetCurrentUser)
 }
 
 func (handler *handler) handleRegisterUser(e *gin.Context) {

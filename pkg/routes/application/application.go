@@ -16,7 +16,7 @@ type handler struct {
 	logger             log.Logger
 }
 
-func AddApplicationHandler(e *gin.RouterGroup, applicationService application.Service, translator Translator, logger log.Logger) {
+func AddAuthenticatedApplicationHandler(e *gin.RouterGroup, applicationService application.Service, translator Translator, logger log.Logger) {
 	handler := &handler{
 		applicationService: applicationService,
 		translator:         translator,

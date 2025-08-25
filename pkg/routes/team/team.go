@@ -20,13 +20,21 @@ func AddAdminTeamHandler(e *gin.RouterGroup, teamService team.Service, translato
 		translator:  translator,
 	}
 
-	e.GET("/teams", h.handleGetTeams)
 	e.GET("/teams/:teamName", h.handleGetTeam)
 	e.POST("/teams", h.handleCreateTeam)
 	e.DELETE("/teams/:teamName", h.handleDeleteTeam)
 
 	e.POST("/teams/:teamName/members", h.handleAddUserToTeam)
 	e.DELETE("/teams/:teamName/members", h.handleRemoveUserFromTeam)
+}
+
+func AddAuthenticatedTeamHandler(e *gin.RouterGroup, teamService team.Service, translator Translator) {
+	h := &handler{
+		teamService: teamService,
+		translator:  translator,
+	}
+
+	e.GET("/teams", h.handleGetTeams)
 }
 
 func (h *handler) handleGetTeams(c *gin.Context) {

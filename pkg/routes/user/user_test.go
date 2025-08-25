@@ -77,6 +77,7 @@ func setUp(t *testing.T, mockedEmailForCtx string) (*gin.Engine, *mocks) {
 	}
 
 	AddAdminUserHandler(router.Group("/"), userServiceMock, translatorMock, loggerMock)
+	AddAuthenticatedUserHandler(router.Group("/"), userServiceMock, translatorMock, loggerMock)
 
 	return router, mocks
 }
