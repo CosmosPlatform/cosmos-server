@@ -6,6 +6,7 @@ import (
 	"cosmos-server/pkg/log"
 	"cosmos-server/pkg/routes"
 	"cosmos-server/pkg/server"
+	"cosmos-server/pkg/services/application"
 	"cosmos-server/pkg/services/auth"
 	"cosmos-server/pkg/services/team"
 	"cosmos-server/pkg/services/user"
@@ -33,8 +34,9 @@ func NewApp(config *c.Config) (*App, error) {
 	authService := auth.NewAuthService(config.AuthConfig, storageService, auth.NewTranslator(), logger)
 	userService := user.NewUserService(storageService, user.NewTranslator(), logger)
 	teamService := team.NewTeamService(storageService, team.NewTranslator())
+	applicationService := application.NewApplicationService(storageService, application.NewTranslator(), logger)
 
-	httpRoutes := routes.NewHTTPRoutes(authService, userService, teamService, logger)
+	httpRoutes := routes.NewHTTPRoutes(authService, userService, teamService, applicationService, logger)
 
 	return &App{
 		config: config,

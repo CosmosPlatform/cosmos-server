@@ -6,6 +6,7 @@ import (
 	"cosmos-server/pkg/services/team"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"net/http"
 )
 
 type handler struct {
@@ -19,12 +20,21 @@ func AddAdminTeamHandler(e *gin.RouterGroup, teamService team.Service, translato
 		translator:  translator,
 	}
 
-	e.GET("/teams", h.handleGetTeams)
+	e.GET("/teams/:teamName", h.handleGetTeam)
 	e.POST("/teams", h.handleCreateTeam)
-	e.DELETE("/teams", h.handleDeleteTeam)
+	e.DELETE("/teams/:teamName", h.handleDeleteTeam)
 
 	e.POST("/teams/:teamName/members", h.handleAddUserToTeam)
 	e.DELETE("/teams/:teamName/members", h.handleRemoveUserFromTeam)
+}
+
+func AddAuthenticatedTeamHandler(e *gin.RouterGroup, teamService team.Service, translator Translator) {
+	h := &handler{
+		teamService: teamService,
+		translator:  translator,
+	}
+
+	e.GET("/teams", h.handleGetTeams)
 }
 
 func (h *handler) handleGetTeams(c *gin.Context) {
@@ -38,7 +48,7 @@ func (h *handler) handleGetTeams(c *gin.Context) {
 }
 
 func (h *handler) handleDeleteTeam(c *gin.Context) {
-	name := c.Query("name")
+	name := c.Param("teamName")
 	if name == "" {
 		_ = c.Error(errors.NewBadRequestError("team name is required"))
 		return
@@ -50,7 +60,7 @@ func (h *handler) handleDeleteTeam(c *gin.Context) {
 		return
 	}
 
-	c.Status(204)
+	c.Status(http.StatusNoContent)
 }
 
 func (h *handler) handleCreateTeam(c *gin.Context) {
@@ -73,7 +83,7 @@ func (h *handler) handleCreateTeam(c *gin.Context) {
 		return
 	}
 
-	c.JSON(201, h.translator.ToInsertTeamResponse(teamRequest.Name, teamRequest.Description))
+	c.JSON(http.StatusCreated, h.translator.ToInsertTeamResponse(teamRequest.Name, teamRequest.Description))
 }
 
 func (h *handler) handleAddUserToTeam(c *gin.Context) {
@@ -100,7 +110,7 @@ func (h *handler) handleAddUserToTeam(c *gin.Context) {
 		return
 	}
 
-	c.Status(204)
+	c.Status(http.StatusNoContent)
 }
 
 func (h *handler) handleRemoveUserFromTeam(c *gin.Context) {
@@ -128,5 +138,21 @@ func (h *handler) handleRemoveUserFromTeam(c *gin.Context) {
 		return
 	}
 
-	c.Status(204)
+	c.Status(http.StatusNoContent)
+}
+
+func (h *handler) handleGetTeam(c *gin.Context) {
+	teamName := c.Param("teamName")
+	if teamName == "" {
+		_ = c.Error(errors.NewBadRequestError("team name is required"))
+		return
+	}
+
+	teamModel, err := h.teamService.GetTeamByName(c, teamName)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(200, h.translator.ToGetTeamResponse(teamModel))
 }

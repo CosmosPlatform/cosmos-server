@@ -20,4 +20,10 @@ type Service interface {
 	GetTeamWithName(ctx context.Context, name string) (*obj.Team, error)
 	AddUserToTeam(ctx context.Context, teamName, username string) error
 	RemoveUserFromTeam(ctx context.Context, username string) error
+
+	InsertApplication(ctx context.Context, application *obj.Application) error
+	GetApplicationWithName(ctx context.Context, name string) (*obj.Application, error)
+	GetApplicationsByTeam(ctx context.Context, team string) ([]*obj.Application, error)
+	GetApplicationsWithFilter(ctx context.Context, filter string) ([]*obj.Application, error)
+	DeleteApplicationWithName(ctx context.Context, name string) error
 }

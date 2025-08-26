@@ -36,3 +36,7 @@ type User struct {
 type GetUsersResponse struct {
 	Users []*User `json:"users"`
 }
+
+type GetCurrentUserResponse struct {
+	User User `json:"user"`
+}

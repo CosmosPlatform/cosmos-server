@@ -39,3 +39,7 @@ func (r *AddUserToTeamRequest) Validate() error {
 		validation.Field(&r.Email, validation.Required, validation.Length(1, 100), is.EmailFormat),
 	)
 }
+
+type GetTeamResponse struct {
+	Team *Team `json:"team"`
+}

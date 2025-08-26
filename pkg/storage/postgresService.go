@@ -10,6 +10,7 @@ import (
 	_ "github.com/lib/pq"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"strings"
 )
 
 type PostgresService struct {
@@ -42,7 +43,7 @@ func (s *PostgresService) InsertUser(ctx context.Context, user *obj.User) error 
 }
 
 func (s *PostgresService) GetUserWithEmail(ctx context.Context, email string) (*obj.User, error) {
-	user, err := gorm.G[obj.User](s.db).Where("email = ?", email).First(ctx)
+	user, err := gorm.G[obj.User](s.db).Preload("Team", nil).Where("email = ?", email).First(ctx)
 
 	if err != nil {
 		if errorUtils.Is(err, gorm.ErrRecordNotFound) {
@@ -81,7 +82,9 @@ func (s *PostgresService) GetUsersWithFilter(ctx context.Context, filter string)
 func (s *PostgresService) InsertTeam(ctx context.Context, team *obj.Team) error {
 	err := gorm.G[obj.Team](s.db).Create(ctx, team)
 	if err != nil {
-		if errorUtils.Is(err, gorm.ErrDuplicatedKey) {
+		if strings.Contains(err.Error(), "duplicate key") ||
+			strings.Contains(err.Error(), "violates unique constraint") ||
+			strings.Contains(err.Error(), "23505") {
 			return ErrAlreadyExists
 		}
 		return fmt.Errorf("failed to insert team: %v", err)
@@ -169,4 +172,64 @@ func (s *PostgresService) GetTeamWithName(ctx context.Context, name string) (*ob
 	}
 
 	return team, nil
+}
+
+func (s *PostgresService) InsertApplication(ctx context.Context, application *obj.Application) error {
+	err := gorm.G[obj.Application](s.db).Create(ctx, application)
+	if err != nil {
+		if errorUtils.Is(err, gorm.ErrDuplicatedKey) {
+			return ErrAlreadyExists
+		}
+		return fmt.Errorf("failed to insert application: %v", err)
+	}
+
+	return nil
+}
+
+func (s *PostgresService) GetApplicationWithName(ctx context.Context, name string) (*obj.Application, error) {
+	application, err := gorm.G[*obj.Application](s.db).Preload("Team", nil).Where("name = ?", name).First(ctx)
+	if err != nil {
+		if errorUtils.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to get application with name %s: %v", name, err)
+	}
+
+	return application, nil
+}
+
+func (s *PostgresService) GetApplicationsWithFilter(ctx context.Context, filter string) ([]*obj.Application, error) {
+	applications, err := gorm.G[*obj.Application](s.db).Preload("Team", nil).Where("name ILIKE ?", "%"+filter+"%").Order("name").Find(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get applications with filter '%s': %v", filter, err)
+	}
+
+	return applications, nil
+}
+
+func (s *PostgresService) DeleteApplicationWithName(ctx context.Context, name string) error {
+	rowsAffected, err := gorm.G[obj.Application](s.db).Where("name = ?", name).Delete(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to delete application with name %s: %v", name, err)
+	}
+
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}
+
+func (s *PostgresService) GetApplicationsByTeam(ctx context.Context, team string) ([]*obj.Application, error) {
+	teamObj, err := s.GetTeamWithName(ctx, team)
+	if err != nil {
+		return nil, err
+	}
+
+	applications, err := gorm.G[*obj.Application](s.db).Preload("Team", nil).Where("team_id = ?", teamObj.ID).Order("name").Find(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get applications for team %s: %v", team, err)
+	}
+
+	return applications, nil
 }
