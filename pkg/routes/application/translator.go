@@ -44,7 +44,7 @@ func (t *translator) ToApiTeam(teamModel *model.Team) *api.Team {
 }
 
 func (t *translator) ToGetApplicationsResponse(applicationModels []*model.Application) *api.GetApplicationsResponse {
-	var applications []*api.Application
+	applications := make([]*api.Application, 0)
 	for _, applicationModel := range applicationModels {
 		applications = append(applications, t.ToApplicationApi(applicationModel))
 	}
