@@ -35,6 +35,7 @@ func TestHandleGetApplications(t *testing.T) {
 
 func TestHandleGetApplicationByTeam(t *testing.T) {
 	t.Run("success - get applications by team", handleGetApplicationByTeamSuccess)
+	t.Run("success - get applications by team no applications", handleGetApplicationByTeamNoApplications)
 	t.Run("failure - get applications by team error", handleGetApplicationByTeamError)
 }
 
@@ -617,4 +618,39 @@ func handleGetApplicationByTeamError(t *testing.T) {
 
 	require.Equal(t, http.StatusInternalServerError, recorder.Code)
 	require.Equal(t, "Internal test error", actualResponse.Error)
+}
+
+func handleGetApplicationByTeamNoApplications(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedTeamName := "empty-team"
+
+	expectedResponse := &api.GetApplicationsResponse{
+		Applications: []*api.Application{},
+	}
+
+	mocks.applicationServiceMock.EXPECT().
+		GetApplicationsByTeam(gomock.Any(), mockedTeamName).
+		Return([]*model.Application{}, nil)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/applications/team/" + mockedTeamName
+
+	request, recorder, err := test.NewHTTPRequest("GET", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.GetApplicationsResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusOK, recorder.Code, "Expected status code 200")
+	require.Equal(t, expectedResponse, &actualResponse, "Response body mismatch")
 }
