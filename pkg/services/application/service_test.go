@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	log "cosmos-server/pkg/log/mock"
+	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/storage"
 	storageMock "cosmos-server/pkg/storage/mock"
 	"cosmos-server/pkg/storage/obj"
@@ -14,6 +15,8 @@ import (
 
 func TestAddApplication(t *testing.T) {
 	t.Run("add application - success", addApplicationSuccess)
+	t.Run("add application with git information - success", addApplicationWithGitInformationSuccess)
+	t.Run("add application with git information and team - success", addApplicationWithGitInformationAndTeamSuccess)
 	t.Run("add application - no team success", addApplicationNoTeamSuccess)
 	t.Run("add application - invalid team error", addApplicationInvalidTeamError)
 	t.Run("add application - insert application error", addApplicationInsertApplicationError)
@@ -405,4 +408,85 @@ func getApplicationsByTeamStorageError(t *testing.T) {
 	require.Error(t, err)
 	require.Nil(t, result)
 	require.True(t, strings.Contains(err.Error(), "failed to retrieve applications by team"))
+}
+
+func addApplicationWithGitInformationSuccess(t *testing.T) {
+	applicationService, mocks := setUp(t)
+
+	applicationName := "test-application"
+	applicationDescription := "test-description"
+	applicationTeam := ""
+	gitInformation := &model.GitInformation{
+		Provider:         "github",
+		RepositoryOwner:  "test-owner",
+		RepositoryName:   "test-repo",
+		RepositoryBranch: "main",
+	}
+
+	expectedApplicationObj := &obj.Application{
+		Name:                applicationName,
+		Description:         applicationDescription,
+		GitProvider:         "github",
+		GitRepositoryOwner:  "test-owner",
+		GitRepositoryName:   "test-repo",
+		GitRepositoryBranch: "main",
+	}
+
+	mocks.storageServiceMock.EXPECT().
+		InsertApplication(gomock.Any(), expectedApplicationObj).
+		Return(nil)
+
+	mocks.loggerMocks.EXPECT().
+		Infof(gomock.Any(), gomock.Any())
+
+	err := applicationService.AddApplication(context.Background(), applicationName, applicationDescription, applicationTeam, gitInformation)
+	require.NoError(t, err)
+}
+
+func addApplicationWithGitInformationAndTeamSuccess(t *testing.T) {
+	applicationService, mocks := setUp(t)
+
+	applicationName := "test-application"
+	applicationDescription := "test-description"
+	applicationTeam := "test-team"
+	gitInformation := &model.GitInformation{
+		Provider:         "gitlab",
+		RepositoryOwner:  "test-owner",
+		RepositoryName:   "test-repo",
+		RepositoryBranch: "develop",
+	}
+
+	objTeam := &obj.Team{
+		CosmosObj: obj.CosmosObj{
+			ID: 1,
+		},
+		Name:        applicationTeam,
+		Description: "team description",
+	}
+
+	teamID := int(objTeam.CosmosObj.ID)
+
+	expectedApplicationObj := &obj.Application{
+		Name:                applicationName,
+		Description:         applicationDescription,
+		TeamID:              &teamID,
+		GitProvider:         "gitlab",
+		GitRepositoryOwner:  "test-owner",
+		GitRepositoryName:   "test-repo",
+		GitRepositoryBranch: "develop",
+	}
+
+	mocks.storageServiceMock.EXPECT().
+		GetTeamWithName(gomock.Any(), applicationTeam).
+		Return(objTeam, nil)
+
+	mocks.storageServiceMock.EXPECT().
+		InsertApplication(gomock.Any(), expectedApplicationObj).
+		Return(nil)
+
+	mocks.loggerMocks.EXPECT().
+		Infof(gomock.Any(), gomock.Any())
+
+	err := applicationService.AddApplication(context.Background(), applicationName, applicationDescription, applicationTeam, gitInformation)
+	require.NoError(t, err)
 }
