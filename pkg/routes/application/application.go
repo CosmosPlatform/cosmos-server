@@ -62,7 +62,7 @@ func (handler *handler) handleCreateApplication(e *gin.Context) {
 		return
 	}
 
-	e.JSON(http.StatusCreated, handler.translator.ToCreateApplicationResponse(createApplicationRequest.Name, createApplicationRequest.Description, createApplicationRequest.Team))
+	e.JSON(http.StatusCreated, handler.translator.ToCreateApplicationResponse(createApplicationRequest.Name, createApplicationRequest.Description, createApplicationRequest.Team, gitInformation))
 }
 
 func (handler *handler) handleGetApplication(e *gin.Context) {

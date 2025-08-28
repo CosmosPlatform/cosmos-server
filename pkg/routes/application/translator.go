@@ -6,7 +6,7 @@ import (
 )
 
 type Translator interface {
-	ToCreateApplicationResponse(name, description, team string) *api.CreateApplicationResponse
+	ToCreateApplicationResponse(name, description, team string, gitInformation *model.GitInformation) *api.CreateApplicationResponse
 	ToGetApplicationResponse(applicationObj *model.Application) *api.GetApplicationResponse
 	ToGetApplicationsResponse(applicationObj []*model.Application) *api.GetApplicationsResponse
 }
@@ -17,12 +17,13 @@ func NewTranslator() Translator {
 	return &translator{}
 }
 
-func (t *translator) ToCreateApplicationResponse(name, description, team string) *api.CreateApplicationResponse {
+func (t *translator) ToCreateApplicationResponse(name, description, team string, gitInformation *model.GitInformation) *api.CreateApplicationResponse {
 	return &api.CreateApplicationResponse{
 		Application: &api.Application{
-			Name:        name,
-			Description: description,
-			Team:        &api.Team{Name: team},
+			Name:           name,
+			Description:    description,
+			Team:           &api.Team{Name: team},
+			GitInformation: t.ToApiGitInformation(gitInformation),
 		},
 	}
 }

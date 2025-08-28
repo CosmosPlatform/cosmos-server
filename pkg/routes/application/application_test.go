@@ -21,8 +21,17 @@ func TestHandleCreateApplication(t *testing.T) {
 	t.Run("failure - insert application error", handleCreateApplicationInsertApplicationError)
 }
 
+func TestHandleCreateApplicationWithGitInformation(t *testing.T) {
+	t.Run("success - create application with git information", handleCreateApplicationWithGitInformationSuccess)
+	t.Run("failure - git information provider required", handleCreateApplicationGitInformationProviderRequired)
+	t.Run("failure - git information repository owner required", handleCreateApplicationGitInformationRepositoryOwnerRequired)
+	t.Run("failure - git information repository name required", handleCreateApplicationGitInformationRepositoryNameRequired)
+	t.Run("failure - git information repository branch required", handleCreateApplicationGitInformationRepositoryBranchRequired)
+}
+
 func TestHandleGetApplication(t *testing.T) {
 	t.Run("success - get application", handleGetApplicationSuccess)
+	t.Run("success - get application with git information", handleGetApplicationWithGitInformationSuccess)
 	t.Run("failure - get application error", handleGetApplicationError)
 	t.Run("failure - get application error does not exist", handleGetApplicationErrorDoesNotExist)
 }
@@ -211,6 +220,66 @@ func handleGetApplicationSuccess(t *testing.T) {
 
 	expectedResponse := &api.GetApplicationResponse{
 		Application: mockedApplication,
+	}
+
+	mocks.applicationServiceMock.EXPECT().
+		GetApplication(gomock.Any(), mockedName).
+		Return(mockedApplicationModel, nil)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/applications/" + mockedName
+
+	request, recorder, err := test.NewHTTPRequest("GET", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.GetApplicationResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusOK, recorder.Code, "Expected status code 200")
+	require.Equal(t, expectedResponse, &actualResponse, "Response body mismatch")
+}
+
+func handleGetApplicationWithGitInformationSuccess(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedName := "test-app"
+	mockedDescription := "Test application description"
+	mockedTeam := "test-team"
+	mockedGitInformation := &model.GitInformation{
+		Provider:         "github",
+		RepositoryOwner:  "test-owner",
+		RepositoryName:   "test-repo",
+		RepositoryBranch: "main",
+	}
+
+	mockedApplicationModel := &model.Application{
+		Name:           mockedName,
+		Description:    mockedDescription,
+		Team:           &model.Team{Name: mockedTeam},
+		GitInformation: mockedGitInformation,
+	}
+
+	expectedResponse := &api.GetApplicationResponse{
+		Application: &api.Application{
+			Name:        mockedName,
+			Description: mockedDescription,
+			Team:        &api.Team{Name: mockedTeam},
+			GitInformation: &api.GitInformation{
+				Provider:         "github",
+				RepositoryOwner:  "test-owner",
+				RepositoryName:   "test-repo",
+				RepositoryBranch: "main",
+			},
+		},
 	}
 
 	mocks.applicationServiceMock.EXPECT().
@@ -653,4 +722,230 @@ func handleGetApplicationByTeamNoApplications(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, recorder.Code, "Expected status code 200")
 	require.Equal(t, expectedResponse, &actualResponse, "Response body mismatch")
+}
+
+func handleCreateApplicationWithGitInformationSuccess(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedName := "test-app"
+	mockedDescription := "Test application description"
+	mockedTeam := "test-team"
+	mockedGitInformation := &api.GitInformation{
+		Provider:         "github",
+		RepositoryOwner:  "test-owner",
+		RepositoryName:   "test-repo",
+		RepositoryBranch: "main",
+	}
+
+	mockedCreateApplicationRequest := &api.CreateApplicationRequest{
+		Name:           mockedName,
+		Description:    mockedDescription,
+		Team:           mockedTeam,
+		GitInformation: mockedGitInformation,
+	}
+
+	expectedResponse := &api.CreateApplicationResponse{
+		Application: &api.Application{
+			Name:           mockedName,
+			Description:    mockedDescription,
+			Team:           &api.Team{Name: mockedTeam},
+			GitInformation: mockedGitInformation,
+		},
+	}
+
+	expectedGitInfo := &model.GitInformation{
+		Provider:         "github",
+		RepositoryOwner:  "test-owner",
+		RepositoryName:   "test-repo",
+		RepositoryBranch: "main",
+	}
+
+	mocks.applicationServiceMock.EXPECT().
+		AddApplication(gomock.Any(), mockedName, mockedDescription, mockedTeam, expectedGitInfo).
+		Return(nil)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/applications"
+
+	request, recorder, err := test.NewHTTPRequest("POST", url, mockedCreateApplicationRequest)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.CreateApplicationResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusCreated, recorder.Code, "Expected status code 201")
+	require.Equal(t, expectedResponse, &actualResponse, "Response body mismatch")
+}
+
+func handleCreateApplicationGitInformationProviderRequired(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedName := "test-app"
+	mockedDescription := "Test application description"
+	mockedTeam := "test-team"
+	mockedGitInformation := &api.GitInformation{
+		RepositoryOwner:  "test-owner",
+		RepositoryName:   "test-repo",
+		RepositoryBranch: "main",
+	}
+
+	mockedCreateApplicationRequest := &api.CreateApplicationRequest{
+		Name:           mockedName,
+		Description:    mockedDescription,
+		Team:           mockedTeam,
+		GitInformation: mockedGitInformation,
+	}
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/applications"
+
+	request, recorder, err := test.NewHTTPRequest("POST", url, mockedCreateApplicationRequest)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusBadRequest, recorder.Code, "Expected status code 400")
+	require.Contains(t, actualResponse.Error, "provider")
+}
+
+func handleCreateApplicationGitInformationRepositoryOwnerRequired(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedName := "test-app"
+	mockedDescription := "Test application description"
+	mockedTeam := "test-team"
+	mockedGitInformation := &api.GitInformation{
+		Provider:         "github",
+		RepositoryName:   "test-repo",
+		RepositoryBranch: "main",
+	}
+
+	mockedCreateApplicationRequest := &api.CreateApplicationRequest{
+		Name:           mockedName,
+		Description:    mockedDescription,
+		Team:           mockedTeam,
+		GitInformation: mockedGitInformation,
+	}
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/applications"
+
+	request, recorder, err := test.NewHTTPRequest("POST", url, mockedCreateApplicationRequest)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusBadRequest, recorder.Code, "Expected status code 400")
+	require.Contains(t, actualResponse.Error, "repositoryOwner")
+}
+
+func handleCreateApplicationGitInformationRepositoryNameRequired(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedName := "test-app"
+	mockedDescription := "Test application description"
+	mockedTeam := "test-team"
+	mockedGitInformation := &api.GitInformation{
+		Provider:         "github",
+		RepositoryOwner:  "test-owner",
+		RepositoryBranch: "main",
+	}
+
+	mockedCreateApplicationRequest := &api.CreateApplicationRequest{
+		Name:           mockedName,
+		Description:    mockedDescription,
+		Team:           mockedTeam,
+		GitInformation: mockedGitInformation,
+	}
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/applications"
+
+	request, recorder, err := test.NewHTTPRequest("POST", url, mockedCreateApplicationRequest)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusBadRequest, recorder.Code, "Expected status code 400")
+	require.Contains(t, actualResponse.Error, "repositoryName")
+}
+
+func handleCreateApplicationGitInformationRepositoryBranchRequired(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedName := "test-app"
+	mockedDescription := "Test application description"
+	mockedTeam := "test-team"
+	mockedGitInformation := &api.GitInformation{
+		Provider:        "github",
+		RepositoryOwner: "test-owner",
+		RepositoryName:  "test-repo",
+	}
+
+	mockedCreateApplicationRequest := &api.CreateApplicationRequest{
+		Name:           mockedName,
+		Description:    mockedDescription,
+		Team:           mockedTeam,
+		GitInformation: mockedGitInformation,
+	}
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/applications"
+
+	request, recorder, err := test.NewHTTPRequest("POST", url, mockedCreateApplicationRequest)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusBadRequest, recorder.Code, "Expected status code 400")
+	require.Contains(t, actualResponse.Error, "repositoryBranch")
 }
