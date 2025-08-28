@@ -233,3 +233,16 @@ func (s *PostgresService) GetApplicationsByTeam(ctx context.Context, team string
 
 	return applications, nil
 }
+
+func (s *PostgresService) UpdateApplication(ctx context.Context, application *obj.Application) error {
+	rowsAffected, err := gorm.G[*obj.Application](s.db).Where("id = ?", application.ID).Updates(ctx, application)
+	if err != nil {
+		return fmt.Errorf("failed to update application: %v", err)
+	}
+
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}

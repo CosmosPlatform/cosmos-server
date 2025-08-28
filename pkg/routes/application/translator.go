@@ -9,6 +9,7 @@ type Translator interface {
 	ToCreateApplicationResponse(name, description, team string, gitInformation *model.GitInformation) *api.CreateApplicationResponse
 	ToGetApplicationResponse(applicationObj *model.Application) *api.GetApplicationResponse
 	ToGetApplicationsResponse(applicationObj []*model.Application) *api.GetApplicationsResponse
+	ToUpdateApplicationResponse(app *model.Application) *api.UpdateApplicationResponse
 }
 
 type translator struct{}
@@ -72,5 +73,11 @@ func (t *translator) ToApplicationApi(applicationModel *model.Application) *api.
 		Description:    applicationModel.Description,
 		Team:           t.ToApiTeam(applicationModel.Team),
 		GitInformation: t.ToApiGitInformation(applicationModel.GitInformation),
+	}
+}
+
+func (t *translator) ToUpdateApplicationResponse(app *model.Application) *api.UpdateApplicationResponse {
+	return &api.UpdateApplicationResponse{
+		Application: t.ToApplicationApi(app),
 	}
 }

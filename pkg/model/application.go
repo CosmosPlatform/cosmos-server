@@ -13,3 +13,10 @@ type GitInformation struct {
 	RepositoryName   string
 	RepositoryBranch string
 }
+
+type ApplicationUpdate struct {
+	Name           *string
+	Description    *string
+	Team           *string
+	GitInformation *GitInformation
+}

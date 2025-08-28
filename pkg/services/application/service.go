@@ -18,6 +18,7 @@ type Service interface {
 	GetApplicationsByTeam(ctx context.Context, team string) ([]*model.Application, error)
 	GetApplicationsWithFilter(ctx context.Context, filter string) ([]*model.Application, error)
 	DeleteApplication(ctx context.Context, name string) error
+	UpdateApplication(ctx context.Context, name string, updateData *model.ApplicationUpdate) (*model.Application, error)
 }
 
 type applicationService struct {
@@ -115,4 +116,79 @@ func (s *applicationService) DeleteApplication(ctx context.Context, name string)
 
 	s.logger.Infof("Application %s deleted successfully", name)
 	return nil
+}
+
+func (s *applicationService) UpdateApplication(ctx context.Context, name string, updateData *model.ApplicationUpdate) (*model.Application, error) {
+	existingApp, err := s.storageService.GetApplicationWithName(ctx, name)
+	if err != nil {
+		if errorUtils.Is(err, storage.ErrNotFound) {
+			return nil, errors.NewNotFoundError("application not found")
+		}
+		return nil, errors.NewInternalServerError("failed to retrieve application: " + err.Error())
+	}
+
+	// Prepare update object
+	updateObj := &obj.Application{
+		CosmosObj: obj.CosmosObj{
+			ID: existingApp.ID,
+		},
+		Name:                existingApp.Name,
+		Description:         existingApp.Description,
+		TeamID:              existingApp.TeamID,
+		GitProvider:         existingApp.GitProvider,
+		GitRepositoryOwner:  existingApp.GitRepositoryOwner,
+		GitRepositoryName:   existingApp.GitRepositoryName,
+		GitRepositoryBranch: existingApp.GitRepositoryBranch,
+	}
+
+	// Apply updates
+	if updateData.Name != nil {
+		updateObj.Name = *updateData.Name
+	}
+	if updateData.Description != nil {
+		updateObj.Description = *updateData.Description
+	}
+
+	// Handle team update
+	if updateData.Team != nil {
+		if *updateData.Team == "" {
+			updateObj.TeamID = nil
+		} else {
+			teamObj, err := s.storageService.GetTeamWithName(ctx, *updateData.Team)
+			if err != nil {
+				if errorUtils.Is(err, storage.ErrNotFound) {
+					return nil, errors.NewNotFoundError("team not found")
+				}
+				return nil, errors.NewInternalServerError("failed to retrieve team: " + err.Error())
+			}
+			teamIDInt := int(teamObj.ID)
+			updateObj.TeamID = &teamIDInt
+		}
+	}
+
+	// Handle git information update
+	if updateData.GitInformation != nil {
+		updateObj.GitProvider = updateData.GitInformation.Provider
+		updateObj.GitRepositoryOwner = updateData.GitInformation.RepositoryOwner
+		updateObj.GitRepositoryName = updateData.GitInformation.RepositoryName
+		updateObj.GitRepositoryBranch = updateData.GitInformation.RepositoryBranch
+	}
+
+	// Update in storage
+	err = s.storageService.UpdateApplication(ctx, updateObj)
+	if err != nil {
+		if errorUtils.Is(err, storage.ErrAlreadyExists) {
+			return nil, errors.NewConflictError("application with name " + updateObj.Name + " already exists")
+		}
+		return nil, errors.NewInternalServerError("failed to update application: " + err.Error())
+	}
+
+	// Get updated application
+	updatedApp, err := s.storageService.GetApplicationWithName(ctx, updateObj.Name)
+	if err != nil {
+		return nil, errors.NewInternalServerError("failed to retrieve updated application: " + err.Error())
+	}
+
+	s.logger.Infof("Application %s updated successfully", updateObj.Name)
+	return s.translator.ToApplicationModel(updatedApp), nil
 }
