@@ -97,7 +97,7 @@ func addApplicationSuccess(t *testing.T) {
 	mocks.loggerMocks.EXPECT().
 		Infof(gomock.Any(), gomock.Any())
 
-	err := applicationService.AddApplication(context.Background(), applicationName, applicationDescription, applicationTeam)
+	err := applicationService.AddApplication(context.Background(), applicationName, applicationDescription, applicationTeam, nil)
 	require.NoError(t, err)
 }
 
@@ -120,7 +120,7 @@ func addApplicationNoTeamSuccess(t *testing.T) {
 	mocks.loggerMocks.EXPECT().
 		Infof(gomock.Any(), gomock.Any())
 
-	err := applicationService.AddApplication(context.Background(), applicationName, applicationDescription, applicationTeam)
+	err := applicationService.AddApplication(context.Background(), applicationName, applicationDescription, applicationTeam, nil)
 	require.NoError(t, err)
 }
 
@@ -135,7 +135,7 @@ func addApplicationInvalidTeamError(t *testing.T) {
 		GetTeamWithName(gomock.Any(), applicationTeam).
 		Return(nil, storage.ErrNotFound)
 
-	err := applicationService.AddApplication(context.Background(), applicationName, applicationDescription, applicationTeam)
+	err := applicationService.AddApplication(context.Background(), applicationName, applicationDescription, applicationTeam, nil)
 	require.Error(t, err)
 	require.True(t, strings.Contains(err.Error(), "team not found"))
 }
@@ -171,7 +171,7 @@ func addApplicationInsertApplicationError(t *testing.T) {
 		InsertApplication(gomock.Any(), applicationObj).
 		Return(storage.ErrAlreadyExists)
 
-	err := applicationService.AddApplication(context.Background(), applicationName, applicationDescription, applicationTeam)
+	err := applicationService.AddApplication(context.Background(), applicationName, applicationDescription, applicationTeam, nil)
 	require.Error(t, err)
 	require.True(t, strings.Contains(err.Error(), "application with name "+applicationName+" already exists"))
 }

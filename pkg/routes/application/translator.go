@@ -43,6 +43,18 @@ func (t *translator) ToApiTeam(teamModel *model.Team) *api.Team {
 	}
 }
 
+func (t *translator) ToApiGitInformation(gitInfo *model.GitInformation) *api.GitInformation {
+	if gitInfo == nil {
+		return nil
+	}
+	return &api.GitInformation{
+		Provider:         gitInfo.Provider,
+		RepositoryOwner:  gitInfo.RepositoryOwner,
+		RepositoryName:   gitInfo.RepositoryName,
+		RepositoryBranch: gitInfo.RepositoryBranch,
+	}
+}
+
 func (t *translator) ToGetApplicationsResponse(applicationModels []*model.Application) *api.GetApplicationsResponse {
 	applications := make([]*api.Application, 0)
 	for _, applicationModel := range applicationModels {
@@ -55,8 +67,9 @@ func (t *translator) ToGetApplicationsResponse(applicationModels []*model.Applic
 
 func (t *translator) ToApplicationApi(applicationModel *model.Application) *api.Application {
 	return &api.Application{
-		Name:        applicationModel.Name,
-		Description: applicationModel.Description,
-		Team:        t.ToApiTeam(applicationModel.Team),
+		Name:           applicationModel.Name,
+		Description:    applicationModel.Description,
+		Team:           t.ToApiTeam(applicationModel.Team),
+		GitInformation: t.ToApiGitInformation(applicationModel.GitInformation),
 	}
 }

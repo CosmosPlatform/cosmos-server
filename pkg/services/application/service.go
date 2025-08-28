@@ -13,7 +13,7 @@ import (
 //go:generate mockgen -destination=./mock/service_mock.go -package=mock cosmos-server/pkg/services/application Service
 
 type Service interface {
-	AddApplication(ctx context.Context, name, description, team string) error
+	AddApplication(ctx context.Context, name, description, team string, gitInformation *model.GitInformation) error
 	GetApplication(ctx context.Context, name string) (*model.Application, error)
 	GetApplicationsByTeam(ctx context.Context, team string) ([]*model.Application, error)
 	GetApplicationsWithFilter(ctx context.Context, filter string) ([]*model.Application, error)
@@ -34,7 +34,7 @@ func NewApplicationService(storageService storage.Service, translator Translator
 	}
 }
 
-func (s *applicationService) AddApplication(ctx context.Context, name, description, team string) error {
+func (s *applicationService) AddApplication(ctx context.Context, name, description, team string, gitInformation *model.GitInformation) error {
 	applicationObj := &obj.Application{
 		Name:        name,
 		Description: description,
@@ -50,6 +50,13 @@ func (s *applicationService) AddApplication(ctx context.Context, name, descripti
 		}
 		teamIDInt := int(teamObj.ID)
 		applicationObj.TeamID = &teamIDInt
+	}
+
+	if gitInformation != nil {
+		applicationObj.GitProvider = gitInformation.Provider
+		applicationObj.GitRepositoryOwner = gitInformation.RepositoryOwner
+		applicationObj.GitRepositoryName = gitInformation.RepositoryName
+		applicationObj.GitRepositoryBranch = gitInformation.RepositoryBranch
 	}
 
 	err := s.storageService.InsertApplication(ctx, applicationObj)
