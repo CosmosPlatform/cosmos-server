@@ -57,6 +57,8 @@ func TestHandleDeleteApplication(t *testing.T) {
 func TestHandleUpdateApplication(t *testing.T) {
 	t.Run("success - update application", handleUpdateApplicationSuccess)
 	t.Run("success - update application with git information", handleUpdateApplicationWithGitInformationSuccess)
+	t.Run("failure - update application with partial git information", handleUpdateApplicationWithPartialGitInformationError)
+	t.Run("failure - update application error", handleUpdateApplicationError)
 }
 
 type mocks struct {
@@ -1098,4 +1100,82 @@ func handleUpdateApplicationWithGitInformationSuccess(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, recorder.Code, "Expected status code 200")
 	require.Equal(t, expectedResponse, &actualResponse, "Response body mismatch")
+}
+
+func handleUpdateApplicationWithPartialGitInformationError(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedName := "test-app"
+	mockedGitInformation := &api.GitInformation{
+		Provider:        "github",
+		RepositoryOwner: "test-owner",
+		RepositoryName:  "test-repo",
+	}
+
+	mockedUpdateRequest := &api.UpdateApplicationRequest{
+		GitInformation: mockedGitInformation,
+	}
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/applications/" + mockedName
+
+	request, recorder, err := test.NewHTTPRequest("PUT", url, mockedUpdateRequest)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusBadRequest, recorder.Code, "Expected status code 400")
+	require.Contains(t, actualResponse.Error, "repositoryBranch")
+}
+
+func handleUpdateApplicationError(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedName := "test-app"
+	newName := "updated-name"
+
+	mockedUpdateRequest := &api.UpdateApplicationRequest{
+		Name: &newName,
+	}
+
+	mockedError := errors.NewInternalServerError("Internal test error")
+
+	expectedUpdateData := &model.ApplicationUpdate{
+		Name: &newName,
+	}
+
+	mocks.applicationServiceMock.EXPECT().
+		UpdateApplication(gomock.Any(), mockedName, expectedUpdateData).
+		Return(nil, mockedError)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/applications/" + mockedName
+
+	request, recorder, err := test.NewHTTPRequest("PUT", url, mockedUpdateRequest)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusInternalServerError, recorder.Code)
+	require.Equal(t, "Internal test error", actualResponse.Error)
 }
