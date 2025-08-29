@@ -47,6 +47,18 @@ func TestGetApplicationsByTeam(t *testing.T) {
 	t.Run("get applications by team - storage error", getApplicationsByTeamStorageError)
 }
 
+func TestUpdateApplication(t *testing.T) {
+	t.Run("update application - success", updateApplicationSuccess)
+	t.Run("update application with git information - success", updateApplicationWithGitInformationSuccess)
+	t.Run("update application with team - success", updateApplicationWithTeamSuccess)
+	t.Run("update application remove team - success", updateApplicationRemoveTeamSuccess)
+	t.Run("update application - not found error", updateApplicationNotFoundError)
+	t.Run("update application - invalid team error", updateApplicationInvalidTeamError)
+	t.Run("update application - name conflict error", updateApplicationNameConflictError)
+	t.Run("update application - storage error", updateApplicationStorageError)
+	t.Run("update application - get updated application error", updateApplicationGetUpdatedError)
+}
+
 type mocks struct {
 	controller         *gomock.Controller
 	storageServiceMock *storageMock.MockService
@@ -489,4 +501,435 @@ func addApplicationWithGitInformationAndTeamSuccess(t *testing.T) {
 
 	err := applicationService.AddApplication(context.Background(), applicationName, applicationDescription, applicationTeam, gitInformation)
 	require.NoError(t, err)
+}
+
+func updateApplicationSuccess(t *testing.T) {
+	applicationService, mocks := setUp(t)
+
+	applicationName := "test-application"
+	newName := "updated-application"
+	newDescription := "updated description"
+
+	updateData := &model.ApplicationUpdate{
+		Name:        &newName,
+		Description: &newDescription,
+	}
+
+	existingApp := &obj.Application{
+		CosmosObj: obj.CosmosObj{
+			ID: 1,
+		},
+		Name:        applicationName,
+		Description: "original description",
+	}
+
+	expectedUpdateObj := &obj.Application{
+		CosmosObj: obj.CosmosObj{
+			ID: 1,
+		},
+		Name:        newName,
+		Description: newDescription,
+	}
+
+	updatedApp := &obj.Application{
+		CosmosObj: obj.CosmosObj{
+			ID: 1,
+		},
+		Name:        newName,
+		Description: newDescription,
+	}
+
+	mocks.storageServiceMock.EXPECT().
+		GetApplicationWithName(gomock.Any(), applicationName).
+		Return(existingApp, nil)
+
+	mocks.storageServiceMock.EXPECT().
+		UpdateApplication(gomock.Any(), expectedUpdateObj).
+		Return(nil)
+
+	mocks.storageServiceMock.EXPECT().
+		GetApplicationWithName(gomock.Any(), newName).
+		Return(updatedApp, nil)
+
+	mocks.loggerMocks.EXPECT().
+		Infof(gomock.Any(), gomock.Any())
+
+	result, err := applicationService.UpdateApplication(context.Background(), applicationName, updateData)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Equal(t, newName, result.Name)
+	require.Equal(t, newDescription, result.Description)
+}
+
+func updateApplicationWithGitInformationSuccess(t *testing.T) {
+	applicationService, mocks := setUp(t)
+
+	applicationName := "test-application"
+	gitInformation := &model.GitInformation{
+		Provider:         "github",
+		RepositoryOwner:  "test-owner",
+		RepositoryName:   "test-repo",
+		RepositoryBranch: "main",
+	}
+
+	updateData := &model.ApplicationUpdate{
+		GitInformation: gitInformation,
+	}
+
+	existingApp := &obj.Application{
+		CosmosObj: obj.CosmosObj{
+			ID: 1,
+		},
+		Name:        applicationName,
+		Description: "test description",
+	}
+
+	expectedUpdateObj := &obj.Application{
+		CosmosObj: obj.CosmosObj{
+			ID: 1,
+		},
+		Name:                applicationName,
+		Description:         "test description",
+		GitProvider:         "github",
+		GitRepositoryOwner:  "test-owner",
+		GitRepositoryName:   "test-repo",
+		GitRepositoryBranch: "main",
+	}
+
+	updatedApp := &obj.Application{
+		CosmosObj: obj.CosmosObj{
+			ID: 1,
+		},
+		Name:                applicationName,
+		Description:         "test description",
+		GitProvider:         "github",
+		GitRepositoryOwner:  "test-owner",
+		GitRepositoryName:   "test-repo",
+		GitRepositoryBranch: "main",
+	}
+
+	mocks.storageServiceMock.EXPECT().
+		GetApplicationWithName(gomock.Any(), applicationName).
+		Return(existingApp, nil)
+
+	mocks.storageServiceMock.EXPECT().
+		UpdateApplication(gomock.Any(), expectedUpdateObj).
+		Return(nil)
+
+	mocks.storageServiceMock.EXPECT().
+		GetApplicationWithName(gomock.Any(), applicationName).
+		Return(updatedApp, nil)
+
+	mocks.loggerMocks.EXPECT().
+		Infof(gomock.Any(), gomock.Any())
+
+	result, err := applicationService.UpdateApplication(context.Background(), applicationName, updateData)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Equal(t, applicationName, result.Name)
+}
+
+func updateApplicationWithTeamSuccess(t *testing.T) {
+	applicationService, mocks := setUp(t)
+
+	applicationName := "test-application"
+	teamName := "new-team"
+
+	updateData := &model.ApplicationUpdate{
+		Team: &teamName,
+	}
+
+	existingApp := &obj.Application{
+		CosmosObj: obj.CosmosObj{
+			ID: 1,
+		},
+		Name:        applicationName,
+		Description: "test description",
+	}
+
+	teamObj := &obj.Team{
+		CosmosObj: obj.CosmosObj{
+			ID: 2,
+		},
+		Name: teamName,
+	}
+
+	teamID := int(teamObj.CosmosObj.ID)
+
+	expectedUpdateObj := &obj.Application{
+		CosmosObj: obj.CosmosObj{
+			ID: 1,
+		},
+		Name:        applicationName,
+		Description: "test description",
+		TeamID:      &teamID,
+	}
+
+	updatedApp := &obj.Application{
+		CosmosObj: obj.CosmosObj{
+			ID: 1,
+		},
+		Name:        applicationName,
+		Description: "test description",
+		TeamID:      &teamID,
+	}
+
+	mocks.storageServiceMock.EXPECT().
+		GetApplicationWithName(gomock.Any(), applicationName).
+		Return(existingApp, nil)
+
+	mocks.storageServiceMock.EXPECT().
+		GetTeamWithName(gomock.Any(), teamName).
+		Return(teamObj, nil)
+
+	mocks.storageServiceMock.EXPECT().
+		UpdateApplication(gomock.Any(), expectedUpdateObj).
+		Return(nil)
+
+	mocks.storageServiceMock.EXPECT().
+		GetApplicationWithName(gomock.Any(), applicationName).
+		Return(updatedApp, nil)
+
+	mocks.loggerMocks.EXPECT().
+		Infof(gomock.Any(), gomock.Any())
+
+	result, err := applicationService.UpdateApplication(context.Background(), applicationName, updateData)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Equal(t, applicationName, result.Name)
+}
+
+func updateApplicationRemoveTeamSuccess(t *testing.T) {
+	applicationService, mocks := setUp(t)
+
+	applicationName := "test-application"
+	emptyTeam := ""
+
+	updateData := &model.ApplicationUpdate{
+		Team: &emptyTeam,
+	}
+
+	teamID := 2
+	existingApp := &obj.Application{
+		CosmosObj: obj.CosmosObj{
+			ID: 1,
+		},
+		Name:        applicationName,
+		Description: "test description",
+		TeamID:      &teamID,
+	}
+
+	expectedUpdateObj := &obj.Application{
+		CosmosObj: obj.CosmosObj{
+			ID: 1,
+		},
+		Name:        applicationName,
+		Description: "test description",
+		TeamID:      nil,
+	}
+
+	updatedApp := &obj.Application{
+		CosmosObj: obj.CosmosObj{
+			ID: 1,
+		},
+		Name:        applicationName,
+		Description: "test description",
+		TeamID:      nil,
+	}
+
+	mocks.storageServiceMock.EXPECT().
+		GetApplicationWithName(gomock.Any(), applicationName).
+		Return(existingApp, nil)
+
+	mocks.storageServiceMock.EXPECT().
+		UpdateApplication(gomock.Any(), expectedUpdateObj).
+		Return(nil)
+
+	mocks.storageServiceMock.EXPECT().
+		GetApplicationWithName(gomock.Any(), applicationName).
+		Return(updatedApp, nil)
+
+	mocks.loggerMocks.EXPECT().
+		Infof(gomock.Any(), gomock.Any())
+
+	result, err := applicationService.UpdateApplication(context.Background(), applicationName, updateData)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Equal(t, applicationName, result.Name)
+}
+
+func updateApplicationNotFoundError(t *testing.T) {
+	applicationService, mocks := setUp(t)
+
+	applicationName := "non-existent-application"
+	newName := "updated-name"
+
+	updateData := &model.ApplicationUpdate{
+		Name: &newName,
+	}
+
+	mocks.storageServiceMock.EXPECT().
+		GetApplicationWithName(gomock.Any(), applicationName).
+		Return(nil, storage.ErrNotFound)
+
+	result, err := applicationService.UpdateApplication(context.Background(), applicationName, updateData)
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.True(t, strings.Contains(err.Error(), "application not found"))
+}
+
+func updateApplicationInvalidTeamError(t *testing.T) {
+	applicationService, mocks := setUp(t)
+
+	applicationName := "test-application"
+	invalidTeam := "invalid-team"
+
+	updateData := &model.ApplicationUpdate{
+		Team: &invalidTeam,
+	}
+
+	existingApp := &obj.Application{
+		CosmosObj: obj.CosmosObj{
+			ID: 1,
+		},
+		Name:        applicationName,
+		Description: "test description",
+	}
+
+	mocks.storageServiceMock.EXPECT().
+		GetApplicationWithName(gomock.Any(), applicationName).
+		Return(existingApp, nil)
+
+	mocks.storageServiceMock.EXPECT().
+		GetTeamWithName(gomock.Any(), invalidTeam).
+		Return(nil, storage.ErrNotFound)
+
+	result, err := applicationService.UpdateApplication(context.Background(), applicationName, updateData)
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.True(t, strings.Contains(err.Error(), "team not found"))
+}
+
+func updateApplicationNameConflictError(t *testing.T) {
+	applicationService, mocks := setUp(t)
+
+	applicationName := "test-application"
+	conflictingName := "existing-application"
+
+	updateData := &model.ApplicationUpdate{
+		Name: &conflictingName,
+	}
+
+	existingApp := &obj.Application{
+		CosmosObj: obj.CosmosObj{
+			ID: 1,
+		},
+		Name:        applicationName,
+		Description: "test description",
+	}
+
+	expectedUpdateObj := &obj.Application{
+		CosmosObj: obj.CosmosObj{
+			ID: 1,
+		},
+		Name:        conflictingName,
+		Description: "test description",
+	}
+
+	mocks.storageServiceMock.EXPECT().
+		GetApplicationWithName(gomock.Any(), applicationName).
+		Return(existingApp, nil)
+
+	mocks.storageServiceMock.EXPECT().
+		UpdateApplication(gomock.Any(), expectedUpdateObj).
+		Return(storage.ErrAlreadyExists)
+
+	result, err := applicationService.UpdateApplication(context.Background(), applicationName, updateData)
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.True(t, strings.Contains(err.Error(), "application with name "+conflictingName+" already exists"))
+}
+
+func updateApplicationStorageError(t *testing.T) {
+	applicationService, mocks := setUp(t)
+
+	applicationName := "test-application"
+	newName := "updated-name"
+
+	updateData := &model.ApplicationUpdate{
+		Name: &newName,
+	}
+
+	existingApp := &obj.Application{
+		CosmosObj: obj.CosmosObj{
+			ID: 1,
+		},
+		Name:        applicationName,
+		Description: "test description",
+	}
+
+	expectedUpdateObj := &obj.Application{
+		CosmosObj: obj.CosmosObj{
+			ID: 1,
+		},
+		Name:        newName,
+		Description: "test description",
+	}
+
+	mocks.storageServiceMock.EXPECT().
+		GetApplicationWithName(gomock.Any(), applicationName).
+		Return(existingApp, nil)
+
+	mocks.storageServiceMock.EXPECT().
+		UpdateApplication(gomock.Any(), expectedUpdateObj).
+		Return(storage.ErrInternal)
+
+	result, err := applicationService.UpdateApplication(context.Background(), applicationName, updateData)
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.True(t, strings.Contains(err.Error(), "failed to update application"))
+}
+
+func updateApplicationGetUpdatedError(t *testing.T) {
+	applicationService, mocks := setUp(t)
+
+	applicationName := "test-application"
+	newName := "updated-name"
+
+	updateData := &model.ApplicationUpdate{
+		Name: &newName,
+	}
+
+	existingApp := &obj.Application{
+		CosmosObj: obj.CosmosObj{
+			ID: 1,
+		},
+		Name:        applicationName,
+		Description: "test description",
+	}
+
+	expectedUpdateObj := &obj.Application{
+		CosmosObj: obj.CosmosObj{
+			ID: 1,
+		},
+		Name:        newName,
+		Description: "test description",
+	}
+
+	mocks.storageServiceMock.EXPECT().
+		GetApplicationWithName(gomock.Any(), applicationName).
+		Return(existingApp, nil)
+
+	mocks.storageServiceMock.EXPECT().
+		UpdateApplication(gomock.Any(), expectedUpdateObj).
+		Return(nil)
+
+	mocks.storageServiceMock.EXPECT().
+		GetApplicationWithName(gomock.Any(), newName).
+		Return(nil, storage.ErrInternal)
+
+	result, err := applicationService.UpdateApplication(context.Background(), applicationName, updateData)
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.True(t, strings.Contains(err.Error(), "failed to retrieve updated application"))
 }

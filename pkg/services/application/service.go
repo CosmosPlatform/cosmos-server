@@ -127,7 +127,6 @@ func (s *applicationService) UpdateApplication(ctx context.Context, name string,
 		return nil, errors.NewInternalServerError("failed to retrieve application: " + err.Error())
 	}
 
-	// Prepare update object
 	updateObj := &obj.Application{
 		CosmosObj: obj.CosmosObj{
 			ID: existingApp.ID,
@@ -141,7 +140,6 @@ func (s *applicationService) UpdateApplication(ctx context.Context, name string,
 		GitRepositoryBranch: existingApp.GitRepositoryBranch,
 	}
 
-	// Apply updates
 	if updateData.Name != nil {
 		updateObj.Name = *updateData.Name
 	}
@@ -149,7 +147,6 @@ func (s *applicationService) UpdateApplication(ctx context.Context, name string,
 		updateObj.Description = *updateData.Description
 	}
 
-	// Handle team update
 	if updateData.Team != nil {
 		if *updateData.Team == "" {
 			updateObj.TeamID = nil
@@ -166,7 +163,6 @@ func (s *applicationService) UpdateApplication(ctx context.Context, name string,
 		}
 	}
 
-	// Handle git information update
 	if updateData.GitInformation != nil {
 		updateObj.GitProvider = updateData.GitInformation.Provider
 		updateObj.GitRepositoryOwner = updateData.GitInformation.RepositoryOwner
@@ -174,16 +170,16 @@ func (s *applicationService) UpdateApplication(ctx context.Context, name string,
 		updateObj.GitRepositoryBranch = updateData.GitInformation.RepositoryBranch
 	}
 
-	// Update in storage
 	err = s.storageService.UpdateApplication(ctx, updateObj)
 	if err != nil {
 		if errorUtils.Is(err, storage.ErrAlreadyExists) {
-			return nil, errors.NewConflictError("application with name " + updateObj.Name + " already exists")
+			if updateData.Name != nil {
+				return nil, errors.NewConflictError("another application with name " + updateObj.Name + " already exists")
+			}
 		}
 		return nil, errors.NewInternalServerError("failed to update application: " + err.Error())
 	}
 
-	// Get updated application
 	updatedApp, err := s.storageService.GetApplicationWithName(ctx, updateObj.Name)
 	if err != nil {
 		return nil, errors.NewInternalServerError("failed to retrieve updated application: " + err.Error())
