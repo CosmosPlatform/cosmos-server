@@ -6,9 +6,10 @@ import (
 )
 
 type Translator interface {
-	ToCreateApplicationResponse(name, description, team string) *api.CreateApplicationResponse
+	ToCreateApplicationResponse(name, description, team string, gitInformation *model.GitInformation) *api.CreateApplicationResponse
 	ToGetApplicationResponse(applicationObj *model.Application) *api.GetApplicationResponse
 	ToGetApplicationsResponse(applicationObj []*model.Application) *api.GetApplicationsResponse
+	ToUpdateApplicationResponse(app *model.Application) *api.UpdateApplicationResponse
 }
 
 type translator struct{}
@@ -17,12 +18,13 @@ func NewTranslator() Translator {
 	return &translator{}
 }
 
-func (t *translator) ToCreateApplicationResponse(name, description, team string) *api.CreateApplicationResponse {
+func (t *translator) ToCreateApplicationResponse(name, description, team string, gitInformation *model.GitInformation) *api.CreateApplicationResponse {
 	return &api.CreateApplicationResponse{
 		Application: &api.Application{
-			Name:        name,
-			Description: description,
-			Team:        &api.Team{Name: team},
+			Name:           name,
+			Description:    description,
+			Team:           &api.Team{Name: team},
+			GitInformation: t.ToApiGitInformation(gitInformation),
 		},
 	}
 }
@@ -43,6 +45,18 @@ func (t *translator) ToApiTeam(teamModel *model.Team) *api.Team {
 	}
 }
 
+func (t *translator) ToApiGitInformation(gitInfo *model.GitInformation) *api.GitInformation {
+	if gitInfo == nil {
+		return nil
+	}
+	return &api.GitInformation{
+		Provider:         gitInfo.Provider,
+		RepositoryOwner:  gitInfo.RepositoryOwner,
+		RepositoryName:   gitInfo.RepositoryName,
+		RepositoryBranch: gitInfo.RepositoryBranch,
+	}
+}
+
 func (t *translator) ToGetApplicationsResponse(applicationModels []*model.Application) *api.GetApplicationsResponse {
 	applications := make([]*api.Application, 0)
 	for _, applicationModel := range applicationModels {
@@ -55,8 +69,15 @@ func (t *translator) ToGetApplicationsResponse(applicationModels []*model.Applic
 
 func (t *translator) ToApplicationApi(applicationModel *model.Application) *api.Application {
 	return &api.Application{
-		Name:        applicationModel.Name,
-		Description: applicationModel.Description,
-		Team:        t.ToApiTeam(applicationModel.Team),
+		Name:           applicationModel.Name,
+		Description:    applicationModel.Description,
+		Team:           t.ToApiTeam(applicationModel.Team),
+		GitInformation: t.ToApiGitInformation(applicationModel.GitInformation),
+	}
+}
+
+func (t *translator) ToUpdateApplicationResponse(app *model.Application) *api.UpdateApplicationResponse {
+	return &api.UpdateApplicationResponse{
+		Application: t.ToApplicationApi(app),
 	}
 }

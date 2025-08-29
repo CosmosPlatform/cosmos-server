@@ -26,4 +26,5 @@ type Service interface {
 	GetApplicationsByTeam(ctx context.Context, team string) ([]*obj.Application, error)
 	GetApplicationsWithFilter(ctx context.Context, filter string) ([]*obj.Application, error)
 	DeleteApplicationWithName(ctx context.Context, name string) error
+	UpdateApplication(ctx context.Context, application *obj.Application) error
 }

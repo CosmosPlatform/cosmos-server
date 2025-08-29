@@ -4,6 +4,7 @@ import (
 	"cosmos-server/api"
 	"cosmos-server/pkg/errors"
 	"cosmos-server/pkg/log"
+	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/services/application"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -29,6 +30,7 @@ func AddAuthenticatedApplicationHandler(e *gin.RouterGroup, applicationService a
 	applicationsGroup.GET("", handler.handleGetApplications)
 	applicationsGroup.GET("/team/:teamName", handler.handleGetApplicationByTeam)
 	applicationsGroup.POST("", handler.handleCreateApplication)
+	applicationsGroup.PUT("/:application", handler.handleUpdateApplication)
 	applicationsGroup.DELETE("/:application", handler.handleDeleteApplication)
 }
 
@@ -45,14 +47,23 @@ func (handler *handler) handleCreateApplication(e *gin.Context) {
 		_ = e.Error(errors.NewBadRequestError(err.Error()))
 		return
 	}
+	var gitInformation *model.GitInformation
+	if createApplicationRequest.GitInformation != nil {
+		gitInformation = &model.GitInformation{
+			Provider:         createApplicationRequest.GitInformation.Provider,
+			RepositoryOwner:  createApplicationRequest.GitInformation.RepositoryOwner,
+			RepositoryName:   createApplicationRequest.GitInformation.RepositoryName,
+			RepositoryBranch: createApplicationRequest.GitInformation.RepositoryBranch,
+		}
+	}
 
-	err := handler.applicationService.AddApplication(e, createApplicationRequest.Name, createApplicationRequest.Description, createApplicationRequest.Team)
+	err := handler.applicationService.AddApplication(e, createApplicationRequest.Name, createApplicationRequest.Description, createApplicationRequest.Team, gitInformation)
 	if err != nil {
 		_ = e.Error(err)
 		return
 	}
 
-	e.JSON(http.StatusCreated, handler.translator.ToCreateApplicationResponse(createApplicationRequest.Name, createApplicationRequest.Description, createApplicationRequest.Team))
+	e.JSON(http.StatusCreated, handler.translator.ToCreateApplicationResponse(createApplicationRequest.Name, createApplicationRequest.Description, createApplicationRequest.Team, gitInformation))
 }
 
 func (handler *handler) handleGetApplication(e *gin.Context) {
@@ -113,4 +124,47 @@ func (handler *handler) handleDeleteApplication(e *gin.Context) {
 	}
 
 	e.Status(http.StatusNoContent)
+}
+
+func (handler *handler) handleUpdateApplication(e *gin.Context) {
+	applicationName := e.Param("application")
+	if applicationName == "" {
+		_ = e.Error(errors.NewBadRequestError("application name missing"))
+		return
+	}
+
+	var updateRequest api.UpdateApplicationRequest
+	if err := e.ShouldBindJSON(&updateRequest); err != nil {
+		handler.logger.Errorf("Failed to bind JSON for update request: %v", err)
+		_ = e.Error(errors.NewBadRequestError(fmt.Sprintf("Invalid request format: %v", err)))
+		return
+	}
+
+	if err := updateRequest.Validate(); err != nil {
+		_ = e.Error(errors.NewBadRequestError(err.Error()))
+		return
+	}
+
+	updateData := &model.ApplicationUpdate{
+		Name:        updateRequest.Name,
+		Description: updateRequest.Description,
+		Team:        updateRequest.Team,
+	}
+
+	if updateRequest.GitInformation != nil {
+		updateData.GitInformation = &model.GitInformation{
+			Provider:         updateRequest.GitInformation.Provider,
+			RepositoryOwner:  updateRequest.GitInformation.RepositoryOwner,
+			RepositoryName:   updateRequest.GitInformation.RepositoryName,
+			RepositoryBranch: updateRequest.GitInformation.RepositoryBranch,
+		}
+	}
+
+	updatedApp, err := handler.applicationService.UpdateApplication(e, applicationName, updateData)
+	if err != nil {
+		_ = e.Error(err)
+		return
+	}
+
+	e.JSON(http.StatusOK, handler.translator.ToUpdateApplicationResponse(updatedApp))
 }
