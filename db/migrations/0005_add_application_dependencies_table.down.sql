@@ -1,0 +1,1 @@
+DROP TABLE IS EXISTS dependency_relationships;

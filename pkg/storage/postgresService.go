@@ -246,3 +246,32 @@ func (s *PostgresService) UpdateApplication(ctx context.Context, application *ob
 
 	return nil
 }
+
+func (s *PostgresService) InsertDependencyRelationship(ctx context.Context, dependency *obj.DependencyRelationship) error {
+	err := gorm.G[obj.DependencyRelationship](s.db).Create(ctx, dependency)
+	if err != nil {
+		if errorUtils.Is(err, gorm.ErrDuplicatedKey) {
+			return ErrAlreadyExists
+		}
+		return fmt.Errorf("failed to insert dependency relationship: %v", err)
+	}
+
+	return nil
+}
+
+func (s *PostgresService) GetDependencyRelationship(ctx context.Context, consumerID, providerID int) (*obj.DependencyRelationship, error) {
+	dependency, err := gorm.G[*obj.DependencyRelationship](s.db).
+		Preload("Consumer", nil).
+		Preload("Provider", nil).
+		Where("consumer_id = ? AND provider_id = ?", consumerID, providerID).
+		First(ctx)
+
+	if err != nil {
+		if errorUtils.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to get dependency relationship: %v", err)
+	}
+
+	return dependency, nil
+}

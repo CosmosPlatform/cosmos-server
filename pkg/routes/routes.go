@@ -4,6 +4,7 @@ import (
 	"cosmos-server/pkg/log"
 	"cosmos-server/pkg/services/application"
 	"cosmos-server/pkg/services/auth"
+	"cosmos-server/pkg/services/monitoring"
 	"cosmos-server/pkg/services/team"
 	"cosmos-server/pkg/services/user"
 	"github.com/gin-gonic/gin"
@@ -20,15 +21,17 @@ type HTTPRoutes struct {
 	UserService        user.Service
 	TeamService        team.Service
 	ApplicationService application.Service
+	MonitoringService  monitoring.Service
 	Logger             log.Logger
 }
 
-func NewHTTPRoutes(authService auth.Service, userService user.Service, teamService team.Service, applicationService application.Service, logger log.Logger) *HTTPRoutes {
+func NewHTTPRoutes(authService auth.Service, userService user.Service, teamService team.Service, applicationService application.Service, monitoringService monitoring.Service, logger log.Logger) *HTTPRoutes {
 	return &HTTPRoutes{
 		AuthService:        authService,
 		UserService:        userService,
 		TeamService:        teamService,
 		ApplicationService: applicationService,
+		MonitoringService:  monitoringService,
 		Logger:             logger,
 	}
 }

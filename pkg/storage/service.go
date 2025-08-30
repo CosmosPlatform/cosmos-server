@@ -27,4 +27,7 @@ type Service interface {
 	GetApplicationsWithFilter(ctx context.Context, filter string) ([]*obj.Application, error)
 	DeleteApplicationWithName(ctx context.Context, name string) error
 	UpdateApplication(ctx context.Context, application *obj.Application) error
+
+	InsertDependencyRelationship(ctx context.Context, dependency *obj.DependencyRelationship) error
+	GetDependencyRelationship(ctx context.Context, consumerID, providerID int) (*obj.DependencyRelationship, error)
 }

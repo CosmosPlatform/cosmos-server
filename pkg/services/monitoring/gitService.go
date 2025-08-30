@@ -1,4 +1,4 @@
-package git
+package monitoring
 
 import (
 	"context"
@@ -11,11 +11,16 @@ import (
 	"os"
 )
 
+type GitService interface {
+	GetFileMetadata(ctx context.Context, owner, repo, branch, path string) (*model.FileMetadata, error)
+	GetFileWithContent(ctx context.Context, owner, repo, branch, path string) (*model.FileContent, error)
+}
+
 type githubService struct {
 	client *github.Client
 }
 
-func NewGithubService() Service {
+func NewGithubService() GitService {
 	var httpClient *http.Client
 
 	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
