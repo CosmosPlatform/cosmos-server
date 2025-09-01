@@ -8,7 +8,7 @@ import (
 	"github.com/lib/pq"
 )
 
-type DependencyRelationship struct {
+type ApplicationDependency struct {
 	CosmosObj
 	ConsumerID int
 	ProviderID int
@@ -18,14 +18,12 @@ type DependencyRelationship struct {
 	Endpoints  Endpoints      `gorm:"type:jsonb"`
 }
 
-type Endpoints struct {
-	Endpoints []Endpoint `json:"endpoints"`
-}
+type Endpoints map[string]EndpointMethods
 
-type Endpoint struct {
-	Path    string   `json:"path"`
-	Method  string   `json:"method"`
-	Reasons []string `json:"reasons"`
+type EndpointMethods map[string]EndpointDetails
+
+type EndpointDetails struct {
+	Reasons []string `json:"reasons,omitempty"`
 }
 
 func (e Endpoints) Value() (driver.Value, error) {
@@ -34,7 +32,7 @@ func (e Endpoints) Value() (driver.Value, error) {
 
 func (e *Endpoints) Scan(value any) error {
 	if value == nil {
-		*e = Endpoints{}
+		*e = make(Endpoints)
 		return nil
 	}
 

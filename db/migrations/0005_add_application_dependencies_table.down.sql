@@ -1,1 +1,1 @@
-DROP TABLE IS EXISTS dependency_relationships;
+DROP TABLE IF EXISTS application_dependencies;

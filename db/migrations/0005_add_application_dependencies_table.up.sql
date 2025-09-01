@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS dependency_relationships (
+CREATE TABLE IF NOT EXISTS application_dependencies (
     id SERIAL PRIMARY KEY,
     consumer_id INTEGER REFERENCES applications(id) ON DELETE CASCADE,
     provider_id INTEGER REFERENCES applications(id) ON DELETE CASCADE,
