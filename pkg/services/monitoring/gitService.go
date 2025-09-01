@@ -3,7 +3,6 @@ package monitoring
 import (
 	"context"
 	"cosmos-server/pkg/model"
-	"encoding/base64"
 	"fmt"
 	"github.com/google/go-github/v74/github"
 	"golang.org/x/oauth2"
@@ -63,12 +62,7 @@ func (g *githubService) GetFileWithContent(ctx context.Context, owner, repo, bra
 		return nil, err
 	}
 
-	rawContent, err := file.GetContent()
-	if err != nil {
-		return nil, err
-	}
-
-	content, err := base64.StdEncoding.DecodeString(rawContent)
+	content, err := file.GetContent()
 	if err != nil {
 		return nil, err
 	}

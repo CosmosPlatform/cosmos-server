@@ -28,6 +28,6 @@ type Service interface {
 	DeleteApplicationWithName(ctx context.Context, name string) error
 	UpdateApplication(ctx context.Context, application *obj.Application) error
 
-	InsertDependencyRelationship(ctx context.Context, dependency *obj.DependencyRelationship) error
-	GetDependencyRelationship(ctx context.Context, consumerID, providerID int) (*obj.DependencyRelationship, error)
+	InsertApplicationDependency(ctx context.Context, dependency *obj.ApplicationDependency) error
+	GetApplicationDependency(ctx context.Context, consumerID, providerID int) (*obj.ApplicationDependency, error)
 }

@@ -2,6 +2,7 @@ package routes
 
 import (
 	"cosmos-server/pkg/log"
+	monitoringRoute "cosmos-server/pkg/routes/monitoring"
 	"cosmos-server/pkg/services/application"
 	"cosmos-server/pkg/services/auth"
 	"cosmos-server/pkg/services/monitoring"
@@ -39,6 +40,7 @@ func NewHTTPRoutes(authService auth.Service, userService user.Service, teamServi
 func (r *HTTPRoutes) RegisterUnauthenticatedRoutes(e *gin.RouterGroup) {
 	authRoute.AddAuthHandler(e, r.AuthService, r.Logger)
 	healthcheckRoute.AddHealthcheckHandler(e)
+	monitoringRoute.AddAuthenticatedMonitoringHandler(e, r.MonitoringService, r.ApplicationService, monitoring.NewTranslator(), r.Logger)
 }
 
 func (r *HTTPRoutes) RegisterAuthenticatedRoutes(e *gin.RouterGroup) {

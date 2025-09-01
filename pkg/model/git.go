@@ -12,5 +12,5 @@ type FileMetadata struct {
 
 type FileContent struct {
 	Metadata FileMetadata
-	Content  []byte
+	Content  string
 }

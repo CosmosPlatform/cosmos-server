@@ -1,0 +1,49 @@
+package monitoring
+
+import (
+	"cosmos-server/pkg/log"
+	"cosmos-server/pkg/services/application"
+	"cosmos-server/pkg/services/monitoring"
+	"fmt"
+	"github.com/gin-gonic/gin"
+)
+
+type handler struct {
+	monitoringService  monitoring.Service
+	applicationService application.Service
+	translator         Translator
+	logger             log.Logger
+}
+
+func AddAuthenticatedMonitoringHandler(e *gin.RouterGroup, monitoringService monitoring.Service, applicationService application.Service, translator Translator, logger log.Logger) {
+	handler := &handler{
+		monitoringService:  monitoringService,
+		applicationService: applicationService,
+		translator:         translator,
+		logger:             logger,
+	}
+
+	monitoringGroup := e.Group("/monitoring")
+
+	monitoringGroup.POST("/update/:application", handler.handleUpdateApplicationMonitoring)
+}
+
+func (handler *handler) handleUpdateApplicationMonitoring(e *gin.Context) {
+	fmt.Println("ENtré")
+	applicationName := e.Param("application")
+
+	applicationToUpdate, err := handler.applicationService.GetApplication(e, applicationName)
+	if err != nil {
+		handler.logger.Errorf("Failed to retrieve application: %v", err)
+		_ = e.Error(err)
+		return
+	}
+
+	err = handler.monitoringService.UpdateApplicationInformation(e, applicationToUpdate)
+	if err != nil {
+		_ = e.Error(err)
+		return
+	}
+
+	e.JSON(200, gin.H{"status": "Monitoring update initiated for application: " + applicationName})
+}

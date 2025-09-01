@@ -7,10 +7,11 @@ import (
 	"cosmos-server/pkg/storage/obj"
 	errorUtils "errors"
 	"fmt"
+	"strings"
+
 	_ "github.com/lib/pq"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"strings"
 )
 
 type PostgresService struct {
@@ -247,20 +248,20 @@ func (s *PostgresService) UpdateApplication(ctx context.Context, application *ob
 	return nil
 }
 
-func (s *PostgresService) InsertDependencyRelationship(ctx context.Context, dependency *obj.DependencyRelationship) error {
-	err := gorm.G[obj.DependencyRelationship](s.db).Create(ctx, dependency)
+func (s *PostgresService) InsertApplicationDependency(ctx context.Context, dependency *obj.ApplicationDependency) error {
+	err := gorm.G[obj.ApplicationDependency](s.db).Create(ctx, dependency)
 	if err != nil {
 		if errorUtils.Is(err, gorm.ErrDuplicatedKey) {
 			return ErrAlreadyExists
 		}
-		return fmt.Errorf("failed to insert dependency relationship: %v", err)
+		return fmt.Errorf("failed to insert application dependency: %v", err)
 	}
 
 	return nil
 }
 
-func (s *PostgresService) GetDependencyRelationship(ctx context.Context, consumerID, providerID int) (*obj.DependencyRelationship, error) {
-	dependency, err := gorm.G[*obj.DependencyRelationship](s.db).
+func (s *PostgresService) GetApplicationDependency(ctx context.Context, consumerID, providerID int) (*obj.ApplicationDependency, error) {
+	dependency, err := gorm.G[*obj.ApplicationDependency](s.db).
 		Preload("Consumer", nil).
 		Preload("Provider", nil).
 		Where("consumer_id = ? AND provider_id = ?", consumerID, providerID).
