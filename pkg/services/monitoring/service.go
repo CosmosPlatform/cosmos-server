@@ -6,6 +6,7 @@ import (
 	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/storage"
 	"encoding/json"
+	"fmt"
 	"strings"
 )
 
@@ -35,22 +36,8 @@ func (s *monitoringService) UpdateApplicationInformation(ctx context.Context, ap
 		return nil // Could be an error because there is nothing to update.
 	}
 
-	rawOpenClientDefinition, err := s.gitService.GetFileWithContent(ctx, application.GitInformation.RepositoryOwner, application.GitInformation.RepositoryName, application.GitInformation.RepositoryBranch, "docs/openclient.json")
+	openClientDef, err := s.getOpenClientDefinition(ctx, application)
 	if err != nil {
-		s.logger.Errorf("Failed to get openclient.json for application %s: %v", application.Name, err)
-		return err
-	}
-
-	var openClientDef model.OpenClientSpecification
-	decoder := json.NewDecoder(strings.NewReader(rawOpenClientDefinition.Content))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&openClientDef); err != nil {
-		s.logger.Errorf("Failed to unmarshal openclient.json for application %s: %v", application.Name, err)
-		return err
-	}
-
-	if err := openClientDef.Validate(); err != nil {
-		s.logger.Errorf("Invalid openclient.json for application %s: %v", application.Name, err)
 		return err
 	}
 
@@ -63,5 +50,76 @@ func (s *monitoringService) UpdateApplicationInformation(ctx context.Context, ap
 		}
 	}
 
+	for dependencyName, dependency := range openClientDef.Dependencies {
+		modelDependency, err := s.transformToModelDependency(ctx, application, dependencyName, dependency)
+		if err != nil {
+			s.logger.Errorf("Failed to transform dependency for application %s: %v", application.Name, err)
+			continue
+		}
+
+		objDependency := s.translator.ToApplicationDependencyObj(modelDependency)
+
+		err = s.storageService.UpsertApplicationDependency(ctx, application.Name, dependencyName, objDependency)
+		if err != nil {
+			s.logger.Errorf("Failed to upsert dependency for application %s: %v", application.Name, err)
+			continue
+		}
+
+		s.logger.Infof("Successfully upserted dependency from %s to %s", application.Name, dependencyName)
+	}
+
 	return nil
+}
+
+func (s *monitoringService) getOpenClientDefinition(ctx context.Context, application *model.Application) (*model.OpenClientSpecification, error) {
+	rawOpenClientDefinition, err := s.gitService.GetFileWithContent(ctx, application.GitInformation.RepositoryOwner, application.GitInformation.RepositoryName, application.GitInformation.RepositoryBranch, "docs/openclient.json")
+	if err != nil {
+		s.logger.Errorf("Failed to get openclient.json for application %s: %v", application.Name, err)
+		return nil, err
+	}
+
+	var openClientDef model.OpenClientSpecification
+	decoder := json.NewDecoder(strings.NewReader(rawOpenClientDefinition.Content))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&openClientDef); err != nil {
+		s.logger.Errorf("Failed to unmarshal openclient.json for application %s: %v", application.Name, err)
+		return nil, err
+	}
+
+	if err := openClientDef.Validate(); err != nil {
+		s.logger.Errorf("Invalid openclient.json for application %s: %v", application.Name, err)
+		return nil, err
+	}
+
+	return &openClientDef, nil
+}
+
+func (s *monitoringService) transformToModelDependency(ctx context.Context, consumer *model.Application, dependencyName string, dependency model.DependencySpecification) (*model.ApplicationDependency, error) {
+	providerApp, err := s.storageService.GetApplicationWithName(ctx, dependencyName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get provider application %s: %v", dependencyName, err)
+	}
+
+	providerAppModel := s.translator.ToApplicationModel(providerApp)
+
+	var endpoints []model.Endpoint
+	for path, methods := range dependency.Endpoints {
+		for method, details := range methods {
+			endpoint := model.Endpoint{
+				Path:    path,
+				Method:  method,
+				Reasons: details.Reasons,
+			}
+			endpoints = append(endpoints, endpoint)
+		}
+	}
+
+	modelDependency := &model.ApplicationDependency{
+		Consumer:  consumer,
+		Provider:  providerAppModel,
+		Reasons:   dependency.Reasons,
+		Endpoints: endpoints,
+	}
+
+	return modelDependency, nil
 }

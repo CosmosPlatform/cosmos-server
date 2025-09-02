@@ -5,6 +5,7 @@ import (
 	"cosmos-server/pkg/config"
 	"cosmos-server/pkg/log"
 	"cosmos-server/pkg/storage/obj"
+	"errors"
 	errorUtils "errors"
 	"fmt"
 	"strings"
@@ -275,4 +276,39 @@ func (s *PostgresService) GetApplicationDependency(ctx context.Context, consumer
 	}
 
 	return dependency, nil
+}
+
+func (s *PostgresService) UpsertApplicationDependency(ctx context.Context, consumerName, providerName string, dependency *obj.ApplicationDependency) error {
+	consumer, err := gorm.G[*obj.Application](s.db).Where("name = ?", consumerName).First(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get consumer application: %v", err)
+	}
+
+	provider, err := gorm.G[*obj.Application](s.db).Where("name = ?", providerName).First(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get provider application: %v", err)
+	}
+
+	dependency.ConsumerID = int(consumer.ID)
+	dependency.ProviderID = int(provider.ID)
+
+	existing, err := s.GetApplicationDependency(ctx, int(consumer.ID), int(provider.ID))
+	if err != nil && !errors.Is(err, ErrNotFound) {
+		return fmt.Errorf("failed to check existing dependency: %v", err)
+	}
+
+	if existing != nil {
+		dependency.ID = existing.ID
+		dependency.CreatedAt = existing.CreatedAt
+		rowsAffected, err := gorm.G[*obj.ApplicationDependency](s.db).Where("id = ?", existing.ID).Updates(ctx, dependency)
+		if err != nil {
+			return fmt.Errorf("failed to update application dependency: %v", err)
+		}
+		if rowsAffected == 0 {
+			return ErrNotFound
+		}
+		return nil
+	}
+
+	return s.InsertApplicationDependency(ctx, dependency)
 }

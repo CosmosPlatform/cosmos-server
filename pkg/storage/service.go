@@ -30,4 +30,5 @@ type Service interface {
 
 	InsertApplicationDependency(ctx context.Context, dependency *obj.ApplicationDependency) error
 	GetApplicationDependency(ctx context.Context, consumerID, providerID int) (*obj.ApplicationDependency, error)
+	UpsertApplicationDependency(ctx context.Context, consumerName, providerName string, dependency *obj.ApplicationDependency) error
 }
