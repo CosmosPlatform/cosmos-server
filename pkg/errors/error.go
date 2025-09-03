@@ -8,6 +8,7 @@ const (
 	Forbidden
 	NotFound
 	InternalServerError
+	Conflict
 )
 
 type ProgramError interface {
@@ -149,7 +150,7 @@ func NewConflictError(error string, details ...string) ProgramError {
 }
 
 func (e *conflictError) Type() ErrorType {
-	return InternalServerError
+	return Conflict
 }
 
 func (e *conflictError) Error() string {

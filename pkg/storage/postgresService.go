@@ -177,7 +177,15 @@ func (s *PostgresService) GetTeamWithName(ctx context.Context, name string) (*ob
 }
 
 func (s *PostgresService) InsertApplication(ctx context.Context, application *obj.Application) error {
-	err := gorm.G[obj.Application](s.db).Create(ctx, application)
+	existing, err := gorm.G[*obj.Application](s.db).Where("LOWER(name) = LOWER(?)", application.Name).First(ctx)
+	if err == nil && existing != nil {
+		return ErrAlreadyExists
+	}
+	if err != nil && !errorUtils.Is(err, gorm.ErrRecordNotFound) {
+		return fmt.Errorf("failed to check for existing application: %v", err)
+	}
+
+	err = gorm.G[obj.Application](s.db).Create(ctx, application)
 	if err != nil {
 		if errorUtils.Is(err, gorm.ErrDuplicatedKey) {
 			return ErrAlreadyExists
@@ -189,7 +197,7 @@ func (s *PostgresService) InsertApplication(ctx context.Context, application *ob
 }
 
 func (s *PostgresService) GetApplicationWithName(ctx context.Context, name string) (*obj.Application, error) {
-	application, err := gorm.G[*obj.Application](s.db).Preload("Team", nil).Where("name = ?", name).First(ctx)
+	application, err := gorm.G[*obj.Application](s.db).Preload("Team", nil).Where("LOWER(name) = LOWER(?)", name).First(ctx)
 	if err != nil {
 		if errorUtils.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrNotFound
