@@ -41,15 +41,6 @@ func (s *monitoringService) UpdateApplicationInformation(ctx context.Context, ap
 		return err
 	}
 
-	for _, dependency := range openClientDef.Dependencies {
-		s.logger.Infof("Application %s has dependency with reasons: %v", application.Name, dependency.Reasons)
-		for path, methods := range dependency.Endpoints {
-			for method, details := range methods {
-				s.logger.Infof("Application %s has endpoint %s %s with reasons: %v", application.Name, method, path, details.Reasons)
-			}
-		}
-	}
-
 	for dependencyName, dependency := range openClientDef.Dependencies {
 		modelDependency, err := s.transformToModelDependency(ctx, application, dependencyName, dependency)
 		if err != nil {
@@ -102,16 +93,13 @@ func (s *monitoringService) transformToModelDependency(ctx context.Context, cons
 
 	providerAppModel := s.translator.ToApplicationModel(providerApp)
 
-	var endpoints []model.Endpoint
+	endpoints := make(model.Endpoints)
 	for path, methods := range dependency.Endpoints {
+		endpointMethods := make(model.EndpointMethods)
 		for method, details := range methods {
-			endpoint := model.Endpoint{
-				Path:    path,
-				Method:  method,
-				Reasons: details.Reasons,
-			}
-			endpoints = append(endpoints, endpoint)
+			endpointMethods[method] = model.EndpointDetails(details)
 		}
+		endpoints[path] = endpointMethods
 	}
 
 	modelDependency := &model.ApplicationDependency{

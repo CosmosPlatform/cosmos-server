@@ -11,11 +11,11 @@ type OpenClientSpecification struct {
 }
 
 type DependencySpecification struct {
-	Reasons   []string                   `json:"reasons"`
-	Endpoints map[string]EndpointMethods `json:"endpoints"`
+	Reasons   []string                                `json:"reasons"`
+	Endpoints map[string]EndpointMethodsSpecification `json:"endpoints"`
 }
 
-type EndpointMethods map[string]EndpointSpecification
+type EndpointMethodsSpecification map[string]EndpointSpecification
 
 type EndpointSpecification struct {
 	Reasons []string `json:"reasons"`

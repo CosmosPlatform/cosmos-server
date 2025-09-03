@@ -4,7 +4,7 @@ import (
 	"cosmos-server/pkg/log"
 	"cosmos-server/pkg/services/application"
 	"cosmos-server/pkg/services/monitoring"
-	"fmt"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -29,7 +29,6 @@ func AddAuthenticatedMonitoringHandler(e *gin.RouterGroup, monitoringService mon
 }
 
 func (handler *handler) handleUpdateApplicationMonitoring(e *gin.Context) {
-	fmt.Println("ENtré")
 	applicationName := e.Param("application")
 
 	applicationToUpdate, err := handler.applicationService.GetApplication(e, applicationName)

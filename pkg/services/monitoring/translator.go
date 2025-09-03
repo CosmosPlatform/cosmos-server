@@ -56,16 +56,18 @@ func (t *translator) ToApplicationDependencyObj(modelDependency *model.Applicati
 	}
 }
 
-func (t *translator) toObjEndpoints(modelEndpoints []model.Endpoint) obj.Endpoints {
+func (t *translator) toObjEndpoints(modelEndpoints model.Endpoints) obj.Endpoints {
 	endpoints := make(obj.Endpoints)
 
-	for _, endpoint := range modelEndpoints {
-		if _, exists := endpoints[endpoint.Path]; !exists {
-			endpoints[endpoint.Path] = make(obj.EndpointMethods)
+	for path, methods := range modelEndpoints {
+		if _, exists := endpoints[path]; !exists {
+			endpoints[path] = make(obj.EndpointMethods)
 		}
 
-		endpoints[endpoint.Path][endpoint.Method] = obj.EndpointDetails{
-			Reasons: endpoint.Reasons,
+		for method, details := range methods {
+			endpoints[path][method] = obj.EndpointDetails{
+				Reasons: details.Reasons,
+			}
 		}
 	}
 

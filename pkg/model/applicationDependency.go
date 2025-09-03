@@ -4,11 +4,13 @@ type ApplicationDependency struct {
 	Consumer  *Application
 	Provider  *Application
 	Reasons   []string
-	Endpoints []Endpoint
+	Endpoints Endpoints
 }
 
-type Endpoint struct {
-	Path    string
-	Method  string
-	Reasons []string
+type Endpoints map[string]EndpointMethods
+
+type EndpointMethods map[string]EndpointDetails
+
+type EndpointDetails struct {
+	Reasons []string `json:"reasons,omitempty"`
 }
