@@ -12,6 +12,7 @@ import (
 
 type Service interface {
 	UpdateApplicationInformation(ctx context.Context, application *model.Application) error
+	GetApplicationInteractions(ctx context.Context, applicationName string) (*model.ApplicationInteractions, error)
 }
 
 type monitoringService struct {
@@ -110,4 +111,39 @@ func (s *monitoringService) transformToModelDependency(ctx context.Context, cons
 	}
 
 	return modelDependency, nil
+}
+
+func (s *monitoringService) GetApplicationInteractions(ctx context.Context, applicationName string) (*model.ApplicationInteractions, error) {
+	interactions := make([]*model.ApplicationDependency, 0)
+	applicationsToProvide := make([]*model.Application, 0)
+	applicationsToConsume := make([]*model.Application, 0)
+
+	objDependenciesAsConsumer, err := s.storageService.GetApplicationDependenciesByConsumer(ctx, applicationName)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, objDependency := range objDependenciesAsConsumer {
+		modelDependency := s.translator.ToApplicationDependencyModel(objDependency)
+		applicationsToConsume = append(applicationsToConsume, modelDependency.Consumer)
+		interactions = append(interactions, modelDependency)
+	}
+
+	objDependenciesAsProvider, err := s.storageService.GetApplicationDependenciesByProvider(ctx, applicationName)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, objDependency := range objDependenciesAsProvider {
+		modelDependency := s.translator.ToApplicationDependencyModel(objDependency)
+		applicationsToProvide = append(applicationsToProvide, modelDependency.Provider)
+		interactions = append(interactions, modelDependency)
+	}
+
+	return &model.ApplicationInteractions{
+		MainApplication:       nil, // We fill this in the calling function
+		ApplicationsToProvide: applicationsToProvide,
+		ApplicationsToConsume: applicationsToConsume,
+		Interactions:          interactions,
+	}, nil
 }

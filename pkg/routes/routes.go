@@ -40,7 +40,7 @@ func NewHTTPRoutes(authService auth.Service, userService user.Service, teamServi
 func (r *HTTPRoutes) RegisterUnauthenticatedRoutes(e *gin.RouterGroup) {
 	authRoute.AddAuthHandler(e, r.AuthService, r.Logger)
 	healthcheckRoute.AddHealthcheckHandler(e)
-	monitoringRoute.AddAuthenticatedMonitoringHandler(e, r.MonitoringService, r.ApplicationService, monitoring.NewTranslator(), r.Logger)
+	monitoringRoute.AddAuthenticatedMonitoringHandler(e, r.MonitoringService, r.ApplicationService, monitoringRoute.NewTranslator(), r.Logger)
 }
 
 func (r *HTTPRoutes) RegisterAuthenticatedRoutes(e *gin.RouterGroup) {

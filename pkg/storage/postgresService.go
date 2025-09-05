@@ -5,7 +5,6 @@ import (
 	"cosmos-server/pkg/config"
 	"cosmos-server/pkg/log"
 	"cosmos-server/pkg/storage/obj"
-	"errors"
 	errorUtils "errors"
 	"fmt"
 	"strings"
@@ -301,7 +300,7 @@ func (s *PostgresService) UpsertApplicationDependency(ctx context.Context, consu
 	dependency.ProviderID = int(provider.ID)
 
 	existing, err := s.GetApplicationDependency(ctx, int(consumer.ID), int(provider.ID))
-	if err != nil && !errors.Is(err, ErrNotFound) {
+	if err != nil && !errorUtils.Is(err, ErrNotFound) {
 		return fmt.Errorf("failed to check existing dependency: %v", err)
 	}
 
@@ -319,4 +318,40 @@ func (s *PostgresService) UpsertApplicationDependency(ctx context.Context, consu
 	}
 
 	return s.InsertApplicationDependency(ctx, dependency)
+}
+
+func (s *PostgresService) GetApplicationDependenciesByConsumer(ctx context.Context, consumerName string) ([]*obj.ApplicationDependency, error) {
+	consumer, err := gorm.G[*obj.Application](s.db).Where("name = ?", consumerName).First(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get consumer application: %v", err)
+	}
+
+	dependencies, err := gorm.G[*obj.ApplicationDependency](s.db).
+		Preload("Consumer", nil).
+		Preload("Provider", nil).
+		Where("consumer_id = ?", consumer.ID).
+		Find(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get application dependencies for consumer %s: %v", consumerName, err)
+	}
+
+	return dependencies, nil
+}
+
+func (s *PostgresService) GetApplicationDependenciesByProvider(ctx context.Context, providerName string) ([]*obj.ApplicationDependency, error) {
+	provider, err := gorm.G[*obj.Application](s.db).Where("name = ?", providerName).First(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get provider application: %v", err)
+	}
+
+	dependencies, err := gorm.G[*obj.ApplicationDependency](s.db).
+		Preload("Consumer", nil).
+		Preload("Provider", nil).
+		Where("provider_id = ?", provider.ID).
+		Find(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get application dependencies for provider %s: %v", providerName, err)
+	}
+
+	return dependencies, nil
 }

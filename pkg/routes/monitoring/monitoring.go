@@ -4,6 +4,7 @@ import (
 	"cosmos-server/pkg/log"
 	"cosmos-server/pkg/services/application"
 	"cosmos-server/pkg/services/monitoring"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -26,6 +27,7 @@ func AddAuthenticatedMonitoringHandler(e *gin.RouterGroup, monitoringService mon
 	monitoringGroup := e.Group("/monitoring")
 
 	monitoringGroup.POST("/update/:application", handler.handleUpdateApplicationMonitoring)
+	monitoringGroup.GET("/interactions/:application", handler.handleGetApplicationInteractions)
 }
 
 func (handler *handler) handleUpdateApplicationMonitoring(e *gin.Context) {
@@ -44,5 +46,27 @@ func (handler *handler) handleUpdateApplicationMonitoring(e *gin.Context) {
 		return
 	}
 
-	e.JSON(200, gin.H{"status": "Monitoring update initiated for application: " + applicationName})
+	e.JSON(http.StatusNoContent, nil)
+}
+
+func (handler *handler) handleGetApplicationInteractions(e *gin.Context) {
+	applicationName := e.Param("application")
+
+	evaluatedApplication, err := handler.applicationService.GetApplication(e, applicationName)
+	if err != nil {
+		handler.logger.Errorf("Failed to retrieve evaluatedApplication: %v", err)
+		_ = e.Error(err)
+		return
+	}
+
+	interactions, err := handler.monitoringService.GetApplicationInteractions(e, evaluatedApplication.Name)
+	if err != nil {
+		handler.logger.Errorf("Failed to retrieve evaluatedApplication interactions: %v", err)
+		_ = e.Error(err)
+		return
+	}
+
+	interactions.MainApplication = evaluatedApplication
+
+	e.JSON(200, handler.translator.ToGetApplicationInteractionsResponse(interactions))
 }

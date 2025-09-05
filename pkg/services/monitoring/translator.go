@@ -8,6 +8,7 @@ import (
 type Translator interface {
 	ToApplicationModel(objApplication *obj.Application) *model.Application
 	ToApplicationDependencyObj(modelDependency *model.ApplicationDependency) *obj.ApplicationDependency
+	ToApplicationDependencyModel(objDependency *obj.ApplicationDependency) *model.ApplicationDependency
 }
 
 type translator struct{}
@@ -68,6 +69,35 @@ func (t *translator) toObjEndpoints(modelEndpoints model.Endpoints) obj.Endpoint
 			endpoints[path][method] = obj.EndpointDetails{
 				Reasons: details.Reasons,
 			}
+		}
+	}
+
+	return endpoints
+}
+
+func (t *translator) ToApplicationDependencyModel(objDependency *obj.ApplicationDependency) *model.ApplicationDependency {
+	if objDependency == nil {
+		return nil
+	}
+
+	return &model.ApplicationDependency{
+		Consumer:  t.ToApplicationModel(objDependency.Consumer),
+		Provider:  t.ToApplicationModel(objDependency.Provider),
+		Reasons:   objDependency.Reasons,
+		Endpoints: t.toModelEndpoints(objDependency.Endpoints),
+	}
+}
+
+func (t *translator) toModelEndpoints(objEndpoints obj.Endpoints) model.Endpoints {
+	endpoints := make(model.Endpoints)
+
+	for path, methods := range objEndpoints {
+		if _, exists := endpoints[path]; !exists {
+			endpoints[path] = make(model.EndpointMethods)
+		}
+
+		for method, details := range methods {
+			endpoints[path][method] = model.EndpointDetails(details)
 		}
 	}
 
