@@ -21,10 +21,9 @@ func (t *translator) ToGetApplicationInteractionsResponse(interactions *model.Ap
 	}
 
 	return &api.GetApplicationInteractionsResponse{
-		MainApplication:       t.toApplicationInformation(interactions.MainApplication),
-		ApplicationsToProvide: t.toApplicationInformationSlice(interactions.ApplicationsToProvide),
-		ApplicationsToConsume: t.toApplicationInformationSlice(interactions.ApplicationsToConsume),
-		Dependencies:          t.toApplicationDependencySlice(interactions.Interactions),
+		MainApplication:      interactions.MainApplication,
+		ApplicationsInvolved: t.toApplicationInformationSlice(interactions.ApplicationsInvolved),
+		Dependencies:         t.toApplicationDependencySlice(interactions.Interactions),
 	}
 }
 
@@ -43,14 +42,14 @@ func (t *translator) toApplicationInformation(app *model.Application) api.Applic
 	}
 }
 
-func (t *translator) toApplicationInformationSlice(apps []*model.Application) []api.ApplicationInformation {
+func (t *translator) toApplicationInformationSlice(apps map[string]*model.Application) map[string]api.ApplicationInformation {
 	if apps == nil {
 		return nil
 	}
 
-	result := make([]api.ApplicationInformation, 0, len(apps))
-	for _, app := range apps {
-		result = append(result, t.toApplicationInformation(app))
+	result := make(map[string]api.ApplicationInformation, len(apps))
+	for key, app := range apps {
+		result[key] = t.toApplicationInformation(app)
 	}
 	return result
 }

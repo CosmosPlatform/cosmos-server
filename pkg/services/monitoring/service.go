@@ -115,35 +115,27 @@ func (s *monitoringService) transformToModelDependency(ctx context.Context, cons
 
 func (s *monitoringService) GetApplicationInteractions(ctx context.Context, applicationName string) (*model.ApplicationInteractions, error) {
 	interactions := make([]*model.ApplicationDependency, 0)
-	applicationsToProvide := make([]*model.Application, 0)
-	applicationsToConsume := make([]*model.Application, 0)
+	applicationsInvolved := make(map[string]*model.Application)
 
-	objDependenciesAsConsumer, err := s.storageService.GetApplicationDependenciesByConsumer(ctx, applicationName)
+	objDependencies, err := s.storageService.GetApplicationDependenciesWithApplicationInvolved(ctx, applicationName)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, objDependency := range objDependenciesAsConsumer {
+	for _, objDependency := range objDependencies {
 		modelDependency := s.translator.ToApplicationDependencyModel(objDependency)
-		applicationsToConsume = append(applicationsToConsume, modelDependency.Consumer)
 		interactions = append(interactions, modelDependency)
-	}
-
-	objDependenciesAsProvider, err := s.storageService.GetApplicationDependenciesByProvider(ctx, applicationName)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, objDependency := range objDependenciesAsProvider {
-		modelDependency := s.translator.ToApplicationDependencyModel(objDependency)
-		applicationsToProvide = append(applicationsToProvide, modelDependency.Provider)
-		interactions = append(interactions, modelDependency)
+		if _, exists := applicationsInvolved[modelDependency.Consumer.Name]; !exists {
+			applicationsInvolved[modelDependency.Consumer.Name] = modelDependency.Consumer
+		}
+		if _, exists := applicationsInvolved[modelDependency.Provider.Name]; !exists {
+			applicationsInvolved[modelDependency.Provider.Name] = modelDependency.Provider
+		}
 	}
 
 	return &model.ApplicationInteractions{
-		MainApplication:       nil, // We fill this in the calling function
-		ApplicationsToProvide: applicationsToProvide,
-		ApplicationsToConsume: applicationsToConsume,
-		Interactions:          interactions,
+		MainApplication:      applicationName,
+		ApplicationsInvolved: applicationsInvolved,
+		Interactions:         interactions,
 	}, nil
 }

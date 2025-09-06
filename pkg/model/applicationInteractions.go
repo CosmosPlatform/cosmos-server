@@ -1,8 +1,7 @@
 package model
 
 type ApplicationInteractions struct {
-	MainApplication       *Application
-	ApplicationsToProvide []*Application
-	ApplicationsToConsume []*Application
-	Interactions          []*ApplicationDependency
+	MainApplication      string
+	ApplicationsInvolved map[string]*Application
+	Interactions         []*ApplicationDependency
 }

@@ -320,10 +320,10 @@ func (s *PostgresService) UpsertApplicationDependency(ctx context.Context, consu
 	return s.InsertApplicationDependency(ctx, dependency)
 }
 
-func (s *PostgresService) GetApplicationDependenciesByConsumer(ctx context.Context, consumerName string) ([]*obj.ApplicationDependency, error) {
-	consumer, err := gorm.G[*obj.Application](s.db).Where("name = ?", consumerName).First(ctx)
+func (s *PostgresService) GetApplicationDependenciesWithApplicationInvolved(ctx context.Context, applicationName string) ([]*obj.ApplicationDependency, error) {
+	application, err := gorm.G[*obj.Application](s.db).Where("name = ?", applicationName).First(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get consumer application: %v", err)
+		return nil, fmt.Errorf("failed to get application: %v", err)
 	}
 
 	dependencies, err := gorm.G[*obj.ApplicationDependency](s.db).
@@ -331,30 +331,10 @@ func (s *PostgresService) GetApplicationDependenciesByConsumer(ctx context.Conte
 		Preload("Consumer.Team", nil).
 		Preload("Provider", nil).
 		Preload("Provider.Team", nil).
-		Where("consumer_id = ?", consumer.ID).
+		Where("consumer_id = ? OR provider_id = ?", application.ID, application.ID).
 		Find(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get application dependencies for consumer %s: %v", consumerName, err)
-	}
-
-	return dependencies, nil
-}
-
-func (s *PostgresService) GetApplicationDependenciesByProvider(ctx context.Context, providerName string) ([]*obj.ApplicationDependency, error) {
-	provider, err := gorm.G[*obj.Application](s.db).Where("name = ?", providerName).First(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get provider application: %v", err)
-	}
-
-	dependencies, err := gorm.G[*obj.ApplicationDependency](s.db).
-		Preload("Consumer", nil).
-		Preload("Consumer.Team", nil).
-		Preload("Provider", nil).
-		Preload("Provider.Team", nil).
-		Where("provider_id = ?", provider.ID).
-		Find(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get application dependencies for provider %s: %v", providerName, err)
+		return nil, fmt.Errorf("failed to get application dependencies for application %s: %v", applicationName, err)
 	}
 
 	return dependencies, nil

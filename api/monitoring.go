@@ -1,10 +1,9 @@
 package api
 
 type GetApplicationInteractionsResponse struct {
-	MainApplication       ApplicationInformation   `json:"mainApplication"`
-	ApplicationsToProvide []ApplicationInformation `json:"applicationsToProvide"`
-	ApplicationsToConsume []ApplicationInformation `json:"applicationsToConsume"`
-	Dependencies          []ApplicationDependency  `json:"dependencies"`
+	MainApplication      string                            `json:"mainApplication"`
+	ApplicationsInvolved map[string]ApplicationInformation `json:"applicationsInvolved"`
+	Dependencies         []ApplicationDependency           `json:"dependencies"`
 }
 
 type ApplicationInformation struct {

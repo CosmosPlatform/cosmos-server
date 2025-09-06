@@ -66,7 +66,5 @@ func (handler *handler) handleGetApplicationInteractions(e *gin.Context) {
 		return
 	}
 
-	interactions.MainApplication = evaluatedApplication
-
 	e.JSON(200, handler.translator.ToGetApplicationInteractionsResponse(interactions))
 }
