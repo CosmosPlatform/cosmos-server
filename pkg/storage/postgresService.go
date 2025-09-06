@@ -328,7 +328,9 @@ func (s *PostgresService) GetApplicationDependenciesByConsumer(ctx context.Conte
 
 	dependencies, err := gorm.G[*obj.ApplicationDependency](s.db).
 		Preload("Consumer", nil).
+		Preload("Consumer.Team", nil).
 		Preload("Provider", nil).
+		Preload("Provider.Team", nil).
 		Where("consumer_id = ?", consumer.ID).
 		Find(ctx)
 	if err != nil {
@@ -346,7 +348,9 @@ func (s *PostgresService) GetApplicationDependenciesByProvider(ctx context.Conte
 
 	dependencies, err := gorm.G[*obj.ApplicationDependency](s.db).
 		Preload("Consumer", nil).
+		Preload("Consumer.Team", nil).
 		Preload("Provider", nil).
+		Preload("Provider.Team", nil).
 		Where("provider_id = ?", provider.ID).
 		Find(ctx)
 	if err != nil {
