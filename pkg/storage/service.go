@@ -32,4 +32,6 @@ type Service interface {
 	GetApplicationDependency(ctx context.Context, consumerID, providerID int) (*obj.ApplicationDependency, error)
 	UpsertApplicationDependency(ctx context.Context, consumerName, providerName string, dependency *obj.ApplicationDependency) error
 	GetApplicationDependenciesWithApplicationInvolved(ctx context.Context, applicationName string) ([]*obj.ApplicationDependency, error)
+	GetApplicationDependenciesByConsumer(ctx context.Context, consumerName string) ([]*obj.ApplicationDependency, error)
+	DeleteApplicationDependency(ctx context.Context, consumerName, providerName string) error
 }

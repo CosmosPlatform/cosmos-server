@@ -60,6 +60,12 @@ func (s *monitoringService) UpdateApplicationInformation(ctx context.Context, ap
 		s.logger.Infof("Successfully upserted dependency from %s to %s", application.Name, dependencyName)
 	}
 
+	err = s.deleteObsoleteDependencies(ctx, application, openClientDef)
+	if err != nil {
+		s.logger.Errorf("Failed to delete obsolete dependencies for application %s: %v", application.Name, err)
+		return err
+	}
+
 	return nil
 }
 
@@ -138,4 +144,30 @@ func (s *monitoringService) GetApplicationInteractions(ctx context.Context, appl
 		ApplicationsInvolved: applicationsInvolved,
 		Interactions:         interactions,
 	}, nil
+}
+
+func (s *monitoringService) deleteObsoleteDependencies(ctx context.Context, application *model.Application, openClientSpecification *model.OpenClientSpecification) error {
+	dependencies := make(map[string]bool)
+
+	for dependencyName := range openClientSpecification.Dependencies {
+		dependencies[dependencyName] = true
+	}
+
+	existingDependencies, err := s.storageService.GetApplicationDependenciesByConsumer(ctx, application.Name)
+	if err != nil {
+		return err
+	}
+
+	for _, existingDependency := range existingDependencies {
+		if _, exists := dependencies[existingDependency.Provider.Name]; !exists {
+			err := s.storageService.DeleteApplicationDependency(ctx, application.Name, existingDependency.Provider.Name)
+			if err != nil {
+				s.logger.Errorf("Failed to delete obsolete dependency from %s to %s: %v", application.Name, existingDependency.Provider.Name, err)
+				continue
+			}
+			s.logger.Infof("Successfully deleted obsolete dependency from %s to %s", application.Name, existingDependency.Provider.Name)
+		}
+	}
+
+	return nil
 }

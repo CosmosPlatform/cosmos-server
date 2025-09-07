@@ -339,3 +339,46 @@ func (s *PostgresService) GetApplicationDependenciesWithApplicationInvolved(ctx 
 
 	return dependencies, nil
 }
+
+func (s *PostgresService) GetApplicationDependenciesByConsumer(ctx context.Context, consumerName string) ([]*obj.ApplicationDependency, error) {
+	consumer, err := gorm.G[*obj.Application](s.db).Where("name = ?", consumerName).First(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get consumer application: %v", err)
+	}
+
+	dependencies, err := gorm.G[*obj.ApplicationDependency](s.db).
+		Preload("Consumer", nil).
+		Preload("Consumer.Team", nil).
+		Preload("Provider", nil).
+		Preload("Provider.Team", nil).
+		Where("consumer_id = ?", consumer.ID).
+		Find(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get application dependencies for consumer %s: %v", consumerName, err)
+	}
+
+	return dependencies, nil
+}
+
+func (s *PostgresService) DeleteApplicationDependency(ctx context.Context, consumerName, providerName string) error {
+	consumer, err := gorm.G[*obj.Application](s.db).Where("name = ?", consumerName).First(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get consumer application %s: %v", consumerName, err)
+	}
+
+	provider, err := gorm.G[*obj.Application](s.db).Where("name = ?", providerName).First(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get provider application %s: %v", providerName, err)
+	}
+
+	rowsAffected, err := gorm.G[obj.ApplicationDependency](s.db).Where("consumer_id = ? AND provider_id = ?", consumer.ID, provider.ID).Delete(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to delete application dependency from %s to %s: %v", consumerName, providerName, err)
+	}
+
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}
