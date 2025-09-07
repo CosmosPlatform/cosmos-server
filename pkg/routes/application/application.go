@@ -7,8 +7,9 @@ import (
 	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/services/application"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 type handler struct {
