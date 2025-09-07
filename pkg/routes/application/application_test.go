@@ -772,8 +772,23 @@ func handleCreateApplicationWithGitInformationSuccess(t *testing.T) {
 		RepositoryBranch: "main",
 	}
 
+	mockedApplication := &model.Application{
+		Name:           mockedName,
+		Description:    mockedDescription,
+		Team:           &model.Team{Name: mockedTeam},
+		GitInformation: expectedGitInfo,
+	}
+
 	mocks.applicationServiceMock.EXPECT().
 		AddApplication(gomock.Any(), mockedName, mockedDescription, mockedTeam, expectedGitInfo).
+		Return(nil)
+
+	mocks.applicationServiceMock.EXPECT().
+		GetApplication(gomock.Any(), mockedName).
+		Return(mockedApplication, nil)
+
+	mocks.monitoringServiceMock.EXPECT().
+		UpdateApplicationInformation(gomock.Any(), mockedApplication).
 		Return(nil)
 
 	mocks.loggerMock.EXPECT().
@@ -1084,6 +1099,10 @@ func handleUpdateApplicationWithGitInformationSuccess(t *testing.T) {
 	mocks.applicationServiceMock.EXPECT().
 		UpdateApplication(gomock.Any(), mockedName, expectedUpdateData).
 		Return(mockedUpdatedApplication, nil)
+
+	mocks.monitoringServiceMock.EXPECT().
+		UpdateApplicationInformation(gomock.Any(), mockedUpdatedApplication).
+		Return(nil)
 
 	mocks.loggerMock.EXPECT().
 		Infow(gomock.Any(), gomock.Any())

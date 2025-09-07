@@ -61,19 +61,19 @@ func (handler *handler) handleCreateApplication(e *gin.Context) {
 	}
 
 	if gitInformation != nil {
-		go func() {
-			app, err := handler.applicationService.GetApplication(e, createApplicationRequest.Name)
-			if err != nil {
-				handler.logger.Errorf("Failed to retrieve application after creation: %v", err)
-				return
-			}
+		app, err := handler.applicationService.GetApplication(e, createApplicationRequest.Name)
+		if err != nil {
+			handler.logger.Errorf("Failed to retrieve application after creation: %v", err)
+			_ = e.Error(err)
+			return
+		}
 
-			err = handler.monitoringService.UpdateApplicationInformation(e, app)
-			if err != nil {
-				handler.logger.Errorf("Failed to update application information after creation: %v", err)
-				return
-			}
-		}()
+		err = handler.monitoringService.UpdateApplicationInformation(e, app)
+		if err != nil {
+			handler.logger.Errorf("Failed to update application information after creation: %v", err)
+			_ = e.Error(err)
+			return
+		}
 	}
 
 	e.JSON(http.StatusCreated, handler.translator.ToCreateApplicationResponse(createApplicationRequest.Name, createApplicationRequest.Description, createApplicationRequest.Team, gitInformation))
@@ -180,13 +180,12 @@ func (handler *handler) handleUpdateApplication(e *gin.Context) {
 	}
 
 	if updateData.GitInformation != nil {
-		go func() {
-			err = handler.monitoringService.UpdateApplicationInformation(e, updatedApp)
-			if err != nil {
-				handler.logger.Errorf("Failed to update application information after update: %v", err)
-				return
-			}
-		}()
+		err = handler.monitoringService.UpdateApplicationInformation(e, updatedApp)
+		if err != nil {
+			handler.logger.Errorf("Failed to update application information after update: %v", err)
+			_ = e.Error(err)
+			return
+		}
 	}
 
 	e.JSON(http.StatusOK, handler.translator.ToUpdateApplicationResponse(updatedApp))
