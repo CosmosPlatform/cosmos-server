@@ -6,13 +6,15 @@ import (
 	log "cosmos-server/pkg/log/mock"
 	"cosmos-server/pkg/model"
 	applicationMock "cosmos-server/pkg/services/application/mock"
+	monitoringMock "cosmos-server/pkg/services/monitoring/mock"
 	"cosmos-server/pkg/test"
 	"encoding/json"
+	"net/http"
+	"testing"
+
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
-	"net/http"
-	"testing"
 )
 
 func TestHandleCreateApplication(t *testing.T) {
@@ -64,6 +66,7 @@ func TestHandleUpdateApplication(t *testing.T) {
 type mocks struct {
 	controller             *gomock.Controller
 	applicationServiceMock *applicationMock.MockService
+	monitoringServiceMock  *monitoringMock.MockService
 	loggerMock             *log.MockLogger
 }
 
@@ -71,17 +74,19 @@ func setUp(t *testing.T) (*gin.Engine, *mocks) {
 	ctrl := gomock.NewController(t)
 
 	applicationServiceMock := applicationMock.NewMockService(ctrl)
+	monitoringServiceMock := monitoringMock.NewMockService(ctrl)
 	loggerMock := log.NewMockLogger(ctrl)
 
 	mocks := &mocks{
 		controller:             ctrl,
 		applicationServiceMock: applicationServiceMock,
+		monitoringServiceMock:  monitoringServiceMock,
 		loggerMock:             loggerMock,
 	}
 
 	router := test.NewRouter(loggerMock)
 
-	AddAuthenticatedApplicationHandler(router.Group("/"), applicationServiceMock, NewTranslator(), loggerMock)
+	AddAuthenticatedApplicationHandler(router.Group("/"), applicationServiceMock, monitoringServiceMock, NewTranslator(), loggerMock)
 
 	return router, mocks
 }

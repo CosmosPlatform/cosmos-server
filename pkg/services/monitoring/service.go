@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+//go:generate mockgen -destination=./mock/service_mock.go -package=mock cosmos-server/pkg/services/monitoring Service
+
 type Service interface {
 	UpdateApplicationInformation(ctx context.Context, application *model.Application) error
 	GetApplicationInteractions(ctx context.Context, applicationName string) (*model.ApplicationInteractions, error)

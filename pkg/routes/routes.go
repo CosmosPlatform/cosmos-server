@@ -8,6 +8,7 @@ import (
 	"cosmos-server/pkg/services/monitoring"
 	"cosmos-server/pkg/services/team"
 	"cosmos-server/pkg/services/user"
+
 	"github.com/gin-gonic/gin"
 
 	applicationRoute "cosmos-server/pkg/routes/application"
@@ -44,7 +45,7 @@ func (r *HTTPRoutes) RegisterUnauthenticatedRoutes(e *gin.RouterGroup) {
 }
 
 func (r *HTTPRoutes) RegisterAuthenticatedRoutes(e *gin.RouterGroup) {
-	applicationRoute.AddAuthenticatedApplicationHandler(e, r.ApplicationService, applicationRoute.NewTranslator(), r.Logger)
+	applicationRoute.AddAuthenticatedApplicationHandler(e, r.ApplicationService, r.MonitoringService, applicationRoute.NewTranslator(), r.Logger)
 	userRoute.AddAuthenticatedUserHandler(e, r.UserService, userRoute.NewTranslator(), r.Logger)
 	teamRoute.AddAuthenticatedTeamHandler(e, r.TeamService, teamRoute.NewTranslator())
 }
