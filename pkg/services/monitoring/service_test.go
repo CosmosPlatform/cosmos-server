@@ -8,6 +8,7 @@ import (
 	storageMock "cosmos-server/pkg/storage/mock"
 	"cosmos-server/pkg/storage/obj"
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -16,6 +17,8 @@ import (
 
 func TestUpdateApplicationInformation(t *testing.T) {
 	t.Run("update application information - success", updateApplicationInformationSuccess)
+	t.Run("update application information - no git information", updateApplicationInformationNoGitInformation)
+	t.Run("update application information - get file error", updateApplicationInformationGetFileError)
 }
 
 type mocks struct {
@@ -141,4 +144,55 @@ func getObjOpenClientSpecification() *obj.ApplicationDependency {
 			},
 		},
 	}
+}
+
+func updateApplicationInformationNoGitInformation(t *testing.T) {
+	service, mocks := setUp(t)
+
+	applicationName := "test-application"
+	applicationDescription := "test-description"
+
+	modelApplication := &model.Application{
+		Name:           applicationName,
+		Description:    applicationDescription,
+		GitInformation: nil,
+	}
+
+	mocks.loggerMocks.EXPECT().
+		Infof("No git information for application %s, skipping monitoring update", applicationName)
+
+	err := service.UpdateApplicationInformation(context.TODO(), modelApplication)
+	require.NoError(t, err)
+}
+
+func updateApplicationInformationGetFileError(t *testing.T) {
+	service, mocks := setUp(t)
+
+	applicationName := "test-application"
+	applicationDescription := "test-description"
+	gitInformation := &model.GitInformation{
+		Provider:         "github",
+		RepositoryOwner:  "test-owner",
+		RepositoryName:   "test-repo",
+		RepositoryBranch: "main",
+	}
+
+	modelApplication := &model.Application{
+		Name:           applicationName,
+		Description:    applicationDescription,
+		GitInformation: gitInformation,
+	}
+
+	gitError := errors.New("repository not found")
+
+	mocks.gitServiceMock.EXPECT().
+		GetFileWithContent(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, "docs/openclient.json").
+		Return(nil, gitError)
+
+	mocks.loggerMocks.EXPECT().
+		Errorf("Failed to get openclient.json for application %s: %v", applicationName, gitError)
+
+	err := service.UpdateApplicationInformation(context.TODO(), modelApplication)
+	require.Error(t, err)
+	require.Equal(t, gitError, err)
 }
