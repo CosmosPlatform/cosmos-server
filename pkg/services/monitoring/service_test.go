@@ -21,6 +21,7 @@ func TestUpdateApplicationInformation(t *testing.T) {
 	t.Run("update application information - no git information", updateApplicationInformationNoGitInformation)
 	t.Run("update application information - get file error", updateApplicationInformationGetFileError)
 	t.Run("update application information - invalid json", updateApplicationInformationInvalidJSON)
+	t.Run("update application information - invalid specification", updateApplicationInformationInvalidSpecification)
 }
 
 type mocks struct {
@@ -242,4 +243,70 @@ func updateApplicationInformationInvalidJSON(t *testing.T) {
 	err := service.UpdateApplicationInformation(context.TODO(), modelApplication)
 	require.Error(t, err)
 	require.True(t, strings.Contains(err.Error(), "invalid character"))
+}
+
+func updateApplicationInformationInvalidSpecification(t *testing.T) {
+	service, mocks := setUp(t)
+
+	applicationName := "test-application"
+	applicationDescription := "test-description"
+	gitInformation := &model.GitInformation{
+		Provider:         "github",
+		RepositoryOwner:  "test-owner",
+		RepositoryName:   "test-repo",
+		RepositoryBranch: "main",
+	}
+
+	modelApplication := &model.Application{
+		Name:           applicationName,
+		Description:    applicationDescription,
+		GitInformation: gitInformation,
+	}
+
+	invalidSpecification := getMockedInvalidOpenClientSpecification()
+
+	jsonContent, _ := json.Marshal(invalidSpecification)
+
+	fileContent := &model.FileContent{
+		Metadata: model.FileMetadata{
+			Name:       "openclient.json",
+			Path:       "docs/openclient.json",
+			Size:       len(jsonContent),
+			SHA:        "abc123",
+			Branch:     gitInformation.RepositoryBranch,
+			Repository: gitInformation.RepositoryName,
+			Owner:      gitInformation.RepositoryOwner,
+		},
+		Content: string(jsonContent),
+	}
+
+	mocks.gitServiceMock.EXPECT().
+		GetFileWithContent(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, "docs/openclient.json").
+		Return(fileContent, nil)
+
+	mocks.loggerMocks.EXPECT().
+		Errorf("Invalid openclient.json for application %s: %v", applicationName, gomock.Any())
+
+	err := service.UpdateApplicationInformation(context.TODO(), modelApplication)
+	require.Error(t, err)
+}
+
+func getMockedInvalidOpenClientSpecification() *model.OpenClientSpecification {
+	return &model.OpenClientSpecification{
+		Dependencies: map[string]model.DependencySpecification{
+			"service-a": {
+				Reasons: []string{"reason1", "reason2"},
+				Endpoints: map[string]model.EndpointMethodsSpecification{
+					"/users that I want to bring": map[string]model.EndpointSpecification{
+						"GET": {
+							Reasons: []string{"fetch users"},
+						},
+						"POST": {
+							Reasons: []string{"create user"},
+						},
+					},
+				},
+			},
+		},
+	}
 }
