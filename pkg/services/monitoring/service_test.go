@@ -24,6 +24,9 @@ func TestUpdateApplicationInformation(t *testing.T) {
 	t.Run("update application information - invalid json", updateApplicationInformationInvalidJSON)
 	t.Run("update application information - invalid specification", updateApplicationInformationInvalidSpecification)
 	t.Run("update application information - provider not found error", updateApplicationInformationProviderNotFoundError)
+	t.Run("update application information - upsert dependency error", updateApplicationInformationUpsertDependencyError)
+	//t.Run("update application information - delete obsolete dependencies error", updateApplicationInformationDeleteObsoleteDependenciesError)
+	//t.Run("update application information - with obsolete dependencies", updateApplicationInformationWithObsoleteDependencies)
 }
 
 type mocks struct {
@@ -361,6 +364,73 @@ func updateApplicationInformationProviderNotFoundError(t *testing.T) {
 
 	mocks.loggerMocks.EXPECT().
 		Errorf("Failed to transform dependency for application %s: %v", applicationName, gomock.Any())
+
+	err := service.UpdateApplicationInformation(context.TODO(), modelApplication)
+	require.NoError(t, err) // Should not fail overall, just log the error
+}
+
+func updateApplicationInformationUpsertDependencyError(t *testing.T) {
+	service, mocks := setUp(t)
+
+	applicationName := "test-application"
+	applicationDescription := "test-description"
+	gitInformation := &model.GitInformation{
+		Provider:         "github",
+		RepositoryOwner:  "test-owner",
+		RepositoryName:   "test-repo",
+		RepositoryBranch: "main",
+	}
+
+	modelApplication := &model.Application{
+		Name:           applicationName,
+		Description:    applicationDescription,
+		GitInformation: gitInformation,
+	}
+
+	openClientSpecification := getMockedOpenClientSpecification()
+	jsonContent, _ := json.Marshal(openClientSpecification)
+
+	fileContent := &model.FileContent{
+		Metadata: model.FileMetadata{
+			Name:       "openclient.json",
+			Path:       "docs/openclient.json",
+			Size:       len(jsonContent),
+			SHA:        "abc123",
+			Branch:     gitInformation.RepositoryBranch,
+			Repository: gitInformation.RepositoryName,
+			Owner:      gitInformation.RepositoryOwner,
+		},
+		Content: string(jsonContent),
+	}
+
+	objApplicationDependency := getObjOpenClientSpecification()
+
+	providerApp := &obj.Application{
+		CosmosObj:   obj.CosmosObj{ID: 1},
+		Name:        "service-a",
+		Description: "Provider service",
+	}
+
+	upsertError := errors.New("database connection failed")
+
+	mocks.gitServiceMock.EXPECT().
+		GetFileWithContent(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, "docs/openclient.json").
+		Return(fileContent, nil)
+
+	mocks.storageServiceMock.EXPECT().
+		GetApplicationWithName(gomock.Any(), providerApp.Name).
+		Return(providerApp, nil)
+
+	mocks.storageServiceMock.EXPECT().
+		UpsertApplicationDependency(gomock.Any(), modelApplication.Name, providerApp.Name, objApplicationDependency).
+		Return(upsertError)
+
+	mocks.storageServiceMock.EXPECT().
+		GetApplicationDependenciesByConsumer(gomock.Any(), modelApplication.Name).
+		Return([]*obj.ApplicationDependency{}, nil)
+
+	mocks.loggerMocks.EXPECT().
+		Errorf("Failed to upsert dependency for application %s: %v", applicationName, upsertError)
 
 	err := service.UpdateApplicationInformation(context.TODO(), modelApplication)
 	require.NoError(t, err) // Should not fail overall, just log the error
