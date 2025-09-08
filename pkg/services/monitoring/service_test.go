@@ -9,6 +9,7 @@ import (
 	"cosmos-server/pkg/storage/obj"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -19,6 +20,7 @@ func TestUpdateApplicationInformation(t *testing.T) {
 	t.Run("update application information - success", updateApplicationInformationSuccess)
 	t.Run("update application information - no git information", updateApplicationInformationNoGitInformation)
 	t.Run("update application information - get file error", updateApplicationInformationGetFileError)
+	t.Run("update application information - invalid json", updateApplicationInformationInvalidJSON)
 }
 
 type mocks struct {
@@ -195,4 +197,49 @@ func updateApplicationInformationGetFileError(t *testing.T) {
 	err := service.UpdateApplicationInformation(context.TODO(), modelApplication)
 	require.Error(t, err)
 	require.Equal(t, gitError, err)
+}
+
+func updateApplicationInformationInvalidJSON(t *testing.T) {
+	service, mocks := setUp(t)
+
+	applicationName := "test-application"
+	applicationDescription := "test-description"
+	gitInformation := &model.GitInformation{
+		Provider:         "github",
+		RepositoryOwner:  "test-owner",
+		RepositoryName:   "test-repo",
+		RepositoryBranch: "main",
+	}
+
+	modelApplication := &model.Application{
+		Name:           applicationName,
+		Description:    applicationDescription,
+		GitInformation: gitInformation,
+	}
+
+	invalidJSONContent := "{ invalid json content"
+
+	fileContent := &model.FileContent{
+		Metadata: model.FileMetadata{
+			Name:       "openclient.json",
+			Path:       "docs/openclient.json",
+			Size:       len(invalidJSONContent),
+			SHA:        "abc123",
+			Branch:     gitInformation.RepositoryBranch,
+			Repository: gitInformation.RepositoryName,
+			Owner:      gitInformation.RepositoryOwner,
+		},
+		Content: invalidJSONContent,
+	}
+
+	mocks.gitServiceMock.EXPECT().
+		GetFileWithContent(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, "docs/openclient.json").
+		Return(fileContent, nil)
+
+	mocks.loggerMocks.EXPECT().
+		Errorf("Failed to unmarshal openclient.json for application %s: %v", applicationName, gomock.Any())
+
+	err := service.UpdateApplicationInformation(context.TODO(), modelApplication)
+	require.Error(t, err)
+	require.True(t, strings.Contains(err.Error(), "invalid character"))
 }
