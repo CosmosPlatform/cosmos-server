@@ -7,10 +7,11 @@ import (
 	"cosmos-server/pkg/storage"
 	storageMock "cosmos-server/pkg/storage/mock"
 	"cosmos-server/pkg/storage/obj"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func TestAddApplication(t *testing.T) {

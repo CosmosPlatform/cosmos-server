@@ -4,11 +4,14 @@ import (
 	"context"
 	"cosmos-server/pkg/model"
 	"fmt"
-	"github.com/google/go-github/v74/github"
-	"golang.org/x/oauth2"
 	"net/http"
 	"os"
+
+	"github.com/google/go-github/v74/github"
+	"golang.org/x/oauth2"
 )
+
+//go:generate mockgen -destination=./mock/gitService_mock.go -package=mock cosmos-server/pkg/services/monitoring GitService
 
 type GitService interface {
 	GetFileMetadata(ctx context.Context, owner, repo, branch, path string) (*model.FileMetadata, error)
