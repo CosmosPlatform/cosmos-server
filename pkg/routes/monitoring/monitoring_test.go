@@ -1,11 +1,14 @@
 package monitoring
 
 import (
+	"cosmos-server/api"
+	"cosmos-server/pkg/errors"
 	log "cosmos-server/pkg/log/mock"
 	"cosmos-server/pkg/model"
 	applicationMock "cosmos-server/pkg/services/application/mock"
 	monitoringMock "cosmos-server/pkg/services/monitoring/mock"
 	"cosmos-server/pkg/test"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
@@ -17,6 +20,7 @@ import (
 
 func TestHandleUpdateApplicationMonitoring(t *testing.T) {
 	t.Run("success - update application monitoring", handleUpdateApplicationMonitoringSuccess)
+	t.Run("failure - application not found", handleUpdateApplicationMonitoringApplicationNotFound)
 }
 
 type mocks struct {
@@ -90,4 +94,40 @@ func handleUpdateApplicationMonitoringSuccess(t *testing.T) {
 	router.ServeHTTP(recorder, request)
 
 	require.Equal(t, http.StatusNoContent, recorder.Code, "Expected status code 204 No Content")
+}
+
+func handleUpdateApplicationMonitoringApplicationNotFound(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedApplicationName := "non-existent-application"
+
+	mockedError := errors.NewNotFoundError("application not found")
+
+	mocks.loggerMock.EXPECT().
+		Errorf(gomock.Any(), gomock.Any())
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	mocks.applicationServiceMock.EXPECT().
+		GetApplication(gomock.Any(), mockedApplicationName).
+		Return(nil, mockedError)
+
+	url := fmt.Sprintf("/monitoring/update/%s", mockedApplicationName)
+
+	request, recorder, err := test.NewHTTPRequest("POST", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create HTTP request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusNotFound, recorder.Code)
+	require.Equal(t, "application not found", actualResponse.Error)
 }
