@@ -24,6 +24,12 @@ func TestHandleUpdateApplicationMonitoring(t *testing.T) {
 	t.Run("failure - internal server error", handleUpdateApplicationMonitoringInternalServerError)
 }
 
+func TestHandleGetApplicationInteractions(t *testing.T) {
+	t.Run("success - get application interactions", handleGetApplicationInteractionsSuccess)
+	t.Run("failure - application not found", handleGetApplicationInteractionsApplicationNotFound)
+	t.Run("failure - monitoring service error", handleGetApplicationInteractionsMonitoringServiceError)
+}
+
 type mocks struct {
 	controller             *gomock.Controller
 	monitoringServiceMock  *monitoringMock.MockService
@@ -185,4 +191,157 @@ func handleUpdateApplicationMonitoringInternalServerError(t *testing.T) {
 
 	require.Equal(t, http.StatusInternalServerError, recorder.Code)
 	require.Equal(t, "internal server error", actualResponse.Error)
+}
+
+func handleGetApplicationInteractionsSuccess(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedApplicationName := "test-application"
+	mockedDescription := "Test application description"
+	gitProvider := "github"
+	gitRepositoryOwner := "test-owner"
+	gitRepositoryName := "test-repo"
+	gitRepositoryBranch := "main"
+
+	modelApplication := &model.Application{
+		Name:        mockedApplicationName,
+		Description: mockedDescription,
+		Team:        nil,
+		GitInformation: &model.GitInformation{
+			Provider:         gitProvider,
+			RepositoryOwner:  gitRepositoryOwner,
+			RepositoryName:   gitRepositoryName,
+			RepositoryBranch: gitRepositoryBranch,
+		},
+	}
+
+	mockedInteractions := &model.ApplicationInteractions{
+		MainApplication: mockedApplicationName,
+	}
+
+	expectedResponse := api.GetApplicationInteractionsResponse{
+		MainApplication: mockedApplicationName,
+	}
+
+	mocks.applicationServiceMock.EXPECT().
+		GetApplication(gomock.Any(), mockedApplicationName).
+		Return(modelApplication, nil)
+
+	mocks.monitoringServiceMock.EXPECT().
+		GetApplicationInteractions(gomock.Any(), mockedApplicationName).
+		Return(mockedInteractions, nil)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := fmt.Sprintf("/monitoring/interactions/%s", mockedApplicationName)
+
+	request, recorder, err := test.NewHTTPRequest("GET", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create HTTP request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.GetApplicationInteractionsResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	require.Equal(t, expectedResponse, actualResponse)
+}
+
+func handleGetApplicationInteractionsApplicationNotFound(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedApplicationName := "non-existent-application"
+
+	mockedError := errors.NewNotFoundError("application not found")
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	mocks.loggerMock.EXPECT().
+		Errorf(gomock.Any(), gomock.Any())
+
+	mocks.applicationServiceMock.EXPECT().
+		GetApplication(gomock.Any(), mockedApplicationName).
+		Return(nil, mockedError)
+
+	url := fmt.Sprintf("/monitoring/interactions/%s", mockedApplicationName)
+
+	request, recorder, err := test.NewHTTPRequest("GET", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create HTTP request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusNotFound, recorder.Code)
+	require.Equal(t, "application not found", actualResponse.Error)
+}
+
+func handleGetApplicationInteractionsMonitoringServiceError(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedApplicationName := "test-application"
+	mockedDescription := "Test application description"
+	gitProvider := "github"
+	gitRepositoryOwner := "test-owner"
+	gitRepositoryName := "test-repo"
+	gitRepositoryBranch := "main"
+
+	modelApplication := &model.Application{
+		Name:        mockedApplicationName,
+		Description: mockedDescription,
+		Team:        nil,
+		GitInformation: &model.GitInformation{
+			Provider:         gitProvider,
+			RepositoryOwner:  gitRepositoryOwner,
+			RepositoryName:   gitRepositoryName,
+			RepositoryBranch: gitRepositoryBranch,
+		},
+	}
+
+	mockedError := errors.NewInternalServerError("failed to retrieve interactions")
+
+	mocks.applicationServiceMock.EXPECT().
+		GetApplication(gomock.Any(), mockedApplicationName).
+		Return(modelApplication, nil)
+
+	mocks.monitoringServiceMock.EXPECT().
+		GetApplicationInteractions(gomock.Any(), mockedApplicationName).
+		Return(nil, mockedError)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	mocks.loggerMock.EXPECT().
+		Errorf(gomock.Any(), gomock.Any())
+
+	url := fmt.Sprintf("/monitoring/interactions/%s", mockedApplicationName)
+
+	request, recorder, err := test.NewHTTPRequest("GET", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create HTTP request: %v", err)
+	}
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	require.Equal(t, http.StatusInternalServerError, recorder.Code)
+	require.Equal(t, "failed to retrieve interactions", actualResponse.Error)
 }
