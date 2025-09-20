@@ -4,6 +4,7 @@ import (
 	"context"
 	"cosmos-server/pkg/config"
 	"cosmos-server/pkg/log"
+	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/storage/obj"
 	errorUtils "errors"
 	"fmt"
@@ -335,6 +336,67 @@ func (s *PostgresService) GetApplicationDependenciesWithApplicationInvolved(ctx 
 		Find(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get application dependencies for application %s: %v", applicationName, err)
+	}
+
+	return dependencies, nil
+}
+
+func (s *PostgresService) GetApplicationDependenciesWithFilter(ctx context.Context, filters model.ApplicationDependencyFilter) ([]*obj.ApplicationDependency, error) {
+	teams := filters.Teams
+
+	if teams == nil || len(teams) == 0 {
+		return s.GetAllApplicationDependencies(ctx)
+	}
+
+	var applications []*obj.Application
+	for _, team := range teams {
+		teamApplications, err := s.GetApplicationsByTeam(ctx, team)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get applications for team %s: %v", team, err)
+		}
+		applications = append(applications, teamApplications...)
+	}
+
+	if len(applications) == 0 {
+		return []*obj.ApplicationDependency{}, nil
+	}
+
+	appIDs := make([]int, len(applications))
+	for i, app := range applications {
+		appIDs[i] = int(app.ID)
+	}
+
+	query := gorm.G[*obj.ApplicationDependency](s.db).
+		Preload("Consumer", nil).
+		Preload("Consumer.Team", nil).
+		Preload("Provider", nil).
+		Preload("Provider.Team", nil)
+
+	if filters.IncludeNeighbors {
+		query = query.Where("consumer_id IN ? OR provider_id IN ?", appIDs, appIDs)
+	} else {
+		query = query.Where("consumer_id IN ? AND provider_id IN ?", appIDs, appIDs)
+	}
+
+	dependencies, err := query.
+		Find(ctx)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get application dependencies with filter: %v", err)
+	}
+
+	return dependencies, nil
+}
+
+func (s *PostgresService) GetAllApplicationDependencies(ctx context.Context) ([]*obj.ApplicationDependency, error) {
+	dependencies, err := gorm.G[*obj.ApplicationDependency](s.db).
+		Preload("Consumer", nil).
+		Preload("Consumer.Team", nil).
+		Preload("Provider", nil).
+		Preload("Provider.Team", nil).
+		Find(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all application dependencies: %v", err)
 	}
 
 	return dependencies, nil

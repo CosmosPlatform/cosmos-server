@@ -5,6 +5,7 @@ import (
 	"cosmos-server/pkg/services/application"
 	"cosmos-server/pkg/services/monitoring"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,6 +29,7 @@ func AddAuthenticatedMonitoringHandler(e *gin.RouterGroup, monitoringService mon
 
 	monitoringGroup.POST("/update/:application", handler.handleUpdateApplicationMonitoring)
 	monitoringGroup.GET("/interactions/:application", handler.handleGetApplicationInteractions)
+	monitoringGroup.GET("/interactions", handler.handleGetApplicationsInteractions)
 }
 
 func (handler *handler) handleUpdateApplicationMonitoring(e *gin.Context) {
@@ -67,4 +69,28 @@ func (handler *handler) handleGetApplicationInteractions(e *gin.Context) {
 	}
 
 	e.JSON(200, handler.translator.ToGetApplicationInteractionsResponse(interactions))
+}
+
+func (handler *handler) handleGetApplicationsInteractions(e *gin.Context) {
+	teamsParam := e.Query("teams")
+	includeNeighbors := e.Query("includeNeighbors") == "true"
+
+	var teams []string
+	if teamsParam != "" {
+		teams = strings.Split(teamsParam, ",")
+		for i, team := range teams {
+			teams[i] = strings.TrimSpace(team)
+		}
+	}
+
+	filters := handler.translator.ToGetApplicationsInteractionsFilters(teams, includeNeighbors)
+
+	interactions, err := handler.monitoringService.GetApplicationsInteractions(e, filters)
+	if err != nil {
+		handler.logger.Errorf("Failed to retrieve applications interactions: %v", err)
+		_ = e.Error(err)
+		return
+	}
+
+	e.JSON(200, handler.translator.ToGetApplicationsInteractionsResponse(interactions))
 }

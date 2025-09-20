@@ -15,6 +15,7 @@ import (
 type Service interface {
 	UpdateApplicationInformation(ctx context.Context, application *model.Application) error
 	GetApplicationInteractions(ctx context.Context, applicationName string) (*model.ApplicationInteractions, error)
+	GetApplicationsInteractions(ctx context.Context, filter model.ApplicationDependencyFilter) (*model.ApplicationsInteractions, error)
 }
 
 type monitoringService struct {
@@ -172,4 +173,13 @@ func (s *monitoringService) deleteObsoleteDependencies(ctx context.Context, appl
 	}
 
 	return nil
+}
+
+func (s *monitoringService) GetApplicationsInteractions(ctx context.Context, filter model.ApplicationDependencyFilter) (*model.ApplicationsInteractions, error) {
+	objDependencies, err := s.storageService.GetApplicationDependenciesWithFilter(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.translator.ToApplicationsInteractionsModel(objDependencies), nil
 }

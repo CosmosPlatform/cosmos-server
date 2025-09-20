@@ -7,6 +7,7 @@ import (
 
 type Translator interface {
 	ToApplicationModel(objApplication *obj.Application) *model.Application
+	ToApplicationsInteractionsModel(objDependencies []*obj.ApplicationDependency) *model.ApplicationsInteractions
 	ToApplicationDependencyObj(modelDependency *model.ApplicationDependency) *obj.ApplicationDependency
 	ToApplicationDependencyModel(objDependency *obj.ApplicationDependency) *model.ApplicationDependency
 }
@@ -102,4 +103,25 @@ func (t *translator) toModelEndpoints(objEndpoints obj.Endpoints) model.Endpoint
 	}
 
 	return endpoints
+}
+
+func (t *translator) ToApplicationsInteractionsModel(objDependencies []*obj.ApplicationDependency) *model.ApplicationsInteractions {
+	interactions := make([]*model.ApplicationDependency, 0)
+	applicationsInvolved := make(map[string]*model.Application)
+
+	for _, objDependency := range objDependencies {
+		modelDependency := t.ToApplicationDependencyModel(objDependency)
+		interactions = append(interactions, modelDependency)
+		if _, exists := applicationsInvolved[modelDependency.Consumer.Name]; !exists {
+			applicationsInvolved[modelDependency.Consumer.Name] = modelDependency.Consumer
+		}
+		if _, exists := applicationsInvolved[modelDependency.Provider.Name]; !exists {
+			applicationsInvolved[modelDependency.Provider.Name] = modelDependency.Provider
+		}
+	}
+
+	return &model.ApplicationsInteractions{
+		ApplicationsInvolved: applicationsInvolved,
+		Interactions:         interactions,
+	}
 }

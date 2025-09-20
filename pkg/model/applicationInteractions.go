@@ -5,3 +5,8 @@ type ApplicationInteractions struct {
 	ApplicationsInvolved map[string]*Application
 	Interactions         []*ApplicationDependency
 }
+
+type ApplicationsInteractions struct {
+	ApplicationsInvolved map[string]*Application
+	Interactions         []*ApplicationDependency
+}

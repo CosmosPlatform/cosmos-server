@@ -7,6 +7,8 @@ import (
 
 type Translator interface {
 	ToGetApplicationInteractionsResponse(interactions *model.ApplicationInteractions) *api.GetApplicationInteractionsResponse
+	ToGetApplicationsInteractionsResponse(interactions *model.ApplicationsInteractions) *api.GetApplicationsInteractionsResponse
+	ToGetApplicationsInteractionsFilters(teams []string, includeNeighbors bool) model.ApplicationDependencyFilter
 }
 
 type translator struct{}
@@ -22,6 +24,17 @@ func (t *translator) ToGetApplicationInteractionsResponse(interactions *model.Ap
 
 	return &api.GetApplicationInteractionsResponse{
 		MainApplication:      interactions.MainApplication,
+		ApplicationsInvolved: t.toApplicationInformationSlice(interactions.ApplicationsInvolved),
+		Dependencies:         t.toApplicationDependencySlice(interactions.Interactions),
+	}
+}
+
+func (t *translator) ToGetApplicationsInteractionsResponse(interactions *model.ApplicationsInteractions) *api.GetApplicationsInteractionsResponse {
+	if interactions == nil {
+		return nil
+	}
+
+	return &api.GetApplicationsInteractionsResponse{
 		ApplicationsInvolved: t.toApplicationInformationSlice(interactions.ApplicationsInvolved),
 		Dependencies:         t.toApplicationDependencySlice(interactions.Interactions),
 	}
@@ -93,4 +106,16 @@ func (t *translator) toDependencyEndpointsMap(endpoints model.Endpoints) api.End
 		result[path] = endpointMethods
 	}
 	return result
+}
+
+func (t *translator) ToGetApplicationsInteractionsFilters(teams []string, includeNeighbors bool) model.ApplicationDependencyFilter {
+	var modelFilters model.ApplicationDependencyFilter
+
+	if teams != nil {
+		modelFilters.Teams = teams
+	}
+
+	modelFilters.IncludeNeighbors = includeNeighbors
+
+	return modelFilters
 }
