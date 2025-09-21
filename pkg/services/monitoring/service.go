@@ -14,7 +14,7 @@ import (
 
 type Service interface {
 	UpdateApplicationInformation(ctx context.Context, application *model.Application) error
-	GetApplicationInteractions(ctx context.Context, applicationName string) (*model.ApplicationInteractions, error)
+	GetApplicationInteractions(ctx context.Context, applicationName string) (*model.ApplicationsInteractions, error)
 	GetApplicationsInteractions(ctx context.Context, filter model.ApplicationDependencyFilter) (*model.ApplicationsInteractions, error)
 }
 
@@ -122,7 +122,7 @@ func (s *monitoringService) transformToModelDependency(ctx context.Context, cons
 	return modelDependency, nil
 }
 
-func (s *monitoringService) GetApplicationInteractions(ctx context.Context, applicationName string) (*model.ApplicationInteractions, error) {
+func (s *monitoringService) GetApplicationInteractions(ctx context.Context, applicationName string) (*model.ApplicationsInteractions, error) {
 	interactions := make([]*model.ApplicationDependency, 0)
 	applicationsInvolved := make(map[string]*model.Application)
 
@@ -142,8 +142,7 @@ func (s *monitoringService) GetApplicationInteractions(ctx context.Context, appl
 		}
 	}
 
-	return &model.ApplicationInteractions{
-		MainApplication:      applicationName,
+	return &model.ApplicationsInteractions{
 		ApplicationsInvolved: applicationsInvolved,
 		Interactions:         interactions,
 	}, nil

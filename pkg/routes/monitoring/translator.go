@@ -6,7 +6,6 @@ import (
 )
 
 type Translator interface {
-	ToGetApplicationInteractionsResponse(interactions *model.ApplicationInteractions) *api.GetApplicationInteractionsResponse
 	ToGetApplicationsInteractionsResponse(interactions *model.ApplicationsInteractions) *api.GetApplicationsInteractionsResponse
 	ToGetApplicationsInteractionsFilters(teams []string, includeNeighbors bool) model.ApplicationDependencyFilter
 }
@@ -15,18 +14,6 @@ type translator struct{}
 
 func NewTranslator() Translator {
 	return &translator{}
-}
-
-func (t *translator) ToGetApplicationInteractionsResponse(interactions *model.ApplicationInteractions) *api.GetApplicationInteractionsResponse {
-	if interactions == nil {
-		return nil
-	}
-
-	return &api.GetApplicationInteractionsResponse{
-		MainApplication:      interactions.MainApplication,
-		ApplicationsInvolved: t.toApplicationInformationSlice(interactions.ApplicationsInvolved),
-		Dependencies:         t.toApplicationDependencySlice(interactions.Interactions),
-	}
 }
 
 func (t *translator) ToGetApplicationsInteractionsResponse(interactions *model.ApplicationsInteractions) *api.GetApplicationsInteractionsResponse {

@@ -1,7 +1,6 @@
 package api
 
-type GetApplicationInteractionsResponse struct {
-	MainApplication      string                            `json:"mainApplication"`
+type GetApplicationsInteractionsResponse struct {
 	ApplicationsInvolved map[string]ApplicationInformation `json:"applicationsInvolved"`
 	Dependencies         []ApplicationDependency           `json:"dependencies"`
 }
@@ -24,9 +23,4 @@ type EndpointMethods map[string]EndpointDetails
 
 type EndpointDetails struct {
 	Reasons []string `json:"reasons"`
-}
-
-type GetApplicationsInteractionsResponse struct {
-	ApplicationsInvolved map[string]ApplicationInformation `json:"applicationsInvolved"`
-	Dependencies         []ApplicationDependency           `json:"dependencies"`
 }

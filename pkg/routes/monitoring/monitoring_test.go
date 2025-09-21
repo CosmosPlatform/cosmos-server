@@ -215,12 +215,19 @@ func handleGetApplicationInteractionsSuccess(t *testing.T) {
 		},
 	}
 
-	mockedInteractions := &model.ApplicationInteractions{
-		MainApplication: mockedApplicationName,
+	mockedInteractions := &model.ApplicationsInteractions{
+		ApplicationsInvolved: map[string]*model.Application{
+			mockedApplicationName: modelApplication,
+		},
 	}
 
-	expectedResponse := api.GetApplicationInteractionsResponse{
-		MainApplication: mockedApplicationName,
+	expectedResponse := api.GetApplicationsInteractionsResponse{
+		ApplicationsInvolved: map[string]api.ApplicationInformation{
+			mockedApplicationName: {
+				Name: mockedApplicationName,
+				Team: "",
+			},
+		},
 	}
 
 	mocks.applicationServiceMock.EXPECT().
@@ -243,7 +250,7 @@ func handleGetApplicationInteractionsSuccess(t *testing.T) {
 
 	router.ServeHTTP(recorder, request)
 
-	actualResponse := api.GetApplicationInteractionsResponse{}
+	actualResponse := api.GetApplicationsInteractionsResponse{}
 	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
 	if err != nil {
 		t.Fatalf("Failed to decode response: %v", err)

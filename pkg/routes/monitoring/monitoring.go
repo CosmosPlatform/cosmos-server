@@ -68,7 +68,7 @@ func (handler *handler) handleGetApplicationInteractions(e *gin.Context) {
 		return
 	}
 
-	e.JSON(200, handler.translator.ToGetApplicationInteractionsResponse(interactions))
+	e.JSON(200, handler.translator.ToGetApplicationsInteractionsResponse(interactions))
 }
 
 func (handler *handler) handleGetApplicationsInteractions(e *gin.Context) {
