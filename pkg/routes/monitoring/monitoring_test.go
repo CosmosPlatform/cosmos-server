@@ -30,6 +30,12 @@ func TestHandleGetApplicationInteractions(t *testing.T) {
 	t.Run("failure - monitoring service error", handleGetApplicationInteractionsMonitoringServiceError)
 }
 
+func TestHandleGetApplicationsInteractions(t *testing.T) {
+	t.Run("success - get applications interactions", handleGetApplicationsInteractionsSuccess)
+	t.Run("failure - monitoring service not found", handleGetApplicationsInteractionsNotFound)
+	t.Run("failure - monitoring service internal error", handleGetApplicationsInteractionsInternalServerError)
+}
+
 type mocks struct {
 	controller             *gomock.Controller
 	monitoringServiceMock  *monitoringMock.MockService
@@ -351,4 +357,109 @@ func handleGetApplicationInteractionsMonitoringServiceError(t *testing.T) {
 
 	require.Equal(t, http.StatusInternalServerError, recorder.Code)
 	require.Equal(t, "failed to retrieve interactions", actualResponse.Error)
+}
+
+func handleGetApplicationsInteractionsSuccess(t *testing.T) {
+	router, mocks := setUp(t)
+
+	teams := []string{"team1", "team2"}
+	includeNeighbors := true
+
+	mockedFilters := model.ApplicationDependencyFilter{
+		Teams:            teams,
+		IncludeNeighbors: includeNeighbors,
+	}
+
+	mockedInteractions := &model.ApplicationsInteractions{
+		ApplicationsInvolved: map[string]*model.Application{
+			"app1": {Name: "app1"},
+		},
+	}
+
+	expectedResponse := api.GetApplicationsInteractionsResponse{
+		ApplicationsInvolved: map[string]api.ApplicationInformation{
+			"app1": {Name: "app1", Team: ""},
+		},
+	}
+
+	mocks.monitoringServiceMock.EXPECT().
+		GetApplicationsInteractions(gomock.Any(), mockedFilters).
+		Return(mockedInteractions, nil)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	url := "/monitoring/interactions?teams=team1,team2&includeNeighbors=true"
+
+	request, recorder, err := test.NewHTTPRequest("GET", url, nil)
+	require.NoError(t, err)
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.GetApplicationsInteractionsResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	require.NoError(t, err)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	require.Equal(t, expectedResponse, actualResponse)
+}
+
+func handleGetApplicationsInteractionsNotFound(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedError := errors.NewNotFoundError("no interactions found")
+
+	mocks.monitoringServiceMock.EXPECT().
+		GetApplicationsInteractions(gomock.Any(), gomock.Any()).
+		Return(nil, mockedError)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	mocks.loggerMock.EXPECT().
+		Errorf(gomock.Any(), gomock.Any())
+
+	url := "/monitoring/interactions?teams=team1"
+
+	request, recorder, err := test.NewHTTPRequest("GET", url, nil)
+	require.NoError(t, err)
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	require.NoError(t, err)
+
+	require.Equal(t, http.StatusNotFound, recorder.Code)
+	require.Equal(t, "no interactions found", actualResponse.Error)
+}
+
+func handleGetApplicationsInteractionsInternalServerError(t *testing.T) {
+	router, mocks := setUp(t)
+
+	mockedError := errors.NewInternalServerError("internal error")
+
+	mocks.monitoringServiceMock.EXPECT().
+		GetApplicationsInteractions(gomock.Any(), gomock.Any()).
+		Return(nil, mockedError)
+
+	mocks.loggerMock.EXPECT().
+		Infow(gomock.Any(), gomock.Any())
+
+	mocks.loggerMock.EXPECT().
+		Errorf(gomock.Any(), gomock.Any())
+
+	url := "/monitoring/interactions?teams=team1"
+
+	request, recorder, err := test.NewHTTPRequest("GET", url, nil)
+	require.NoError(t, err)
+
+	router.ServeHTTP(recorder, request)
+
+	actualResponse := api.ErrorResponse{}
+	err = json.NewDecoder(recorder.Body).Decode(&actualResponse)
+	require.NoError(t, err)
+
+	require.Equal(t, http.StatusInternalServerError, recorder.Code)
+	require.Equal(t, "internal error", actualResponse.Error)
 }
