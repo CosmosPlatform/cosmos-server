@@ -6,20 +6,24 @@ import (
 	"cosmos-server/pkg/log"
 	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/services/application"
+	"cosmos-server/pkg/services/monitoring"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 type handler struct {
 	applicationService application.Service
+	monitoringService  monitoring.Service
 	translator         Translator
 	logger             log.Logger
 }
 
-func AddAuthenticatedApplicationHandler(e *gin.RouterGroup, applicationService application.Service, translator Translator, logger log.Logger) {
+func AddAuthenticatedApplicationHandler(e *gin.RouterGroup, applicationService application.Service, monitoringService monitoring.Service, translator Translator, logger log.Logger) {
 	handler := &handler{
 		applicationService: applicationService,
+		monitoringService:  monitoringService,
 		translator:         translator,
 		logger:             logger,
 	}
@@ -47,20 +51,29 @@ func (handler *handler) handleCreateApplication(e *gin.Context) {
 		_ = e.Error(errors.NewBadRequestError(err.Error()))
 		return
 	}
-	var gitInformation *model.GitInformation
-	if createApplicationRequest.GitInformation != nil {
-		gitInformation = &model.GitInformation{
-			Provider:         createApplicationRequest.GitInformation.Provider,
-			RepositoryOwner:  createApplicationRequest.GitInformation.RepositoryOwner,
-			RepositoryName:   createApplicationRequest.GitInformation.RepositoryName,
-			RepositoryBranch: createApplicationRequest.GitInformation.RepositoryBranch,
-		}
-	}
+
+	gitInformation := handler.translator.ToGitInformationModel(createApplicationRequest.GitInformation)
 
 	err := handler.applicationService.AddApplication(e, createApplicationRequest.Name, createApplicationRequest.Description, createApplicationRequest.Team, gitInformation)
 	if err != nil {
 		_ = e.Error(err)
 		return
+	}
+
+	if gitInformation != nil {
+		app, err := handler.applicationService.GetApplication(e, createApplicationRequest.Name)
+		if err != nil {
+			handler.logger.Errorf("Failed to retrieve application after creation: %v", err)
+			_ = e.Error(err)
+			return
+		}
+
+		err = handler.monitoringService.UpdateApplicationInformation(e, app)
+		if err != nil {
+			handler.logger.Errorf("Failed to update application information after creation: %v", err)
+			_ = e.Error(err)
+			return
+		}
 	}
 
 	e.JSON(http.StatusCreated, handler.translator.ToCreateApplicationResponse(createApplicationRequest.Name, createApplicationRequest.Description, createApplicationRequest.Team, gitInformation))
@@ -164,6 +177,15 @@ func (handler *handler) handleUpdateApplication(e *gin.Context) {
 	if err != nil {
 		_ = e.Error(err)
 		return
+	}
+
+	if updateData.GitInformation != nil {
+		err = handler.monitoringService.UpdateApplicationInformation(e, updatedApp)
+		if err != nil {
+			handler.logger.Errorf("Failed to update application information after update: %v", err)
+			_ = e.Error(err)
+			return
+		}
 	}
 
 	e.JSON(http.StatusOK, handler.translator.ToUpdateApplicationResponse(updatedApp))

@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/storage/obj"
 )
 
@@ -27,4 +28,12 @@ type Service interface {
 	GetApplicationsWithFilter(ctx context.Context, filter string) ([]*obj.Application, error)
 	DeleteApplicationWithName(ctx context.Context, name string) error
 	UpdateApplication(ctx context.Context, application *obj.Application) error
+
+	InsertApplicationDependency(ctx context.Context, dependency *obj.ApplicationDependency) error
+	GetApplicationDependency(ctx context.Context, consumerID, providerID int) (*obj.ApplicationDependency, error)
+	UpsertApplicationDependency(ctx context.Context, consumerName, providerName string, dependency *obj.ApplicationDependency) error
+	GetApplicationDependenciesWithApplicationInvolved(ctx context.Context, applicationName string) ([]*obj.ApplicationDependency, error)
+	GetApplicationDependenciesWithFilter(ctx context.Context, filters model.ApplicationDependencyFilter) ([]*obj.ApplicationDependency, error)
+	GetApplicationDependenciesByConsumer(ctx context.Context, consumerName string) ([]*obj.ApplicationDependency, error)
+	DeleteApplicationDependency(ctx context.Context, consumerName, providerName string) error
 }

@@ -10,6 +10,7 @@ type Translator interface {
 	ToGetApplicationResponse(applicationObj *model.Application) *api.GetApplicationResponse
 	ToGetApplicationsResponse(applicationObj []*model.Application) *api.GetApplicationsResponse
 	ToUpdateApplicationResponse(app *model.Application) *api.UpdateApplicationResponse
+	ToGitInformationModel(gitInfo *api.GitInformation) *model.GitInformation
 }
 
 type translator struct{}
@@ -79,5 +80,17 @@ func (t *translator) ToApplicationApi(applicationModel *model.Application) *api.
 func (t *translator) ToUpdateApplicationResponse(app *model.Application) *api.UpdateApplicationResponse {
 	return &api.UpdateApplicationResponse{
 		Application: t.ToApplicationApi(app),
+	}
+}
+
+func (t *translator) ToGitInformationModel(gitInfo *api.GitInformation) *model.GitInformation {
+	if gitInfo == nil {
+		return nil
+	}
+	return &model.GitInformation{
+		Provider:         gitInfo.Provider,
+		RepositoryOwner:  gitInfo.RepositoryOwner,
+		RepositoryName:   gitInfo.RepositoryName,
+		RepositoryBranch: gitInfo.RepositoryBranch,
 	}
 }

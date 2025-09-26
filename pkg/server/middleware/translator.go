@@ -44,6 +44,8 @@ func (t *translator) ToStatusCode(programError errors.ProgramError) int {
 		return 403
 	case errors.NotFound:
 		return 404
+	case errors.Conflict:
+		return 409
 	case errors.InternalServerError:
 		return 500
 	default:

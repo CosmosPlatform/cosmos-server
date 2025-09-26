@@ -1,6 +1,12 @@
 package api
 
-import validation "github.com/go-ozzo/ozzo-validation/v4"
+import (
+	"regexp"
+
+	validation "github.com/go-ozzo/ozzo-validation/v4"
+)
+
+var applicationNameRegex = regexp.MustCompile(`^[a-zA-Z0-9-]+$`)
 
 type CreateApplicationRequest struct {
 	Name           string          `json:"name"`
@@ -18,7 +24,11 @@ type GitInformation struct {
 
 func (r *CreateApplicationRequest) Validate() error {
 	return validation.ValidateStruct(r,
-		validation.Field(&r.Name, validation.Required, validation.Length(1, 100)),
+		validation.Field(&r.Name,
+			validation.Required,
+			validation.Length(1, 100),
+			validation.Match(applicationNameRegex).Error("name can only contain letters, numbers, and hyphens"),
+		),
 		validation.Field(&r.Description, validation.Length(0, 500)),
 		validation.Field(&r.Team, validation.Length(0, 100)),
 		validation.Field(&r.GitInformation, validation.When(r.GitInformation != nil,

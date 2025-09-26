@@ -2,10 +2,13 @@ package routes
 
 import (
 	"cosmos-server/pkg/log"
+	monitoringRoute "cosmos-server/pkg/routes/monitoring"
 	"cosmos-server/pkg/services/application"
 	"cosmos-server/pkg/services/auth"
+	"cosmos-server/pkg/services/monitoring"
 	"cosmos-server/pkg/services/team"
 	"cosmos-server/pkg/services/user"
+
 	"github.com/gin-gonic/gin"
 
 	applicationRoute "cosmos-server/pkg/routes/application"
@@ -20,15 +23,17 @@ type HTTPRoutes struct {
 	UserService        user.Service
 	TeamService        team.Service
 	ApplicationService application.Service
+	MonitoringService  monitoring.Service
 	Logger             log.Logger
 }
 
-func NewHTTPRoutes(authService auth.Service, userService user.Service, teamService team.Service, applicationService application.Service, logger log.Logger) *HTTPRoutes {
+func NewHTTPRoutes(authService auth.Service, userService user.Service, teamService team.Service, applicationService application.Service, monitoringService monitoring.Service, logger log.Logger) *HTTPRoutes {
 	return &HTTPRoutes{
 		AuthService:        authService,
 		UserService:        userService,
 		TeamService:        teamService,
 		ApplicationService: applicationService,
+		MonitoringService:  monitoringService,
 		Logger:             logger,
 	}
 }
@@ -36,10 +41,11 @@ func NewHTTPRoutes(authService auth.Service, userService user.Service, teamServi
 func (r *HTTPRoutes) RegisterUnauthenticatedRoutes(e *gin.RouterGroup) {
 	authRoute.AddAuthHandler(e, r.AuthService, r.Logger)
 	healthcheckRoute.AddHealthcheckHandler(e)
+	monitoringRoute.AddAuthenticatedMonitoringHandler(e, r.MonitoringService, r.ApplicationService, monitoringRoute.NewTranslator(), r.Logger)
 }
 
 func (r *HTTPRoutes) RegisterAuthenticatedRoutes(e *gin.RouterGroup) {
-	applicationRoute.AddAuthenticatedApplicationHandler(e, r.ApplicationService, applicationRoute.NewTranslator(), r.Logger)
+	applicationRoute.AddAuthenticatedApplicationHandler(e, r.ApplicationService, r.MonitoringService, applicationRoute.NewTranslator(), r.Logger)
 	userRoute.AddAuthenticatedUserHandler(e, r.UserService, userRoute.NewTranslator(), r.Logger)
 	teamRoute.AddAuthenticatedTeamHandler(e, r.TeamService, teamRoute.NewTranslator())
 }
