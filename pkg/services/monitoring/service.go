@@ -40,12 +40,6 @@ func (s *monitoringService) UpdateApplicationInformation(ctx context.Context, ap
 		return nil // Could be an error because there is nothing to update.
 	}
 
-	interactionsError := s.UpdateApplicationInteractions(ctx, application)
-
-	return interactionsError
-}
-
-func (s *monitoringService) UpdateApplicationInteractions(ctx context.Context, application *model.Application) error {
 	openClientDef, err := s.getOpenClientDefinition(ctx, application)
 	if err != nil {
 		return err
