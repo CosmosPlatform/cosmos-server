@@ -1,10 +1,11 @@
 package model
 
 type Application struct {
-	Name           string
-	Description    string
-	Team           *Team
-	GitInformation *GitInformation
+	Name                  string
+	Description           string
+	Team                  *Team
+	GitInformation        *GitInformation
+	MonitoringInformation *MonitoringInformation
 }
 
 type GitInformation struct {
@@ -12,6 +13,11 @@ type GitInformation struct {
 	RepositoryOwner  string
 	RepositoryName   string
 	RepositoryBranch string
+}
+
+type MonitoringInformation struct {
+	DependenciesSha string
+	OpenAPISha      string
 }
 
 type ApplicationUpdate struct {

@@ -16,19 +16,22 @@ type Service interface {
 	UpdateApplicationInformation(ctx context.Context, application *model.Application) error
 	GetApplicationInteractions(ctx context.Context, applicationName string) (*model.ApplicationsInteractions, error)
 	GetApplicationsInteractions(ctx context.Context, filter model.ApplicationDependencyFilter) (*model.ApplicationsInteractions, error)
+	UpdateApplicationOpenAPISpecification(ctx context.Context, application *model.Application) error
 }
 
 type monitoringService struct {
 	storageService storage.Service
 	gitService     GitService
+	openApiService OpenApiService
 	translator     Translator
 	logger         log.Logger
 }
 
-func NewMonitoringService(storageService storage.Service, gitService GitService, translator Translator, logger log.Logger) Service {
+func NewMonitoringService(storageService storage.Service, gitService GitService, openApiService OpenApiService, translator Translator, logger log.Logger) Service {
 	return &monitoringService{
 		storageService: storageService,
 		gitService:     gitService,
+		openApiService: openApiService,
 		translator:     translator,
 		logger:         logger,
 	}
@@ -48,7 +51,7 @@ func (s *monitoringService) UpdateApplicationInformation(ctx context.Context, ap
 	for dependencyName, dependency := range openClientDef.Dependencies {
 		modelDependency, err := s.transformToModelDependency(ctx, application, dependencyName, dependency)
 		if err != nil {
-			s.logger.Errorf("Failed to transform dependency for application %s: %v", application.Name, err)
+			s.logger.Warnf("Failed to transform dependency for application %s: %v", application.Name, err)
 			continue
 		}
 
@@ -164,4 +167,50 @@ func (s *monitoringService) GetApplicationsInteractions(ctx context.Context, fil
 	}
 
 	return s.translator.ToApplicationsInteractionsModel(objDependencies), nil
+}
+
+func (s *monitoringService) UpdateApplicationOpenAPISpecification(ctx context.Context, application *model.Application) error {
+	if application.GitInformation == nil {
+		s.logger.Infof("No git information for application %s, skipping OpenAPI spec update", application.Name)
+		return nil // Could be an error because there is nothing to update.
+	}
+
+	openApiSpecMetadata, err := s.gitService.GetFileMetadata(ctx, application.GitInformation.RepositoryOwner, application.GitInformation.RepositoryName, application.GitInformation.RepositoryBranch, "docs/swagger.json")
+	if err != nil {
+		s.logger.Errorf("Failed to get swagger.json metadata for application %s: %v", application.Name, err)
+		return err
+	}
+
+	if application.MonitoringInformation != nil && application.MonitoringInformation.OpenAPISha == openApiSpecMetadata.SHA {
+		s.logger.Infof("OpenAPI specification for application %s is up to date, skipping update", application.Name)
+		return nil
+	}
+
+	openAPISpecRaw, err := s.gitService.GetFileWithContent(ctx, application.GitInformation.RepositoryOwner, application.GitInformation.RepositoryName, application.GitInformation.RepositoryBranch, "docs/swagger.json")
+	if err != nil {
+		s.logger.Errorf("Failed to get swagger.json for application %s: %v", application.Name, err)
+		return err
+	}
+
+	if openApiSpecMetadata.SHA != openAPISpecRaw.Metadata.SHA {
+		return fmt.Errorf("SHA mismatch for swagger.json of application %s", application.Name)
+	}
+
+	openApiSpec, err := s.openApiService.ParseOpenApiSpec(openAPISpecRaw.Content)
+	if err != nil {
+		s.logger.Errorf("Failed to parse OpenAPI spec for application %s: %v", application.Name, err)
+
+	}
+
+	applicationOpenApiObj, err := s.translator.ToApplicationOpenApiObj(openApiSpec)
+	if err != nil {
+		return fmt.Errorf("failed to transform OpenAPI spec for application %s: %v", application.Name, err)
+	}
+
+	err = s.storageService.UpsertOpenAPISpecification(ctx, application.Name, applicationOpenApiObj)
+	if err != nil {
+		return fmt.Errorf("failed to upsert OpenAPI spec for application %s: %v", application.Name, err)
+	}
+
+	return nil
 }

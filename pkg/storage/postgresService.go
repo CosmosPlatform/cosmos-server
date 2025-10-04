@@ -301,24 +301,23 @@ func (s *PostgresService) UpsertApplicationDependency(ctx context.Context, consu
 	dependency.ProviderID = int(provider.ID)
 
 	existing, err := s.GetApplicationDependency(ctx, int(consumer.ID), int(provider.ID))
-	if err != nil && !errorUtils.Is(err, ErrNotFound) {
+	if err != nil {
+		if errorUtils.Is(err, ErrNotFound) {
+			return s.InsertApplicationDependency(ctx, dependency)
+		}
 		return fmt.Errorf("failed to check existing dependency: %v", err)
 	}
 
-	if existing != nil {
-		dependency.ID = existing.ID
-		dependency.CreatedAt = existing.CreatedAt
-		rowsAffected, err := gorm.G[*obj.ApplicationDependency](s.db).Where("id = ?", existing.ID).Updates(ctx, dependency)
-		if err != nil {
-			return fmt.Errorf("failed to update application dependency: %v", err)
-		}
-		if rowsAffected == 0 {
-			return ErrNotFound
-		}
-		return nil
+	dependency.ID = existing.ID
+	dependency.CreatedAt = existing.CreatedAt
+	rowsAffected, err := gorm.G[*obj.ApplicationDependency](s.db).Where("id = ?", existing.ID).Updates(ctx, dependency)
+	if err != nil {
+		return fmt.Errorf("failed to update application dependency: %v", err)
 	}
-
-	return s.InsertApplicationDependency(ctx, dependency)
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func (s *PostgresService) GetApplicationDependenciesWithApplicationInvolved(ctx context.Context, applicationName string) ([]*obj.ApplicationDependency, error) {
@@ -443,4 +442,56 @@ func (s *PostgresService) DeleteApplicationDependency(ctx context.Context, consu
 	}
 
 	return nil
+}
+
+func (s *PostgresService) UpsertOpenAPISpecification(ctx context.Context, applicationName string, openAPISpec *obj.ApplicationOpenAPI) error {
+	application, err := s.GetApplicationWithName(ctx, applicationName)
+	if err != nil {
+		return fmt.Errorf("failed to get application: %v", err)
+	}
+
+	openAPISpec.ApplicationID = int(application.ID)
+
+	existing, err := s.GetOpenAPISpecificationByApplicationId(ctx, int(application.ID))
+	if err != nil {
+		if errorUtils.Is(err, gorm.ErrRecordNotFound) {
+			return s.InsertOpenAPISpecification(ctx, openAPISpec)
+		}
+		return fmt.Errorf("failed to check existing OpenAPI spec: %v", err)
+	}
+
+	openAPISpec.ID = existing.ID
+	openAPISpec.CreatedAt = existing.CreatedAt
+	rowsAffected, err := gorm.G[*obj.ApplicationOpenAPI](s.db).Where("id = ?", existing.ID).Updates(ctx, openAPISpec)
+	if err != nil {
+		return fmt.Errorf("failed to update OpenAPI specification: %v", err)
+	}
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (s *PostgresService) InsertOpenAPISpecification(ctx context.Context, openAPISpec *obj.ApplicationOpenAPI) error {
+	err := gorm.G[obj.ApplicationOpenAPI](s.db).Create(ctx, openAPISpec)
+	if err != nil {
+		if errorUtils.Is(err, gorm.ErrDuplicatedKey) {
+			return ErrAlreadyExists
+		}
+		return fmt.Errorf("failed to insert OpenAPI specification: %v", err)
+	}
+
+	return nil
+}
+
+func (s *PostgresService) GetOpenAPISpecificationByApplicationId(ctx context.Context, applicationID int) (*obj.ApplicationOpenAPI, error) {
+	openAPISpec, err := gorm.G[*obj.ApplicationOpenAPI](s.db).Where("application_id = ?", applicationID).First(ctx)
+	if err != nil {
+		if errorUtils.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to get OpenAPI specification for application ID %d: %v", applicationID, err)
+	}
+
+	return openAPISpec, nil
 }

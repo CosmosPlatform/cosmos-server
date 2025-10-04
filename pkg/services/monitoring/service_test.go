@@ -59,7 +59,7 @@ func setUp(t *testing.T) (Service, *mocks) {
 		loggerMocks:        log.NewMockLogger(controller),
 	}
 
-	service := NewMonitoringService(mocks.storageServiceMock, mocks.gitServiceMock, NewTranslator(), mocks.loggerMocks)
+	service := NewMonitoringService(mocks.storageServiceMock, mocks.gitServiceMock, NewOpenApiService(), NewTranslator(), mocks.loggerMocks)
 
 	return service, mocks
 }

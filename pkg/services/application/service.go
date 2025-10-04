@@ -138,6 +138,8 @@ func (s *applicationService) UpdateApplication(ctx context.Context, name string,
 		GitRepositoryOwner:  existingApp.GitRepositoryOwner,
 		GitRepositoryName:   existingApp.GitRepositoryName,
 		GitRepositoryBranch: existingApp.GitRepositoryBranch,
+		DependenciesSha:     existingApp.DependenciesSha,
+		OpenAPISha:          existingApp.OpenAPISha,
 	}
 
 	if updateData.Name != nil {
