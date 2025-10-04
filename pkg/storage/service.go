@@ -37,5 +37,5 @@ type Service interface {
 	GetApplicationDependenciesByConsumer(ctx context.Context, consumerName string) ([]*obj.ApplicationDependency, error)
 	DeleteApplicationDependency(ctx context.Context, consumerName, providerName string) error
 
-	UpsertOpenAPISpecification(ctx context.Context, applicationName string, openAPISpec *obj.ApplicationOpenAPI) error
+	UpsertOpenAPISpecification(ctx context.Context, applicationName string, openAPISpec *obj.ApplicationOpenAPI, applicationOpenApiSHA string) error
 }

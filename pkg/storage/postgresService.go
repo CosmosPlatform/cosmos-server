@@ -444,44 +444,46 @@ func (s *PostgresService) DeleteApplicationDependency(ctx context.Context, consu
 	return nil
 }
 
-func (s *PostgresService) UpsertOpenAPISpecification(ctx context.Context, applicationName string, openAPISpec *obj.ApplicationOpenAPI) error {
-	application, err := s.GetApplicationWithName(ctx, applicationName)
-	if err != nil {
-		return fmt.Errorf("failed to get application: %v", err)
-	}
-
-	openAPISpec.ApplicationID = int(application.ID)
-
-	existing, err := s.GetOpenAPISpecificationByApplicationId(ctx, int(application.ID))
-	if err != nil {
-		if errorUtils.Is(err, gorm.ErrRecordNotFound) {
-			return s.InsertOpenAPISpecification(ctx, openAPISpec)
+func (s *PostgresService) UpsertOpenAPISpecification(ctx context.Context, applicationName string, openAPISpec *obj.ApplicationOpenAPI, applicationOpenApiSHA string) error {
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		application, err := gorm.G[*obj.Application](tx).Preload("Team", nil).Where("LOWER(name) = LOWER(?)", applicationName).First(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to get application: %v", err)
 		}
-		return fmt.Errorf("failed to check existing OpenAPI spec: %v", err)
-	}
 
-	openAPISpec.ID = existing.ID
-	openAPISpec.CreatedAt = existing.CreatedAt
-	rowsAffected, err := gorm.G[*obj.ApplicationOpenAPI](s.db).Where("id = ?", existing.ID).Updates(ctx, openAPISpec)
-	if err != nil {
-		return fmt.Errorf("failed to update OpenAPI specification: %v", err)
-	}
-	if rowsAffected == 0 {
-		return ErrNotFound
-	}
-	return nil
-}
-
-func (s *PostgresService) InsertOpenAPISpecification(ctx context.Context, openAPISpec *obj.ApplicationOpenAPI) error {
-	err := gorm.G[obj.ApplicationOpenAPI](s.db).Create(ctx, openAPISpec)
-	if err != nil {
-		if errorUtils.Is(err, gorm.ErrDuplicatedKey) {
-			return ErrAlreadyExists
+		openAPISpec.ApplicationID = int(application.ID)
+		existing, err := gorm.G[*obj.ApplicationOpenAPI](tx).Where("application_id = ?", application.ID).First(ctx)
+		if err != nil {
+			if errorUtils.Is(err, gorm.ErrRecordNotFound) {
+				if err := gorm.G[obj.ApplicationOpenAPI](tx).Create(ctx, openAPISpec); err != nil {
+					return fmt.Errorf("failed to insert OpenAPI specification: %v", err)
+				}
+			} else {
+				return fmt.Errorf("failed to check existing OpenAPI spec: %v", err)
+			}
+		} else {
+			openAPISpec.ID = existing.ID
+			openAPISpec.CreatedAt = existing.CreatedAt
+			rowsAffected, err := gorm.G[*obj.ApplicationOpenAPI](tx).Where("id = ?", existing.ID).Updates(ctx, openAPISpec)
+			if err != nil {
+				return fmt.Errorf("failed to update OpenAPI specification: %v", err)
+			}
+			if rowsAffected == 0 {
+				return ErrNotFound
+			}
 		}
-		return fmt.Errorf("failed to insert OpenAPI specification: %v", err)
-	}
 
-	return nil
+		// Update OpenAPISha field atomically
+		rowsAffected, err := gorm.G[*obj.Application](tx).Where("id = ?", application.ID).Update(ctx, "open_api_sha", applicationOpenApiSHA)
+		if err != nil {
+			return fmt.Errorf("failed to update OpenAPISha: %v", err)
+		}
+		if rowsAffected == 0 {
+			return ErrNotFound
+		}
+
+		return nil
+	})
 }
 
 func (s *PostgresService) GetOpenAPISpecificationByApplicationId(ctx context.Context, applicationID int) (*obj.ApplicationOpenAPI, error) {

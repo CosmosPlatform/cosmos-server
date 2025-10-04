@@ -207,7 +207,7 @@ func (s *monitoringService) UpdateApplicationOpenAPISpecification(ctx context.Co
 		return fmt.Errorf("failed to transform OpenAPI spec for application %s: %v", application.Name, err)
 	}
 
-	err = s.storageService.UpsertOpenAPISpecification(ctx, application.Name, applicationOpenApiObj)
+	err = s.storageService.UpsertOpenAPISpecification(ctx, application.Name, applicationOpenApiObj, openAPISpecRaw.Metadata.SHA)
 	if err != nil {
 		return fmt.Errorf("failed to upsert OpenAPI spec for application %s: %v", application.Name, err)
 	}
