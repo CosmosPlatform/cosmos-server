@@ -5,7 +5,9 @@ import (
 	"cosmos-server/pkg/log"
 	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/storage"
+	"cosmos-server/pkg/storage/obj"
 	"encoding/json"
+	errorUtils "errors"
 	"fmt"
 	"strings"
 )
@@ -43,36 +45,70 @@ func (s *monitoringService) UpdateApplicationInformation(ctx context.Context, ap
 		return nil // Could be an error because there is nothing to update.
 	}
 
-	openClientDef, err := s.getOpenClientDefinition(ctx, application)
+	openClientMetadata, err := s.gitService.GetFileMetadata(ctx, application.GitInformation.RepositoryOwner, application.GitInformation.RepositoryName, application.GitInformation.RepositoryBranch, "docs/openclient.json")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get openclient.json metadata for application %s: %v", application.Name, err)
 	}
 
-	for dependencyName, dependency := range openClientDef.Dependencies {
-		modelDependency, err := s.transformToModelDependency(ctx, application, dependencyName, dependency)
-		if err != nil {
-			s.logger.Warnf("Failed to transform dependency for application %s: %v", application.Name, err)
-			continue
-		}
-
-		objDependency := s.translator.ToApplicationDependencyObj(modelDependency)
-
-		err = s.storageService.UpsertApplicationDependency(ctx, application.Name, dependencyName, objDependency)
-		if err != nil {
-			s.logger.Errorf("Failed to upsert dependency for application %s: %v", application.Name, err)
-			continue
-		}
-
-		s.logger.Infof("Successfully upserted dependency from %s to %s", application.Name, dependencyName)
+	if application.MonitoringInformation != nil && application.MonitoringInformation.DependenciesSha == openClientMetadata.SHA {
+		s.logger.Infof("Dependencies for application %s are up to date, skipping update", application.Name)
+		return nil
 	}
 
-	err = s.deleteObsoleteDependencies(ctx, application, openClientDef)
+	rawOpenClientDefinition, err := s.gitService.GetFileWithContent(ctx, application.GitInformation.RepositoryOwner, application.GitInformation.RepositoryName, application.GitInformation.RepositoryBranch, "docs/openclient.json")
 	if err != nil {
-		s.logger.Errorf("Failed to delete obsolete dependencies for application %s: %v", application.Name, err)
-		return err
+		return fmt.Errorf("failed to get openclient.json for application %s: %v", application.Name, err)
+	}
+
+	if openClientMetadata.SHA != rawOpenClientDefinition.Metadata.SHA {
+		return fmt.Errorf("SHA mismatch for openclient.json of application %s", application.Name)
+	}
+
+	openClientDef, err := s.transformToOpenClientDefinition(rawOpenClientDefinition)
+	if err != nil {
+		return fmt.Errorf("failed to transform openclient.json for application %s: %v", application.Name, err)
+	}
+
+	dependenciesToUpsert, _, err := s.getDependenciesToModify(ctx, application, openClientDef)
+	if err != nil {
+		return fmt.Errorf("failed to get dependencies to modify for application %s: %v", application.Name, err)
+	}
+
+	// We get the obsolete dependencies to delete them in batch
+	objDependenciesToDelete, err := s.getObsoleteDependencies(ctx, application, openClientDef)
+	if err != nil {
+		return fmt.Errorf("failed to get obsolete dependencies for application %s: %v", application.Name, err)
+	}
+
+	err = s.storageService.UpdateApplicationDependencies(ctx, application.Name, dependenciesToUpsert, objDependenciesToDelete, rawOpenClientDefinition.Metadata.SHA)
+	if err != nil {
+		return fmt.Errorf("failed to update dependencies for application %s: %v", application.Name, err)
 	}
 
 	return nil
+}
+
+func (s *monitoringService) getDependenciesToModify(ctx context.Context, application *model.Application, openClientDef *model.OpenClientSpecification) (map[string]*obj.ApplicationDependency, map[string]*model.DependencySpecification, error) {
+	dependenciesToUpsert := make(map[string]*obj.ApplicationDependency)
+	dependenciesToBuffer := make(map[string]*model.DependencySpecification)
+
+	// We populate the dependenciesToUpsert and dependenciesToBuffer maps
+	for dependencyName, dependency := range openClientDef.Dependencies {
+		dependencyObj, err := s.storageService.GetApplicationWithName(ctx, dependencyName)
+		if err != nil {
+			if errorUtils.Is(err, storage.ErrNotFound) {
+				s.logger.Warnf("Dependency application %s not found for application %s, skipping dependency creation", dependencyName, application.Name)
+				dependenciesToBuffer[dependencyName] = &dependency
+				continue
+			}
+			return nil, nil, fmt.Errorf("failed to get dependency application %s for application %s: %v", dependencyName, application.Name, err)
+		}
+
+		modelDependency, err := s.transformToModelDependency(application, s.translator.ToApplicationModel(dependencyObj), dependency)
+		dependenciesToUpsert[dependencyName] = s.translator.ToApplicationDependencyObj(modelDependency)
+	}
+
+	return dependenciesToUpsert, dependenciesToBuffer, nil
 }
 
 func (s *monitoringService) getOpenClientDefinition(ctx context.Context, application *model.Application) (*model.OpenClientSpecification, error) {
@@ -98,14 +134,22 @@ func (s *monitoringService) getOpenClientDefinition(ctx context.Context, applica
 	return &openClientDef, nil
 }
 
-func (s *monitoringService) transformToModelDependency(ctx context.Context, consumer *model.Application, dependencyName string, dependency model.DependencySpecification) (*model.ApplicationDependency, error) {
-	providerApp, err := s.storageService.GetApplicationWithName(ctx, dependencyName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get provider application %s: %v", dependencyName, err)
+func (s *monitoringService) transformToOpenClientDefinition(rawOpenClientDefinition *model.FileContent) (*model.OpenClientSpecification, error) {
+	var openClientDef model.OpenClientSpecification
+	decoder := json.NewDecoder(strings.NewReader(rawOpenClientDefinition.Content))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&openClientDef); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal openclient.json: %s", err.Error())
 	}
 
-	providerAppModel := s.translator.ToApplicationModel(providerApp)
+	if err := openClientDef.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid openclient.json :%s", err.Error())
+	}
 
+	return &openClientDef, nil
+}
+
+func (s *monitoringService) transformToModelDependency(consumer *model.Application, providerAppModel *model.Application, dependency model.DependencySpecification) (*model.ApplicationDependency, error) {
 	endpoints := make(model.Endpoints)
 	for path, methods := range dependency.Endpoints {
 		endpointMethods := make(model.EndpointMethods)
@@ -134,30 +178,26 @@ func (s *monitoringService) GetApplicationInteractions(ctx context.Context, appl
 	return s.translator.ToApplicationsInteractionsModel(objDependencies), nil
 }
 
-func (s *monitoringService) deleteObsoleteDependencies(ctx context.Context, application *model.Application, openClientSpecification *model.OpenClientSpecification) error {
-	dependencies := make(map[string]bool)
+func (s *monitoringService) getObsoleteDependencies(ctx context.Context, application *model.Application, openClientSpecification *model.OpenClientSpecification) ([]*obj.ApplicationDependency, error) {
+	dependenciesToKeep := make(map[string]bool)
+	dependenciesToDelete := make([]*obj.ApplicationDependency, 0)
 
 	for dependencyName := range openClientSpecification.Dependencies {
-		dependencies[dependencyName] = true
+		dependenciesToKeep[dependencyName] = true
 	}
 
 	existingDependencies, err := s.storageService.GetApplicationDependenciesByConsumer(ctx, application.Name)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	for _, existingDependency := range existingDependencies {
-		if _, exists := dependencies[existingDependency.Provider.Name]; !exists {
-			err := s.storageService.DeleteApplicationDependency(ctx, application.Name, existingDependency.Provider.Name)
-			if err != nil {
-				s.logger.Errorf("Failed to delete obsolete dependency from %s to %s: %v", application.Name, existingDependency.Provider.Name, err)
-				continue
-			}
-			s.logger.Infof("Successfully deleted obsolete dependency from %s to %s", application.Name, existingDependency.Provider.Name)
+		if _, exists := dependenciesToKeep[existingDependency.Provider.Name]; !exists {
+			dependenciesToDelete = append(dependenciesToDelete, existingDependency)
 		}
 	}
 
-	return nil
+	return dependenciesToDelete, nil
 }
 
 func (s *monitoringService) GetApplicationsInteractions(ctx context.Context, filter model.ApplicationDependencyFilter) (*model.ApplicationsInteractions, error) {

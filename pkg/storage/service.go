@@ -29,13 +29,12 @@ type Service interface {
 	DeleteApplicationWithName(ctx context.Context, name string) error
 	UpdateApplication(ctx context.Context, application *obj.Application) error
 
-	InsertApplicationDependency(ctx context.Context, dependency *obj.ApplicationDependency) error
 	GetApplicationDependency(ctx context.Context, consumerID, providerID int) (*obj.ApplicationDependency, error)
-	UpsertApplicationDependency(ctx context.Context, consumerName, providerName string, dependency *obj.ApplicationDependency) error
 	GetApplicationDependenciesWithApplicationInvolved(ctx context.Context, applicationName string) ([]*obj.ApplicationDependency, error)
 	GetApplicationDependenciesWithFilter(ctx context.Context, filters model.ApplicationDependencyFilter) ([]*obj.ApplicationDependency, error)
 	GetApplicationDependenciesByConsumer(ctx context.Context, consumerName string) ([]*obj.ApplicationDependency, error)
-	DeleteApplicationDependency(ctx context.Context, consumerName, providerName string) error
 
 	UpsertOpenAPISpecification(ctx context.Context, applicationName string, openAPISpec *obj.ApplicationOpenAPI, applicationOpenApiSHA string) error
+
+	UpdateApplicationDependencies(ctx context.Context, applicationName string, dependenciesToUpsert map[string]*obj.ApplicationDependency, dependenciesToDelete []*obj.ApplicationDependency, applicationDependenciesSHA string) error
 }
