@@ -375,7 +375,7 @@ func (s *PostgresService) GetApplicationDependenciesByConsumer(ctx context.Conte
 	return dependencies, nil
 }
 
-func (s *PostgresService) UpdateApplicationDependencies(ctx context.Context, consumerName string, dependenciesToUpsert map[string]*obj.ApplicationDependency, dependenciesToDelete []*obj.ApplicationDependency, applicationDependenciesSHA string) error {
+func (s *PostgresService) UpdateApplicationDependencies(ctx context.Context, consumerName string, dependenciesToUpsert map[string]*obj.ApplicationDependency, pendingDependencies map[string]*obj.PendingApplicationDependency, dependenciesToDelete []*obj.ApplicationDependency, applicationDependenciesSHA string) error {
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		consumer, err := gorm.G[*obj.Application](tx).Where("LOWER(name) = LOWER(?)", consumerName).First(ctx)
 		if err != nil {
@@ -389,6 +389,10 @@ func (s *PostgresService) UpdateApplicationDependencies(ctx context.Context, con
 			if err := s.upsertApplicationDependencyTx(ctx, tx, consumer, providerName, dependency); err != nil {
 				return fmt.Errorf("failed to upsert dependency to provider %s: %v", providerName, err)
 			}
+		}
+
+		if err := s.replacePendingDependenciesTx(ctx, tx, int(consumer.ID), pendingDependencies); err != nil {
+			return fmt.Errorf("failed to replace pending dependencies: %v", err)
 		}
 
 		if err := s.DeleteApplicationDependenciesTx(ctx, tx, dependenciesToDelete); err != nil {
@@ -433,6 +437,26 @@ func (s *PostgresService) upsertApplicationDependencyTx(ctx context.Context, tx 
 	if rowsAffected == 0 {
 		return ErrNotFound
 	}
+	return nil
+}
+
+func (s *PostgresService) replacePendingDependenciesTx(ctx context.Context, tx *gorm.DB, consumerID int, pendingDependencies map[string]*obj.PendingApplicationDependency) error {
+	_, err := gorm.G[obj.PendingApplicationDependency](tx).Where("consumer_id = ?", consumerID).Delete(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to delete existing pending dependencies: %v", err)
+	}
+
+	for _, pendingDependency := range pendingDependencies {
+		pendingDependency.ConsumerID = consumerID
+		err := gorm.G[obj.PendingApplicationDependency](tx).Create(ctx, pendingDependency)
+		if err != nil {
+			if errorUtils.Is(err, gorm.ErrDuplicatedKey) {
+				return ErrAlreadyExists
+			}
+			return fmt.Errorf("failed to insert pending application dependency: %v", err)
+		}
+	}
+
 	return nil
 }
 

@@ -18,6 +18,15 @@ type ApplicationDependency struct {
 	Endpoints  Endpoints      `gorm:"type:jsonb"`
 }
 
+type PendingApplicationDependency struct {
+	CosmosObj
+	ConsumerID   int
+	Consumer     *Application `gorm:"foreignKey:ConsumerID"`
+	ProviderName string
+	Reasons      pq.StringArray `gorm:"type:text[]"`
+	Endpoints    Endpoints      `gorm:"type:jsonb"`
+}
+
 type Endpoints map[string]EndpointMethods
 
 type EndpointMethods map[string]EndpointDetails

@@ -13,6 +13,8 @@ type Translator interface {
 	ToApplicationDependencyObj(modelDependency *model.ApplicationDependency) *obj.ApplicationDependency
 	ToApplicationDependencyModel(objDependency *obj.ApplicationDependency) *model.ApplicationDependency
 
+	ToPendingApplicationDependencyObj(modelPendingDependency *model.PendingApplicationDependency) *obj.PendingApplicationDependency
+
 	ToApplicationOpenApiObj(openApiSpec *openapi3.T) (*obj.ApplicationOpenAPI, error)
 }
 
@@ -71,6 +73,18 @@ func (t *translator) ToApplicationDependencyObj(modelDependency *model.Applicati
 	return &obj.ApplicationDependency{
 		Reasons:   modelDependency.Reasons,
 		Endpoints: t.toObjEndpoints(modelDependency.Endpoints),
+	}
+}
+
+func (t *translator) ToPendingApplicationDependencyObj(modelPendingDependency *model.PendingApplicationDependency) *obj.PendingApplicationDependency {
+	if modelPendingDependency == nil {
+		return nil
+	}
+
+	return &obj.PendingApplicationDependency{
+		ProviderName: modelPendingDependency.ProviderName,
+		Reasons:      modelPendingDependency.Reasons,
+		Endpoints:    t.toObjEndpoints(modelPendingDependency.Endpoints),
 	}
 }
 

@@ -69,7 +69,7 @@ func (s *monitoringService) UpdateApplicationInformation(ctx context.Context, ap
 		return fmt.Errorf("failed to transform openclient.json for application %s: %v", application.Name, err)
 	}
 
-	dependenciesToUpsert, _, err := s.getDependenciesToModify(ctx, application, openClientDef)
+	dependenciesToUpsert, pendingDependencies, err := s.getDependenciesToModify(ctx, application, openClientDef)
 	if err != nil {
 		return fmt.Errorf("failed to get dependencies to modify for application %s: %v", application.Name, err)
 	}
@@ -80,7 +80,7 @@ func (s *monitoringService) UpdateApplicationInformation(ctx context.Context, ap
 		return fmt.Errorf("failed to get obsolete dependencies for application %s: %v", application.Name, err)
 	}
 
-	err = s.storageService.UpdateApplicationDependencies(ctx, application.Name, dependenciesToUpsert, objDependenciesToDelete, rawOpenClientDefinition.Metadata.SHA)
+	err = s.storageService.UpdateApplicationDependencies(ctx, application.Name, dependenciesToUpsert, pendingDependencies, objDependenciesToDelete, rawOpenClientDefinition.Metadata.SHA)
 	if err != nil {
 		return fmt.Errorf("failed to update dependencies for application %s: %v", application.Name, err)
 	}
@@ -88,27 +88,27 @@ func (s *monitoringService) UpdateApplicationInformation(ctx context.Context, ap
 	return nil
 }
 
-func (s *monitoringService) getDependenciesToModify(ctx context.Context, application *model.Application, openClientDef *model.OpenClientSpecification) (map[string]*obj.ApplicationDependency, map[string]*model.DependencySpecification, error) {
+func (s *monitoringService) getDependenciesToModify(ctx context.Context, application *model.Application, openClientDef *model.OpenClientSpecification) (map[string]*obj.ApplicationDependency, map[string]*obj.PendingApplicationDependency, error) {
 	dependenciesToUpsert := make(map[string]*obj.ApplicationDependency)
-	dependenciesToBuffer := make(map[string]*model.DependencySpecification)
+	pendingDependencies := make(map[string]*obj.PendingApplicationDependency)
 
-	// We populate the dependenciesToUpsert and dependenciesToBuffer maps
 	for dependencyName, dependency := range openClientDef.Dependencies {
 		dependencyObj, err := s.storageService.GetApplicationWithName(ctx, dependencyName)
 		if err != nil {
 			if errorUtils.Is(err, storage.ErrNotFound) {
 				s.logger.Warnf("Dependency application %s not found for application %s, skipping dependency creation", dependencyName, application.Name)
-				dependenciesToBuffer[dependencyName] = &dependency
+				modelPendingDependency := s.transformToModelPendingDependency(application, dependencyName, dependency)
+				pendingDependencies[dependencyName] = s.translator.ToPendingApplicationDependencyObj(modelPendingDependency)
 				continue
 			}
 			return nil, nil, fmt.Errorf("failed to get dependency application %s for application %s: %v", dependencyName, application.Name, err)
 		}
 
-		modelDependency, err := s.transformToModelDependency(application, s.translator.ToApplicationModel(dependencyObj), dependency)
+		modelDependency := s.transformToModelDependency(application, s.translator.ToApplicationModel(dependencyObj), dependency)
 		dependenciesToUpsert[dependencyName] = s.translator.ToApplicationDependencyObj(modelDependency)
 	}
 
-	return dependenciesToUpsert, dependenciesToBuffer, nil
+	return dependenciesToUpsert, pendingDependencies, nil
 }
 
 func (s *monitoringService) getOpenClientDefinition(ctx context.Context, application *model.Application) (*model.OpenClientSpecification, error) {
@@ -149,15 +149,8 @@ func (s *monitoringService) transformToOpenClientDefinition(rawOpenClientDefinit
 	return &openClientDef, nil
 }
 
-func (s *monitoringService) transformToModelDependency(consumer *model.Application, providerAppModel *model.Application, dependency model.DependencySpecification) (*model.ApplicationDependency, error) {
-	endpoints := make(model.Endpoints)
-	for path, methods := range dependency.Endpoints {
-		endpointMethods := make(model.EndpointMethods)
-		for method, details := range methods {
-			endpointMethods[method] = model.EndpointDetails(details)
-		}
-		endpoints[path] = endpointMethods
-	}
+func (s *monitoringService) transformToModelDependency(consumer *model.Application, providerAppModel *model.Application, dependency model.DependencySpecification) *model.ApplicationDependency {
+	endpoints := s.transformToEndpointsModel(dependency)
 
 	modelDependency := &model.ApplicationDependency{
 		Consumer:  consumer,
@@ -166,7 +159,32 @@ func (s *monitoringService) transformToModelDependency(consumer *model.Applicati
 		Endpoints: endpoints,
 	}
 
-	return modelDependency, nil
+	return modelDependency
+}
+
+func (s *monitoringService) transformToModelPendingDependency(consumer *model.Application, dependencyName string, dependency model.DependencySpecification) *model.PendingApplicationDependency {
+	endpoints := s.transformToEndpointsModel(dependency)
+
+	modelPendingDependency := &model.PendingApplicationDependency{
+		Consumer:     consumer,
+		ProviderName: dependencyName,
+		Reasons:      dependency.Reasons,
+		Endpoints:    endpoints,
+	}
+
+	return modelPendingDependency
+}
+
+func (s *monitoringService) transformToEndpointsModel(dependency model.DependencySpecification) model.Endpoints {
+	endpoints := make(model.Endpoints)
+	for path, methods := range dependency.Endpoints {
+		endpointMethods := make(model.EndpointMethods)
+		for method, details := range methods {
+			endpointMethods[method] = model.EndpointDetails(details)
+		}
+		endpoints[path] = endpointMethods
+	}
+	return endpoints
 }
 
 func (s *monitoringService) GetApplicationInteractions(ctx context.Context, applicationName string) (*model.ApplicationsInteractions, error) {

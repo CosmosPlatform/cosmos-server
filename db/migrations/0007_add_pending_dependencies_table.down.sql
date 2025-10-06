@@ -1,0 +1,7 @@
+DROP INDEX IF EXISTS pending_application_dependencies_consumer_id_idx;
+DROP INDEX IF EXISTS pending_application_dependencies_provider_name_idx;
+
+DROP TABLE IF EXISTS pending_application_dependencies;
+
+DROP INDEX IF EXISTS idx_application_dependencies_consumer_id;
+DROP INDEX IF EXISTS idx_application_dependencies_provider_id;
