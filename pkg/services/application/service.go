@@ -68,6 +68,12 @@ func (s *applicationService) AddApplication(ctx context.Context, name, descripti
 		return errors.NewInternalServerError("failed to insert application: " + err.Error())
 	}
 
+	err = s.storageService.CheckPendingDependenciesForApplication(ctx, name)
+	if err != nil {
+		s.logger.Errorf("Failed to check pending dependencies for application %s: %v", name, err)
+		// Not returning error to avoid failing the whole operation
+	}
+
 	s.logger.Infof("Application %s added successfully", name)
 	return nil
 }

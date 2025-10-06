@@ -547,3 +547,45 @@ func (s *PostgresService) GetOpenAPISpecificationByApplicationId(ctx context.Con
 
 	return openAPISpec, nil
 }
+
+func (s *PostgresService) CheckPendingDependenciesForApplication(ctx context.Context, applicationName string) error {
+	pendingDependencies, err := gorm.G[*obj.PendingApplicationDependency](s.db).Preload("Consumer", nil).Where("provider_name = ?", applicationName).Find(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get pending dependencies for application %s: %v", applicationName, err)
+	}
+
+	if len(pendingDependencies) == 0 {
+		return nil
+	}
+
+	application, err := gorm.G[*obj.Application](s.db).Where("name = ?", applicationName).First(ctx)
+	if err != nil {
+		if errorUtils.Is(err, gorm.ErrRecordNotFound) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("failed to get application: %v", err)
+	}
+
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		for _, pendingDependency := range pendingDependencies {
+			dependency := &obj.ApplicationDependency{
+				ConsumerID: pendingDependency.ConsumerID,
+				ProviderID: int(application.ID),
+				Reasons:    pendingDependency.Reasons,
+				Endpoints:  pendingDependency.Endpoints,
+			}
+
+			err := s.upsertApplicationDependencyTx(ctx, tx, pendingDependency.Consumer, application.Name, dependency)
+			if err != nil {
+				return fmt.Errorf("failed to upsert dependency from consumer %s to provider %s: %v", pendingDependency.Consumer.Name, applicationName, err)
+			}
+		}
+
+		_, err := gorm.G[obj.PendingApplicationDependency](tx).Where("provider_name = ?", applicationName).Delete(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to delete processed pending dependencies: %v", err)
+		}
+
+		return nil
+	})
+}
