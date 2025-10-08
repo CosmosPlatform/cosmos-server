@@ -1,0 +1,5 @@
+ALTER TABLE applications
+ADD COLUMN has_open_api BOOLEAN DEFAULT FALSE,
+ADD COLUMN open_api_path VARCHAR(255),
+ADD COLUMN has_open_client BOOLEAN DEFAULT FALSE,
+ADD COLUMN open_client_path VARCHAR(255);
