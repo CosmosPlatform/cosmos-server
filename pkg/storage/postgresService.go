@@ -536,18 +536,6 @@ func (s *PostgresService) UpsertOpenAPISpecification(ctx context.Context, applic
 	})
 }
 
-func (s *PostgresService) GetOpenAPISpecificationByApplicationId(ctx context.Context, applicationID int) (*obj.ApplicationOpenAPI, error) {
-	openAPISpec, err := gorm.G[*obj.ApplicationOpenAPI](s.db).Where("application_id = ?", applicationID).First(ctx)
-	if err != nil {
-		if errorUtils.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrNotFound
-		}
-		return nil, fmt.Errorf("failed to get OpenAPI specification for application ID %d: %v", applicationID, err)
-	}
-
-	return openAPISpec, nil
-}
-
 func (s *PostgresService) CheckPendingDependenciesForApplication(ctx context.Context, applicationName string) error {
 	pendingDependencies, err := gorm.G[*obj.PendingApplicationDependency](s.db).Preload("Consumer", nil).Where("provider_name = ?", applicationName).Find(ctx)
 	if err != nil {
@@ -588,4 +576,24 @@ func (s *PostgresService) CheckPendingDependenciesForApplication(ctx context.Con
 
 		return nil
 	})
+}
+
+func (s *PostgresService) GetOpenAPISpecificationByApplicationName(ctx context.Context, applicationName string) (*obj.ApplicationOpenAPI, error) {
+	application, err := gorm.G[*obj.Application](s.db).Where("LOWER(name) = LOWER(?)", applicationName).First(ctx)
+	if err != nil {
+		if errorUtils.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to get application: %v", err)
+	}
+
+	openAPISpec, err := gorm.G[*obj.ApplicationOpenAPI](s.db).Preload("Application", nil).Where("application_id = ?", application.ID).First(ctx)
+	if err != nil {
+		if errorUtils.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to get OpenAPI specification for application %s: %v", applicationName, err)
+	}
+
+	return openAPISpec, nil
 }

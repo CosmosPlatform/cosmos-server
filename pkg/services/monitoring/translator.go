@@ -16,6 +16,7 @@ type Translator interface {
 	ToPendingApplicationDependencyObj(modelPendingDependency *model.PendingApplicationDependency) *obj.PendingApplicationDependency
 
 	ToApplicationOpenApiObj(openApiSpec *openapi3.T) (*obj.ApplicationOpenAPI, error)
+	ToApplicationOpenApiModel(objOpenApi *obj.ApplicationOpenAPI) (*model.ApplicationOpenAPISpecification, error)
 }
 
 type translator struct{}
@@ -25,6 +26,10 @@ func NewTranslator() Translator {
 }
 
 func (t *translator) ToApplicationModel(applicationObj *obj.Application) *model.Application {
+	if applicationObj == nil {
+		return nil
+	}
+
 	modelApplication := &model.Application{
 		Name:                  applicationObj.Name,
 		Description:           applicationObj.Description,
@@ -168,5 +173,26 @@ func (t *translator) ToApplicationOpenApiObj(openApiSpec *openapi3.T) (*obj.Appl
 
 	return &obj.ApplicationOpenAPI{
 		OpenAPI: string(openApiJSON),
+	}, nil
+}
+
+func (t *translator) ToApplicationOpenApiModel(objOpenApi *obj.ApplicationOpenAPI) (*model.ApplicationOpenAPISpecification, error) {
+	if objOpenApi == nil {
+		return nil, nil
+	}
+
+	var openApiSpec *openapi3.T
+	if objOpenApi.OpenAPI != "" {
+		loader := openapi3.NewLoader()
+		var err error
+		openApiSpec, err = loader.LoadFromData([]byte(objOpenApi.OpenAPI))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &model.ApplicationOpenAPISpecification{
+		Application: t.ToApplicationModel(objOpenApi.Application),
+		OpenAPISpec: openApiSpec,
 	}, nil
 }

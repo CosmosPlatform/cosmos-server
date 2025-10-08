@@ -37,4 +37,5 @@ type Service interface {
 	UpsertOpenAPISpecification(ctx context.Context, applicationName string, openAPISpec *obj.ApplicationOpenAPI, applicationOpenApiSHA string) error
 	UpdateApplicationDependencies(ctx context.Context, applicationName string, dependenciesToUpsert map[string]*obj.ApplicationDependency, pendingDependencies map[string]*obj.PendingApplicationDependency, dependenciesToDelete []*obj.ApplicationDependency, applicationDependenciesSHA string) error
 	CheckPendingDependenciesForApplication(ctx context.Context, applicationName string) error
+	GetOpenAPISpecificationByApplicationName(ctx context.Context, applicationName string) (*obj.ApplicationOpenAPI, error)
 }

@@ -2,6 +2,7 @@ package monitoring
 
 import (
 	"context"
+	"cosmos-server/pkg/errors"
 	"cosmos-server/pkg/log"
 	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/storage"
@@ -19,6 +20,7 @@ type Service interface {
 	GetApplicationInteractions(ctx context.Context, applicationName string) (*model.ApplicationsInteractions, error)
 	GetApplicationsInteractions(ctx context.Context, filter model.ApplicationDependencyFilter) (*model.ApplicationsInteractions, error)
 	UpdateApplicationOpenAPISpecification(ctx context.Context, application *model.Application) error
+	GetApplicationOpenAPISpecification(ctx context.Context, application *model.Application) (*model.ApplicationOpenAPISpecification, error)
 }
 
 type monitoringService struct {
@@ -271,4 +273,22 @@ func (s *monitoringService) UpdateApplicationOpenAPISpecification(ctx context.Co
 	}
 
 	return nil
+}
+
+func (s *monitoringService) GetApplicationOpenAPISpecification(ctx context.Context, application *model.Application) (*model.ApplicationOpenAPISpecification, error) {
+	if application.GitInformation == nil {
+		return nil, errors.NewNotFoundError("The application does not have a git repository associated with it")
+	}
+
+	openApiSpecObj, err := s.storageService.GetOpenAPISpecificationByApplicationName(ctx, application.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	applicationOpenApiModel, err := s.translator.ToApplicationOpenApiModel(openApiSpecObj)
+	if err != nil {
+		return nil, fmt.Errorf("failed to transform OpenAPI spec for application %s: %v", application.Name, err)
+	}
+
+	return applicationOpenApiModel, nil
 }
