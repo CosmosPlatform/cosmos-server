@@ -30,6 +30,7 @@ func AddAuthenticatedMonitoringHandler(e *gin.RouterGroup, monitoringService mon
 	monitoringGroup.POST("/update/:application", handler.handleUpdateApplicationMonitoring)
 	monitoringGroup.GET("/interactions/:application", handler.handleGetApplicationInteractions)
 	monitoringGroup.GET("/interactions", handler.handleGetApplicationsInteractions)
+	monitoringGroup.GET("/openapi/:application", handler.handleGetApplicationOpenAPISpecification)
 }
 
 func (handler *handler) handleUpdateApplicationMonitoring(e *gin.Context) {
@@ -47,6 +48,14 @@ func (handler *handler) handleUpdateApplicationMonitoring(e *gin.Context) {
 		_ = e.Error(err)
 		return
 	}
+
+	/*
+		err = handler.monitoringService.UpdateApplicationOpenAPISpecification(e, applicationToUpdate)
+		if err != nil {
+			_ = e.Error(err)
+			return
+		}
+	*/
 
 	e.JSON(http.StatusNoContent, nil)
 }
@@ -93,4 +102,31 @@ func (handler *handler) handleGetApplicationsInteractions(e *gin.Context) {
 	}
 
 	e.JSON(200, handler.translator.ToGetApplicationsInteractionsResponse(interactions))
+}
+
+func (handler *handler) handleGetApplicationOpenAPISpecification(e *gin.Context) {
+	applicationName := e.Param("application")
+
+	evaluatedApplication, err := handler.applicationService.GetApplication(e, applicationName)
+	if err != nil {
+		handler.logger.Errorf("Failed to retrieve evaluatedApplication: %v", err)
+		_ = e.Error(err)
+		return
+	}
+
+	openAPISpec, err := handler.monitoringService.GetApplicationOpenAPISpecification(e, evaluatedApplication)
+	if err != nil {
+		handler.logger.Errorf("Failed to retrieve evaluatedApplication OpenAPI specification: %v", err)
+		_ = e.Error(err)
+		return
+	}
+
+	getOpenApiSpecificationResponse, err := handler.translator.ToGetOpenAPiSpecificationResponse(openAPISpec)
+	if err != nil {
+		handler.logger.Errorf("Failed to translate OpenAPI specification: %v", err)
+		_ = e.Error(err)
+		return
+	}
+
+	e.JSON(200, getOpenApiSpecificationResponse)
 }

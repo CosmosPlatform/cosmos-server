@@ -8,6 +8,7 @@ import (
 type Translator interface {
 	ToGetApplicationsInteractionsResponse(interactions *model.ApplicationsInteractions) *api.GetApplicationsInteractionsResponse
 	ToGetApplicationsInteractionsFilters(teams []string, includeNeighbors bool) model.ApplicationDependencyFilter
+	ToGetOpenAPiSpecificationResponse(openAPISpec *model.ApplicationOpenAPISpecification) (*api.GetApplicationOpenAPISpecificationResponse, error)
 }
 
 type translator struct{}
@@ -105,4 +106,25 @@ func (t *translator) ToGetApplicationsInteractionsFilters(teams []string, includ
 	modelFilters.IncludeNeighbors = includeNeighbors
 
 	return modelFilters
+}
+
+func (t *translator) ToGetOpenAPiSpecificationResponse(modelOpenAPISpec *model.ApplicationOpenAPISpecification) (*api.GetApplicationOpenAPISpecificationResponse, error) {
+	if modelOpenAPISpec == nil {
+		return nil, nil
+	}
+
+	marshalledOpenAPISpec, err := modelOpenAPISpec.OpenAPISpec.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+
+	applicationName := ""
+	if modelOpenAPISpec.Application != nil {
+		applicationName = modelOpenAPISpec.Application.Name
+	}
+
+	return &api.GetApplicationOpenAPISpecificationResponse{
+		ApplicationName: applicationName,
+		OpenAPISpec:     string(marshalledOpenAPISpec),
+	}, nil
 }

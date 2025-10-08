@@ -18,9 +18,10 @@ func NewTranslator() Translator {
 
 func (t *translator) ToApplicationModel(applicationObj *obj.Application) *model.Application {
 	modelApplication := &model.Application{
-		Name:        applicationObj.Name,
-		Description: applicationObj.Description,
-		Team:        t.ToModelTeam(applicationObj.Team),
+		Name:                  applicationObj.Name,
+		Description:           applicationObj.Description,
+		Team:                  t.ToModelTeam(applicationObj.Team),
+		MonitoringInformation: t.ToModelMonitoringInformation(applicationObj),
 	}
 
 	if applicationObj.GitProvider != "" || applicationObj.GitRepositoryName != "" || applicationObj.GitRepositoryOwner != "" || applicationObj.GitRepositoryBranch != "" {
@@ -51,4 +52,15 @@ func (t *translator) ToApplicationModels(applicationObjs []*obj.Application) []*
 		applicationModels = append(applicationModels, t.ToApplicationModel(applicationObj))
 	}
 	return applicationModels
+}
+
+func (t *translator) ToModelMonitoringInformation(applicationObj *obj.Application) *model.MonitoringInformation {
+	if applicationObj == nil {
+		return nil
+	}
+
+	return &model.MonitoringInformation{
+		DependenciesSha: applicationObj.DependenciesSha,
+		OpenAPISha:      applicationObj.OpenAPISha,
+	}
 }

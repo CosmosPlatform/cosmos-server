@@ -257,18 +257,6 @@ func (s *PostgresService) UpdateApplication(ctx context.Context, application *ob
 	return nil
 }
 
-func (s *PostgresService) InsertApplicationDependency(ctx context.Context, dependency *obj.ApplicationDependency) error {
-	err := gorm.G[obj.ApplicationDependency](s.db).Create(ctx, dependency)
-	if err != nil {
-		if errorUtils.Is(err, gorm.ErrDuplicatedKey) {
-			return ErrAlreadyExists
-		}
-		return fmt.Errorf("failed to insert application dependency: %v", err)
-	}
-
-	return nil
-}
-
 func (s *PostgresService) GetApplicationDependency(ctx context.Context, consumerID, providerID int) (*obj.ApplicationDependency, error) {
 	dependency, err := gorm.G[*obj.ApplicationDependency](s.db).
 		Preload("Consumer", nil).
@@ -284,41 +272,6 @@ func (s *PostgresService) GetApplicationDependency(ctx context.Context, consumer
 	}
 
 	return dependency, nil
-}
-
-func (s *PostgresService) UpsertApplicationDependency(ctx context.Context, consumerName, providerName string, dependency *obj.ApplicationDependency) error {
-	consumer, err := gorm.G[*obj.Application](s.db).Where("name = ?", consumerName).First(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get consumer application: %v", err)
-	}
-
-	provider, err := gorm.G[*obj.Application](s.db).Where("name = ?", providerName).First(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get provider application: %v", err)
-	}
-
-	dependency.ConsumerID = int(consumer.ID)
-	dependency.ProviderID = int(provider.ID)
-
-	existing, err := s.GetApplicationDependency(ctx, int(consumer.ID), int(provider.ID))
-	if err != nil && !errorUtils.Is(err, ErrNotFound) {
-		return fmt.Errorf("failed to check existing dependency: %v", err)
-	}
-
-	if existing != nil {
-		dependency.ID = existing.ID
-		dependency.CreatedAt = existing.CreatedAt
-		rowsAffected, err := gorm.G[*obj.ApplicationDependency](s.db).Where("id = ?", existing.ID).Updates(ctx, dependency)
-		if err != nil {
-			return fmt.Errorf("failed to update application dependency: %v", err)
-		}
-		if rowsAffected == 0 {
-			return ErrNotFound
-		}
-		return nil
-	}
-
-	return s.InsertApplicationDependency(ctx, dependency)
 }
 
 func (s *PostgresService) GetApplicationDependenciesWithApplicationInvolved(ctx context.Context, applicationName string) ([]*obj.ApplicationDependency, error) {
@@ -422,20 +375,116 @@ func (s *PostgresService) GetApplicationDependenciesByConsumer(ctx context.Conte
 	return dependencies, nil
 }
 
-func (s *PostgresService) DeleteApplicationDependency(ctx context.Context, consumerName, providerName string) error {
-	consumer, err := gorm.G[*obj.Application](s.db).Where("name = ?", consumerName).First(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get consumer application %s: %v", consumerName, err)
-	}
+func (s *PostgresService) UpdateApplicationDependencies(ctx context.Context, consumerName string, dependenciesToUpsert map[string]*obj.ApplicationDependency, pendingDependencies map[string]*obj.PendingApplicationDependency, dependenciesToDelete []*obj.ApplicationDependency, applicationDependenciesSHA string) error {
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		consumer, err := gorm.G[*obj.Application](tx).Where("LOWER(name) = LOWER(?)", consumerName).First(ctx)
+		if err != nil {
+			if errorUtils.Is(err, gorm.ErrRecordNotFound) {
+				return ErrNotFound
+			}
+			return fmt.Errorf("failed to get application: %v", err)
+		}
 
-	provider, err := gorm.G[*obj.Application](s.db).Where("name = ?", providerName).First(ctx)
+		for providerName, dependency := range dependenciesToUpsert {
+			if err := s.upsertApplicationDependencyTx(ctx, tx, consumer, providerName, dependency); err != nil {
+				return fmt.Errorf("failed to upsert dependency to provider %s: %v", providerName, err)
+			}
+		}
+
+		if err := s.replacePendingDependenciesTx(ctx, tx, int(consumer.ID), pendingDependencies); err != nil {
+			return fmt.Errorf("failed to replace pending dependencies: %v", err)
+		}
+
+		if err := s.DeleteApplicationDependenciesTx(ctx, tx, dependenciesToDelete); err != nil {
+			return fmt.Errorf("failed to delete dependencies: %v", err)
+		}
+
+		rowsAffected, err := gorm.G[*obj.Application](tx).Where("id = ?", consumer.ID).Update(ctx, "dependencies_sha", applicationDependenciesSHA)
+		if err != nil {
+			return fmt.Errorf("failed to update ApplicationDependenciesSha: %v", err)
+		}
+		if rowsAffected == 0 {
+			return ErrNotFound
+		}
+
+		return nil
+	})
+}
+
+func (s *PostgresService) upsertApplicationDependencyTx(ctx context.Context, tx *gorm.DB, consumer *obj.Application, providerName string, dependency *obj.ApplicationDependency) error {
+	provider, err := gorm.G[*obj.Application](tx).Where("name = ?", providerName).First(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get provider application %s: %v", providerName, err)
 	}
 
-	rowsAffected, err := gorm.G[obj.ApplicationDependency](s.db).Where("consumer_id = ? AND provider_id = ?", consumer.ID, provider.ID).Delete(ctx)
+	dependency.ConsumerID = int(consumer.ID)
+	dependency.ProviderID = int(provider.ID)
+
+	existing, err := s.GetApplicationDependency(ctx, int(consumer.ID), int(provider.ID))
 	if err != nil {
-		return fmt.Errorf("failed to delete application dependency from %s to %s: %v", consumerName, providerName, err)
+		if errorUtils.Is(err, ErrNotFound) {
+			return s.insertApplicationDependencyTx(ctx, tx, dependency)
+		}
+		return fmt.Errorf("failed to check existing dependency: %v", err)
+	}
+
+	dependency.ID = existing.ID
+	dependency.CreatedAt = existing.CreatedAt
+	rowsAffected, err := gorm.G[*obj.ApplicationDependency](tx).Where("id = ?", existing.ID).Updates(ctx, dependency)
+	if err != nil {
+		return fmt.Errorf("failed to update application dependency: %v", err)
+	}
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (s *PostgresService) replacePendingDependenciesTx(ctx context.Context, tx *gorm.DB, consumerID int, pendingDependencies map[string]*obj.PendingApplicationDependency) error {
+	_, err := gorm.G[obj.PendingApplicationDependency](tx).Where("consumer_id = ?", consumerID).Delete(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to delete existing pending dependencies: %v", err)
+	}
+
+	for _, pendingDependency := range pendingDependencies {
+		pendingDependency.ConsumerID = consumerID
+		err := gorm.G[obj.PendingApplicationDependency](tx).Create(ctx, pendingDependency)
+		if err != nil {
+			if errorUtils.Is(err, gorm.ErrDuplicatedKey) {
+				return ErrAlreadyExists
+			}
+			return fmt.Errorf("failed to insert pending application dependency: %v", err)
+		}
+	}
+
+	return nil
+}
+
+func (s *PostgresService) insertApplicationDependencyTx(ctx context.Context, tx *gorm.DB, dependency *obj.ApplicationDependency) error {
+	err := gorm.G[obj.ApplicationDependency](tx).Create(ctx, dependency)
+	if err != nil {
+		if errorUtils.Is(err, gorm.ErrDuplicatedKey) {
+			return ErrAlreadyExists
+		}
+		return fmt.Errorf("failed to insert application dependency: %v", err)
+	}
+
+	return nil
+}
+
+func (s *PostgresService) DeleteApplicationDependenciesTx(ctx context.Context, tx *gorm.DB, dependenciesToDelete []*obj.ApplicationDependency) error {
+	deletedDependenciesIDs := make([]int, 0, len(dependenciesToDelete))
+	for _, dependency := range dependenciesToDelete {
+		deletedDependenciesIDs = append(deletedDependenciesIDs, int(dependency.ID))
+	}
+
+	if len(deletedDependenciesIDs) == 0 {
+		return nil
+	}
+
+	rowsAffected, err := gorm.G[obj.ApplicationDependency](tx).Where("id IN ?", deletedDependenciesIDs).Delete(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to delete application dependencies: %v", err)
 	}
 
 	if rowsAffected == 0 {
@@ -443,4 +492,108 @@ func (s *PostgresService) DeleteApplicationDependency(ctx context.Context, consu
 	}
 
 	return nil
+}
+
+func (s *PostgresService) UpsertOpenAPISpecification(ctx context.Context, applicationName string, openAPISpec *obj.ApplicationOpenAPI, applicationOpenApiSHA string) error {
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		application, err := gorm.G[*obj.Application](tx).Preload("Team", nil).Where("LOWER(name) = LOWER(?)", applicationName).First(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to get application: %v", err)
+		}
+
+		openAPISpec.ApplicationID = int(application.ID)
+		existing, err := gorm.G[*obj.ApplicationOpenAPI](tx).Where("application_id = ?", application.ID).First(ctx)
+		if err != nil {
+			if errorUtils.Is(err, gorm.ErrRecordNotFound) {
+				if err := gorm.G[obj.ApplicationOpenAPI](tx).Create(ctx, openAPISpec); err != nil {
+					return fmt.Errorf("failed to insert OpenAPI specification: %v", err)
+				}
+			} else {
+				return fmt.Errorf("failed to check existing OpenAPI spec: %v", err)
+			}
+		} else {
+			openAPISpec.ID = existing.ID
+			openAPISpec.CreatedAt = existing.CreatedAt
+			rowsAffected, err := gorm.G[*obj.ApplicationOpenAPI](tx).Where("id = ?", existing.ID).Updates(ctx, openAPISpec)
+			if err != nil {
+				return fmt.Errorf("failed to update OpenAPI specification: %v", err)
+			}
+			if rowsAffected == 0 {
+				return ErrNotFound
+			}
+		}
+
+		// Update OpenAPISha field atomically
+		rowsAffected, err := gorm.G[*obj.Application](tx).Where("id = ?", application.ID).Update(ctx, "open_api_sha", applicationOpenApiSHA)
+		if err != nil {
+			return fmt.Errorf("failed to update OpenAPISha: %v", err)
+		}
+		if rowsAffected == 0 {
+			return ErrNotFound
+		}
+
+		return nil
+	})
+}
+
+func (s *PostgresService) CheckPendingDependenciesForApplication(ctx context.Context, applicationName string) error {
+	pendingDependencies, err := gorm.G[*obj.PendingApplicationDependency](s.db).Preload("Consumer", nil).Where("provider_name = ?", applicationName).Find(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get pending dependencies for application %s: %v", applicationName, err)
+	}
+
+	if len(pendingDependencies) == 0 {
+		return nil
+	}
+
+	application, err := gorm.G[*obj.Application](s.db).Where("name = ?", applicationName).First(ctx)
+	if err != nil {
+		if errorUtils.Is(err, gorm.ErrRecordNotFound) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("failed to get application: %v", err)
+	}
+
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		for _, pendingDependency := range pendingDependencies {
+			dependency := &obj.ApplicationDependency{
+				ConsumerID: pendingDependency.ConsumerID,
+				ProviderID: int(application.ID),
+				Reasons:    pendingDependency.Reasons,
+				Endpoints:  pendingDependency.Endpoints,
+			}
+
+			err := s.upsertApplicationDependencyTx(ctx, tx, pendingDependency.Consumer, application.Name, dependency)
+			if err != nil {
+				return fmt.Errorf("failed to upsert dependency from consumer %s to provider %s: %v", pendingDependency.Consumer.Name, applicationName, err)
+			}
+		}
+
+		_, err := gorm.G[obj.PendingApplicationDependency](tx).Where("provider_name = ?", applicationName).Delete(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to delete processed pending dependencies: %v", err)
+		}
+
+		return nil
+	})
+}
+
+func (s *PostgresService) GetOpenAPISpecificationByApplicationName(ctx context.Context, applicationName string) (*obj.ApplicationOpenAPI, error) {
+	application, err := gorm.G[*obj.Application](s.db).Where("LOWER(name) = LOWER(?)", applicationName).First(ctx)
+	if err != nil {
+		if errorUtils.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to get application: %v", err)
+	}
+
+	openAPISpec, err := gorm.G[*obj.ApplicationOpenAPI](s.db).Preload("Application", nil).Where("application_id = ?", application.ID).First(ctx)
+	if err != nil {
+		if errorUtils.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to get OpenAPI specification for application %s: %v", applicationName, err)
+	}
+
+	return openAPISpec, nil
 }

@@ -110,6 +110,10 @@ func addApplicationSuccess(t *testing.T) {
 		InsertApplication(gomock.Any(), applicationObj).
 		Return(nil)
 
+	mocks.storageServiceMock.EXPECT().
+		CheckPendingDependenciesForApplication(gomock.Any(), applicationName).
+		Return(nil)
+
 	mocks.loggerMocks.EXPECT().
 		Infof(gomock.Any(), gomock.Any())
 
@@ -131,6 +135,10 @@ func addApplicationNoTeamSuccess(t *testing.T) {
 
 	mocks.storageServiceMock.EXPECT().
 		InsertApplication(gomock.Any(), applicationObj).
+		Return(nil)
+
+	mocks.storageServiceMock.EXPECT().
+		CheckPendingDependenciesForApplication(gomock.Any(), applicationName).
 		Return(nil)
 
 	mocks.loggerMocks.EXPECT().
@@ -449,6 +457,10 @@ func addApplicationWithGitInformationSuccess(t *testing.T) {
 		InsertApplication(gomock.Any(), expectedApplicationObj).
 		Return(nil)
 
+	mocks.storageServiceMock.EXPECT().
+		CheckPendingDependenciesForApplication(gomock.Any(), applicationName).
+		Return(nil)
+
 	mocks.loggerMocks.EXPECT().
 		Infof(gomock.Any(), gomock.Any())
 
@@ -495,6 +507,10 @@ func addApplicationWithGitInformationAndTeamSuccess(t *testing.T) {
 
 	mocks.storageServiceMock.EXPECT().
 		InsertApplication(gomock.Any(), expectedApplicationObj).
+		Return(nil)
+
+	mocks.storageServiceMock.EXPECT().
+		CheckPendingDependenciesForApplication(gomock.Any(), applicationName).
 		Return(nil)
 
 	mocks.loggerMocks.EXPECT().

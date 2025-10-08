@@ -14,3 +14,10 @@ type EndpointMethods map[string]EndpointDetails
 type EndpointDetails struct {
 	Reasons []string `json:"reasons,omitempty"`
 }
+
+type PendingApplicationDependency struct {
+	Consumer     *Application
+	ProviderName string
+	Reasons      []string
+	Endpoints    Endpoints
+}

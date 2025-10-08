@@ -10,4 +10,6 @@ type Application struct {
 	GitRepositoryOwner  string
 	GitRepositoryName   string
 	GitRepositoryBranch string
+	DependenciesSha     string
+	OpenAPISha          string
 }

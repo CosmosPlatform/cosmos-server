@@ -3,6 +3,8 @@ package monitoring
 import (
 	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/storage/obj"
+
+	"github.com/getkin/kin-openapi/openapi3"
 )
 
 type Translator interface {
@@ -10,6 +12,11 @@ type Translator interface {
 	ToApplicationsInteractionsModel(objDependencies []*obj.ApplicationDependency) *model.ApplicationsInteractions
 	ToApplicationDependencyObj(modelDependency *model.ApplicationDependency) *obj.ApplicationDependency
 	ToApplicationDependencyModel(objDependency *obj.ApplicationDependency) *model.ApplicationDependency
+
+	ToPendingApplicationDependencyObj(modelPendingDependency *model.PendingApplicationDependency) *obj.PendingApplicationDependency
+
+	ToApplicationOpenApiObj(openApiSpec *openapi3.T) (*obj.ApplicationOpenAPI, error)
+	ToApplicationOpenApiModel(objOpenApi *obj.ApplicationOpenAPI) (*model.ApplicationOpenAPISpecification, error)
 }
 
 type translator struct{}
@@ -19,10 +26,15 @@ func NewTranslator() Translator {
 }
 
 func (t *translator) ToApplicationModel(applicationObj *obj.Application) *model.Application {
+	if applicationObj == nil {
+		return nil
+	}
+
 	modelApplication := &model.Application{
-		Name:        applicationObj.Name,
-		Description: applicationObj.Description,
-		Team:        t.ToModelTeam(applicationObj.Team),
+		Name:                  applicationObj.Name,
+		Description:           applicationObj.Description,
+		Team:                  t.ToModelTeam(applicationObj.Team),
+		MonitoringInformation: t.ToModelMonitoringInformation(applicationObj),
 	}
 
 	if applicationObj.GitProvider != "" || applicationObj.GitRepositoryName != "" || applicationObj.GitRepositoryOwner != "" || applicationObj.GitRepositoryBranch != "" {
@@ -47,6 +59,17 @@ func (t *translator) ToModelTeam(teamObj *obj.Team) *model.Team {
 	}
 }
 
+func (t *translator) ToModelMonitoringInformation(applicationObj *obj.Application) *model.MonitoringInformation {
+	if applicationObj == nil {
+		return nil
+	}
+
+	return &model.MonitoringInformation{
+		DependenciesSha: applicationObj.DependenciesSha,
+		OpenAPISha:      applicationObj.OpenAPISha,
+	}
+}
+
 func (t *translator) ToApplicationDependencyObj(modelDependency *model.ApplicationDependency) *obj.ApplicationDependency {
 	if modelDependency == nil {
 		return nil
@@ -55,6 +78,18 @@ func (t *translator) ToApplicationDependencyObj(modelDependency *model.Applicati
 	return &obj.ApplicationDependency{
 		Reasons:   modelDependency.Reasons,
 		Endpoints: t.toObjEndpoints(modelDependency.Endpoints),
+	}
+}
+
+func (t *translator) ToPendingApplicationDependencyObj(modelPendingDependency *model.PendingApplicationDependency) *obj.PendingApplicationDependency {
+	if modelPendingDependency == nil {
+		return nil
+	}
+
+	return &obj.PendingApplicationDependency{
+		ProviderName: modelPendingDependency.ProviderName,
+		Reasons:      modelPendingDependency.Reasons,
+		Endpoints:    t.toObjEndpoints(modelPendingDependency.Endpoints),
 	}
 }
 
@@ -124,4 +159,40 @@ func (t *translator) ToApplicationsInteractionsModel(objDependencies []*obj.Appl
 		ApplicationsInvolved: applicationsInvolved,
 		Interactions:         interactions,
 	}
+}
+
+func (t *translator) ToApplicationOpenApiObj(openApiSpec *openapi3.T) (*obj.ApplicationOpenAPI, error) {
+	if openApiSpec == nil {
+		return nil, nil
+	}
+
+	openApiJSON, err := openApiSpec.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+
+	return &obj.ApplicationOpenAPI{
+		OpenAPI: string(openApiJSON),
+	}, nil
+}
+
+func (t *translator) ToApplicationOpenApiModel(objOpenApi *obj.ApplicationOpenAPI) (*model.ApplicationOpenAPISpecification, error) {
+	if objOpenApi == nil {
+		return nil, nil
+	}
+
+	var openApiSpec *openapi3.T
+	if objOpenApi.OpenAPI != "" {
+		loader := openapi3.NewLoader()
+		var err error
+		openApiSpec, err = loader.LoadFromData([]byte(objOpenApi.OpenAPI))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &model.ApplicationOpenAPISpecification{
+		Application: t.ToApplicationModel(objOpenApi.Application),
+		OpenAPISpec: openApiSpec,
+	}, nil
 }

@@ -68,6 +68,12 @@ func (s *applicationService) AddApplication(ctx context.Context, name, descripti
 		return errors.NewInternalServerError("failed to insert application: " + err.Error())
 	}
 
+	err = s.storageService.CheckPendingDependenciesForApplication(ctx, name)
+	if err != nil {
+		s.logger.Errorf("Failed to check pending dependencies for application %s: %v", name, err)
+		// Not returning error to avoid failing the whole operation
+	}
+
 	s.logger.Infof("Application %s added successfully", name)
 	return nil
 }
@@ -138,6 +144,8 @@ func (s *applicationService) UpdateApplication(ctx context.Context, name string,
 		GitRepositoryOwner:  existingApp.GitRepositoryOwner,
 		GitRepositoryName:   existingApp.GitRepositoryName,
 		GitRepositoryBranch: existingApp.GitRepositoryBranch,
+		DependenciesSha:     existingApp.DependenciesSha,
+		OpenAPISha:          existingApp.OpenAPISha,
 	}
 
 	if updateData.Name != nil {

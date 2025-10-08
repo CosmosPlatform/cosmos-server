@@ -6,11 +6,14 @@ import (
 	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/services/monitoring/mock"
 	"cosmos-server/pkg/storage"
+	"strings"
+
+	//"cosmos-server/pkg/storage"
 	storageMock "cosmos-server/pkg/storage/mock"
 	"cosmos-server/pkg/storage/obj"
 	"encoding/json"
 	"errors"
-	"strings"
+	//"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -23,10 +26,8 @@ func TestUpdateApplicationInformation(t *testing.T) {
 	t.Run("update application information - get file error", updateApplicationInformationGetFileError)
 	t.Run("update application information - invalid json", updateApplicationInformationInvalidJSON)
 	t.Run("update application information - invalid specification", updateApplicationInformationInvalidSpecification)
-	t.Run("update application information - provider not found error", updateApplicationInformationProviderNotFoundError)
+	t.Run("update application information - provider not found", updateApplicationInformationProviderNotFound)
 	t.Run("update application information - upsert dependency error", updateApplicationInformationUpsertDependencyError)
-	t.Run("update application information - delete obsolete dependencies error", updateApplicationInformationDeleteObsoleteDependenciesError)
-	t.Run("update application information - with obsolete dependencies", updateApplicationInformationWithObsoleteDependencies)
 }
 
 func TestGetApplicationInteractions(t *testing.T) {
@@ -59,7 +60,7 @@ func setUp(t *testing.T) (Service, *mocks) {
 		loggerMocks:        log.NewMockLogger(controller),
 	}
 
-	service := NewMonitoringService(mocks.storageServiceMock, mocks.gitServiceMock, NewTranslator(), mocks.loggerMocks)
+	service := NewMonitoringService(mocks.storageServiceMock, mocks.gitServiceMock, NewOpenApiService(), NewTranslator(), mocks.loggerMocks)
 
 	return service, mocks
 }
@@ -88,17 +89,21 @@ func updateApplicationInformationSuccess(t *testing.T) {
 		t.Fatalf("Failed to marshal open client specification: %v", err)
 	}
 
+	sha := "abc123"
+
+	metadata := &model.FileMetadata{
+		Name:       "openclient.json",
+		Path:       "docs/openclient.json",
+		Size:       len(jsonContent),
+		SHA:        sha,
+		Branch:     gitInformation.RepositoryBranch,
+		Repository: gitInformation.RepositoryName,
+		Owner:      gitInformation.RepositoryOwner,
+	}
+
 	fileContent := &model.FileContent{
-		Metadata: model.FileMetadata{
-			Name:       "openclient.json",
-			Path:       "docs/openclient.json",
-			Size:       len(jsonContent),
-			SHA:        "abc123",
-			Branch:     gitInformation.RepositoryBranch,
-			Repository: gitInformation.RepositoryName,
-			Owner:      gitInformation.RepositoryOwner,
-		},
-		Content: string(jsonContent),
+		Metadata: *metadata,
+		Content:  string(jsonContent),
 	}
 
 	objApplicationDependency := getObjOpenClientSpecification()
@@ -109,6 +114,18 @@ func updateApplicationInformationSuccess(t *testing.T) {
 		Description: "Provider service",
 	}
 
+	mockedDependenciesToUpsert := map[string]*obj.ApplicationDependency{
+		"service-a": objApplicationDependency,
+	}
+
+	mockedPendingDependencies := make(map[string]*obj.PendingApplicationDependency)
+
+	mockedDependenciesToDelete := make([]*obj.ApplicationDependency, 0)
+
+	mocks.gitServiceMock.EXPECT().
+		GetFileMetadata(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, "docs/openclient.json").
+		Return(metadata, nil)
+
 	mocks.gitServiceMock.EXPECT().
 		GetFileWithContent(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, "docs/openclient.json").
 		Return(fileContent, nil)
@@ -118,14 +135,12 @@ func updateApplicationInformationSuccess(t *testing.T) {
 		Return(providerApp, nil)
 
 	mocks.storageServiceMock.EXPECT().
-		UpsertApplicationDependency(gomock.Any(), modelApplication.Name, providerApp.Name, objApplicationDependency).
+		UpdateApplicationDependencies(gomock.Any(), modelApplication.Name, mockedDependenciesToUpsert, mockedPendingDependencies, mockedDependenciesToDelete, sha).
 		Return(nil)
 
 	mocks.storageServiceMock.EXPECT().
 		GetApplicationDependenciesByConsumer(gomock.Any(), modelApplication.Name).
 		Return([]*obj.ApplicationDependency{}, nil)
-
-	mocks.loggerMocks.EXPECT().Infof(gomock.Any(), gomock.Any(), gomock.Any())
 
 	err = service.UpdateApplicationInformation(context.TODO(), modelApplication)
 	require.NoError(t, err)
@@ -154,6 +169,23 @@ func getMockedOpenClientSpecification() *model.OpenClientSpecification {
 func getObjOpenClientSpecification() *obj.ApplicationDependency {
 	return &obj.ApplicationDependency{
 		Reasons: []string{"reason1", "reason2"},
+		Endpoints: obj.Endpoints{
+			"/users": obj.EndpointMethods{
+				"GET": obj.EndpointDetails{
+					Reasons: []string{"fetch users"},
+				},
+				"POST": obj.EndpointDetails{
+					Reasons: []string{"create user"},
+				},
+			},
+		},
+	}
+}
+
+func getObjPendingDependency(name string) *obj.PendingApplicationDependency {
+	return &obj.PendingApplicationDependency{
+		ProviderName: name,
+		Reasons:      []string{"reason1", "reason2"},
 		Endpoints: obj.Endpoints{
 			"/users": obj.EndpointMethods{
 				"GET": obj.EndpointDetails{
@@ -207,15 +239,11 @@ func updateApplicationInformationGetFileError(t *testing.T) {
 	gitError := errors.New("repository not found")
 
 	mocks.gitServiceMock.EXPECT().
-		GetFileWithContent(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, "docs/openclient.json").
+		GetFileMetadata(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, "docs/openclient.json").
 		Return(nil, gitError)
-
-	mocks.loggerMocks.EXPECT().
-		Errorf("Failed to get openclient.json for application %s: %v", applicationName, gitError)
 
 	err := service.UpdateApplicationInformation(context.TODO(), modelApplication)
 	require.Error(t, err)
-	require.Equal(t, gitError, err)
 }
 
 func updateApplicationInformationInvalidJSON(t *testing.T) {
@@ -238,25 +266,30 @@ func updateApplicationInformationInvalidJSON(t *testing.T) {
 
 	invalidJSONContent := "{ invalid json content"
 
-	fileContent := &model.FileContent{
-		Metadata: model.FileMetadata{
-			Name:       "openclient.json",
-			Path:       "docs/openclient.json",
-			Size:       len(invalidJSONContent),
-			SHA:        "abc123",
-			Branch:     gitInformation.RepositoryBranch,
-			Repository: gitInformation.RepositoryName,
-			Owner:      gitInformation.RepositoryOwner,
-		},
-		Content: invalidJSONContent,
+	sha := "abc123"
+
+	metadata := &model.FileMetadata{
+		Name:       "openclient.json",
+		Path:       "docs/openclient.json",
+		Size:       len(invalidJSONContent),
+		SHA:        sha,
+		Branch:     gitInformation.RepositoryBranch,
+		Repository: gitInformation.RepositoryName,
+		Owner:      gitInformation.RepositoryOwner,
 	}
+
+	fileContent := &model.FileContent{
+		Metadata: *metadata,
+		Content:  invalidJSONContent,
+	}
+
+	mocks.gitServiceMock.EXPECT().
+		GetFileMetadata(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, "docs/openclient.json").
+		Return(metadata, nil)
 
 	mocks.gitServiceMock.EXPECT().
 		GetFileWithContent(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, "docs/openclient.json").
 		Return(fileContent, nil)
-
-	mocks.loggerMocks.EXPECT().
-		Errorf("Failed to unmarshal openclient.json for application %s: %v", applicationName, gomock.Any())
 
 	err := service.UpdateApplicationInformation(context.TODO(), modelApplication)
 	require.Error(t, err)
@@ -285,25 +318,30 @@ func updateApplicationInformationInvalidSpecification(t *testing.T) {
 
 	jsonContent, _ := json.Marshal(invalidSpecification)
 
-	fileContent := &model.FileContent{
-		Metadata: model.FileMetadata{
-			Name:       "openclient.json",
-			Path:       "docs/openclient.json",
-			Size:       len(jsonContent),
-			SHA:        "abc123",
-			Branch:     gitInformation.RepositoryBranch,
-			Repository: gitInformation.RepositoryName,
-			Owner:      gitInformation.RepositoryOwner,
-		},
-		Content: string(jsonContent),
+	sha := "abc123"
+
+	metadata := &model.FileMetadata{
+		Name:       "openclient.json",
+		Path:       "docs/openclient.json",
+		Size:       len(jsonContent),
+		SHA:        sha,
+		Branch:     gitInformation.RepositoryBranch,
+		Repository: gitInformation.RepositoryName,
+		Owner:      gitInformation.RepositoryOwner,
 	}
+
+	fileContent := &model.FileContent{
+		Metadata: *metadata,
+		Content:  string(jsonContent),
+	}
+
+	mocks.gitServiceMock.EXPECT().
+		GetFileMetadata(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, "docs/openclient.json").
+		Return(metadata, nil)
 
 	mocks.gitServiceMock.EXPECT().
 		GetFileWithContent(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, "docs/openclient.json").
 		Return(fileContent, nil)
-
-	mocks.loggerMocks.EXPECT().
-		Errorf("Invalid openclient.json for application %s: %v", applicationName, gomock.Any())
 
 	err := service.UpdateApplicationInformation(context.TODO(), modelApplication)
 	require.Error(t, err)
@@ -329,7 +367,7 @@ func getMockedInvalidOpenClientSpecification() *model.OpenClientSpecification {
 	}
 }
 
-func updateApplicationInformationProviderNotFoundError(t *testing.T) {
+func updateApplicationInformationProviderNotFound(t *testing.T) {
 	service, mocks := setUp(t)
 
 	applicationName := "test-application"
@@ -350,18 +388,35 @@ func updateApplicationInformationProviderNotFoundError(t *testing.T) {
 	openClientSpecification := getMockedOpenClientSpecification()
 	jsonContent, _ := json.Marshal(openClientSpecification)
 
-	fileContent := &model.FileContent{
-		Metadata: model.FileMetadata{
-			Name:       "openclient.json",
-			Path:       "docs/openclient.json",
-			Size:       len(jsonContent),
-			SHA:        "abc123",
-			Branch:     gitInformation.RepositoryBranch,
-			Repository: gitInformation.RepositoryName,
-			Owner:      gitInformation.RepositoryOwner,
-		},
-		Content: string(jsonContent),
+	sha := "abc123"
+
+	metadata := &model.FileMetadata{
+		Name:       "openclient.json",
+		Path:       "docs/openclient.json",
+		Size:       len(jsonContent),
+		SHA:        sha,
+		Branch:     gitInformation.RepositoryBranch,
+		Repository: gitInformation.RepositoryName,
+		Owner:      gitInformation.RepositoryOwner,
 	}
+
+	fileContent := &model.FileContent{
+		Metadata: *metadata,
+		Content:  string(jsonContent),
+	}
+
+	objPendingDependency := getObjPendingDependency("service-a")
+
+	mockedDependenciesToUpsert := make(map[string]*obj.ApplicationDependency)
+	mockedPendingDependencies := map[string]*obj.PendingApplicationDependency{
+		objPendingDependency.ProviderName: objPendingDependency,
+	}
+
+	mockedDependenciesToDelete := make([]*obj.ApplicationDependency, 0)
+
+	mocks.gitServiceMock.EXPECT().
+		GetFileMetadata(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, "docs/openclient.json").
+		Return(metadata, nil)
 
 	mocks.gitServiceMock.EXPECT().
 		GetFileWithContent(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, "docs/openclient.json").
@@ -372,11 +427,15 @@ func updateApplicationInformationProviderNotFoundError(t *testing.T) {
 		Return(nil, storage.ErrNotFound)
 
 	mocks.storageServiceMock.EXPECT().
+		UpdateApplicationDependencies(gomock.Any(), modelApplication.Name, mockedDependenciesToUpsert, mockedPendingDependencies, mockedDependenciesToDelete, sha).
+		Return(nil)
+
+	mocks.storageServiceMock.EXPECT().
 		GetApplicationDependenciesByConsumer(gomock.Any(), modelApplication.Name).
 		Return([]*obj.ApplicationDependency{}, nil)
 
 	mocks.loggerMocks.EXPECT().
-		Errorf("Failed to transform dependency for application %s: %v", applicationName, gomock.Any())
+		Warnf(gomock.Any(), gomock.Any(), gomock.Any())
 
 	err := service.UpdateApplicationInformation(context.TODO(), modelApplication)
 	require.NoError(t, err) // Should not fail overall, just log the error
@@ -401,19 +460,26 @@ func updateApplicationInformationUpsertDependencyError(t *testing.T) {
 	}
 
 	openClientSpecification := getMockedOpenClientSpecification()
-	jsonContent, _ := json.Marshal(openClientSpecification)
+	jsonContent, err := json.Marshal(openClientSpecification)
+	if err != nil {
+		t.Fatalf("Failed to marshal open client specification: %v", err)
+	}
+
+	sha := "abc123"
+
+	metadata := &model.FileMetadata{
+		Name:       "openclient.json",
+		Path:       "docs/openclient.json",
+		Size:       len(jsonContent),
+		SHA:        sha,
+		Branch:     gitInformation.RepositoryBranch,
+		Repository: gitInformation.RepositoryName,
+		Owner:      gitInformation.RepositoryOwner,
+	}
 
 	fileContent := &model.FileContent{
-		Metadata: model.FileMetadata{
-			Name:       "openclient.json",
-			Path:       "docs/openclient.json",
-			Size:       len(jsonContent),
-			SHA:        "abc123",
-			Branch:     gitInformation.RepositoryBranch,
-			Repository: gitInformation.RepositoryName,
-			Owner:      gitInformation.RepositoryOwner,
-		},
-		Content: string(jsonContent),
+		Metadata: *metadata,
+		Content:  string(jsonContent),
 	}
 
 	objApplicationDependency := getObjOpenClientSpecification()
@@ -424,7 +490,19 @@ func updateApplicationInformationUpsertDependencyError(t *testing.T) {
 		Description: "Provider service",
 	}
 
+	mockedDependenciesToUpsert := map[string]*obj.ApplicationDependency{
+		"service-a": objApplicationDependency,
+	}
+
+	mockedPendingDependencies := make(map[string]*obj.PendingApplicationDependency)
+
+	mockedDependenciesToDelete := make([]*obj.ApplicationDependency, 0)
+
 	upsertError := errors.New("database connection failed")
+
+	mocks.gitServiceMock.EXPECT().
+		GetFileMetadata(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, "docs/openclient.json").
+		Return(metadata, nil)
 
 	mocks.gitServiceMock.EXPECT().
 		GetFileWithContent(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, "docs/openclient.json").
@@ -435,174 +513,15 @@ func updateApplicationInformationUpsertDependencyError(t *testing.T) {
 		Return(providerApp, nil)
 
 	mocks.storageServiceMock.EXPECT().
-		UpsertApplicationDependency(gomock.Any(), modelApplication.Name, providerApp.Name, objApplicationDependency).
+		UpdateApplicationDependencies(gomock.Any(), modelApplication.Name, mockedDependenciesToUpsert, mockedPendingDependencies, mockedDependenciesToDelete, sha).
 		Return(upsertError)
 
 	mocks.storageServiceMock.EXPECT().
 		GetApplicationDependenciesByConsumer(gomock.Any(), modelApplication.Name).
 		Return([]*obj.ApplicationDependency{}, nil)
 
-	mocks.loggerMocks.EXPECT().
-		Errorf("Failed to upsert dependency for application %s: %v", applicationName, upsertError)
-
-	err := service.UpdateApplicationInformation(context.TODO(), modelApplication)
-	require.NoError(t, err) // Should not fail overall, just log the error
-}
-
-func updateApplicationInformationDeleteObsoleteDependenciesError(t *testing.T) {
-	service, mocks := setUp(t)
-
-	applicationName := "test-application"
-	applicationDescription := "test-description"
-	gitInformation := &model.GitInformation{
-		Provider:         "github",
-		RepositoryOwner:  "test-owner",
-		RepositoryName:   "test-repo",
-		RepositoryBranch: "main",
-	}
-
-	modelApplication := &model.Application{
-		Name:           applicationName,
-		Description:    applicationDescription,
-		GitInformation: gitInformation,
-	}
-
-	openClientSpecification := getMockedOpenClientSpecification()
-	jsonContent, _ := json.Marshal(openClientSpecification)
-
-	fileContent := &model.FileContent{
-		Metadata: model.FileMetadata{
-			Name:       "openclient.json",
-			Path:       "docs/openclient.json",
-			Size:       len(jsonContent),
-			SHA:        "abc123",
-			Branch:     gitInformation.RepositoryBranch,
-			Repository: gitInformation.RepositoryName,
-			Owner:      gitInformation.RepositoryOwner,
-		},
-		Content: string(jsonContent),
-	}
-
-	objApplicationDependency := getObjOpenClientSpecification()
-
-	providerApp := &obj.Application{
-		CosmosObj:   obj.CosmosObj{ID: 1},
-		Name:        "service-a",
-		Description: "Provider service",
-	}
-
-	getDependenciesError := errors.New("failed to get dependencies")
-
-	mocks.gitServiceMock.EXPECT().
-		GetFileWithContent(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, "docs/openclient.json").
-		Return(fileContent, nil)
-
-	mocks.storageServiceMock.EXPECT().
-		GetApplicationWithName(gomock.Any(), providerApp.Name).
-		Return(providerApp, nil)
-
-	mocks.storageServiceMock.EXPECT().
-		UpsertApplicationDependency(gomock.Any(), modelApplication.Name, providerApp.Name, objApplicationDependency).
-		Return(nil)
-
-	mocks.storageServiceMock.EXPECT().
-		GetApplicationDependenciesByConsumer(gomock.Any(), modelApplication.Name).
-		Return(nil, getDependenciesError)
-
-	mocks.loggerMocks.EXPECT().
-		Infof("Successfully upserted dependency from %s to %s", applicationName, providerApp.Name)
-
-	mocks.loggerMocks.EXPECT().
-		Errorf("Failed to delete obsolete dependencies for application %s: %v", applicationName, getDependenciesError)
-
-	err := service.UpdateApplicationInformation(context.TODO(), modelApplication)
+	err = service.UpdateApplicationInformation(context.TODO(), modelApplication)
 	require.Error(t, err)
-	require.Equal(t, getDependenciesError, err)
-}
-
-func updateApplicationInformationWithObsoleteDependencies(t *testing.T) {
-	service, mocks := setUp(t)
-
-	applicationName := "test-application"
-	applicationDescription := "test-description"
-	gitInformation := &model.GitInformation{
-		Provider:         "github",
-		RepositoryOwner:  "test-owner",
-		RepositoryName:   "test-repo",
-		RepositoryBranch: "main",
-	}
-
-	modelApplication := &model.Application{
-		Name:           applicationName,
-		Description:    applicationDescription,
-		GitInformation: gitInformation,
-	}
-
-	openClientSpecification := getMockedOpenClientSpecification()
-	jsonContent, _ := json.Marshal(openClientSpecification)
-
-	fileContent := &model.FileContent{
-		Metadata: model.FileMetadata{
-			Name:       "openclient.json",
-			Path:       "docs/openclient.json",
-			Size:       len(jsonContent),
-			SHA:        "abc123",
-			Branch:     gitInformation.RepositoryBranch,
-			Repository: gitInformation.RepositoryName,
-			Owner:      gitInformation.RepositoryOwner,
-		},
-		Content: string(jsonContent),
-	}
-
-	objApplicationDependency := getObjOpenClientSpecification()
-
-	providerApp := &obj.Application{
-		CosmosObj:   obj.CosmosObj{ID: 1},
-		Name:        "service-a",
-		Description: "Provider service",
-	}
-
-	obsoleteProviderApp := &obj.Application{
-		CosmosObj:   obj.CosmosObj{ID: 2},
-		Name:        "service-b",
-		Description: "Obsolete service",
-	}
-
-	existingDependencies := []*obj.ApplicationDependency{
-		{
-			Consumer: &obj.Application{Name: applicationName},
-			Provider: obsoleteProviderApp,
-		},
-	}
-
-	mocks.gitServiceMock.EXPECT().
-		GetFileWithContent(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, "docs/openclient.json").
-		Return(fileContent, nil)
-
-	mocks.storageServiceMock.EXPECT().
-		GetApplicationWithName(gomock.Any(), providerApp.Name).
-		Return(providerApp, nil)
-
-	mocks.storageServiceMock.EXPECT().
-		UpsertApplicationDependency(gomock.Any(), modelApplication.Name, providerApp.Name, objApplicationDependency).
-		Return(nil)
-
-	mocks.storageServiceMock.EXPECT().
-		GetApplicationDependenciesByConsumer(gomock.Any(), modelApplication.Name).
-		Return(existingDependencies, nil)
-
-	mocks.storageServiceMock.EXPECT().
-		DeleteApplicationDependency(gomock.Any(), applicationName, "service-b").
-		Return(nil)
-
-	mocks.loggerMocks.EXPECT().
-		Infof("Successfully upserted dependency from %s to %s", applicationName, providerApp.Name)
-
-	mocks.loggerMocks.EXPECT().
-		Infof("Successfully deleted obsolete dependency from %s to %s", applicationName, "service-b")
-
-	err := service.UpdateApplicationInformation(context.TODO(), modelApplication)
-	require.NoError(t, err)
 }
 
 func getApplicationInteractionsSuccess(t *testing.T) {
