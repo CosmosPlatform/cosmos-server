@@ -39,6 +39,7 @@ func (r *CreateApplicationRequest) Validate() error {
 		),
 		validation.Field(&r.Description, validation.Length(0, 500)),
 		validation.Field(&r.Team, validation.Length(0, 100)),
+		validation.Field(&r.GitInformation, validation.When(r.Monitoring != nil, validation.Required.Error("git information is required when monitoring is provided"))),
 		validation.Field(&r.GitInformation, validation.When(r.GitInformation != nil,
 			validation.Required.Error("git information is required when provided"),
 			validation.By(func(value interface{}) error {
