@@ -9,10 +9,11 @@ import (
 var applicationNameRegex = regexp.MustCompile(`^[a-zA-Z0-9-]+$`)
 
 type CreateApplicationRequest struct {
-	Name           string          `json:"name"`
-	Description    string          `json:"description"`
-	Team           string          `json:"team,omitempty"`
-	GitInformation *GitInformation `json:"gitInformation,omitempty"`
+	Name           string                 `json:"name"`
+	Description    string                 `json:"description"`
+	Team           string                 `json:"team,omitempty"`
+	GitInformation *GitInformation        `json:"gitInformation,omitempty"`
+	Monitoring     *MonitoringInformation `json:"monitoring,omitempty"`
 }
 
 type GitInformation struct {
@@ -20,6 +21,13 @@ type GitInformation struct {
 	RepositoryOwner  string `json:"repositoryOwner,omitempty"`
 	RepositoryName   string `json:"repositoryName,omitempty"`
 	RepositoryBranch string `json:"repositoryBranch,omitempty"`
+}
+
+type MonitoringInformation struct {
+	HasOpenApi     bool   `json:"hasOpenApi,omitempty"`
+	OpenApiPath    string `json:"openApiPath,omitempty"`
+	HasOpenClient  bool   `json:"hasOpenClient,omitempty"`
+	OpenClientPath string `json:"openClientPath,omitempty"`
 }
 
 func (r *CreateApplicationRequest) Validate() error {
@@ -40,6 +48,20 @@ func (r *CreateApplicationRequest) Validate() error {
 						validation.Field(&gi.RepositoryOwner, validation.Required),
 						validation.Field(&gi.RepositoryName, validation.Required),
 						validation.Field(&gi.RepositoryBranch, validation.Required),
+					)
+				}
+				return nil
+			}),
+		)),
+		validation.Field(&r.Monitoring, validation.When(r.Monitoring != nil,
+			validation.Required.Error("monitoring information is required when provided"),
+			validation.By(func(value interface{}) error {
+				if mi, ok := value.(*MonitoringInformation); ok && mi != nil {
+					return validation.ValidateStruct(mi,
+						validation.Field(&mi.HasOpenApi, validation.Required),
+						validation.Field(&mi.HasOpenClient, validation.Required),
+						validation.Field(&mi.OpenApiPath, validation.When(mi.HasOpenApi, validation.Required)),
+						validation.Field(&mi.OpenClientPath, validation.When(mi.HasOpenClient, validation.Required)),
 					)
 				}
 				return nil

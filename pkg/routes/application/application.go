@@ -53,8 +53,9 @@ func (handler *handler) handleCreateApplication(e *gin.Context) {
 	}
 
 	gitInformation := handler.translator.ToGitInformationModel(createApplicationRequest.GitInformation)
+	monitoringInformation := handler.translator.ToMonitoringInformationModel(createApplicationRequest.Monitoring)
 
-	err := handler.applicationService.AddApplication(e, createApplicationRequest.Name, createApplicationRequest.Description, createApplicationRequest.Team, gitInformation)
+	err := handler.applicationService.AddApplication(e, createApplicationRequest.Name, createApplicationRequest.Description, createApplicationRequest.Team, gitInformation, monitoringInformation)
 	if err != nil {
 		_ = e.Error(err)
 		return

@@ -11,6 +11,7 @@ type Translator interface {
 	ToGetApplicationsResponse(applicationObj []*model.Application) *api.GetApplicationsResponse
 	ToUpdateApplicationResponse(app *model.Application) *api.UpdateApplicationResponse
 	ToGitInformationModel(gitInfo *api.GitInformation) *model.GitInformation
+	ToMonitoringInformationModel(monitoringInfo *api.MonitoringInformation) *model.MonitoringInformation
 }
 
 type translator struct{}
@@ -92,5 +93,18 @@ func (t *translator) ToGitInformationModel(gitInfo *api.GitInformation) *model.G
 		RepositoryOwner:  gitInfo.RepositoryOwner,
 		RepositoryName:   gitInfo.RepositoryName,
 		RepositoryBranch: gitInfo.RepositoryBranch,
+	}
+}
+
+func (t *translator) ToMonitoringInformationModel(monitoringInfo *api.MonitoringInformation) *model.MonitoringInformation {
+	if monitoringInfo == nil {
+		return nil
+	}
+
+	return &model.MonitoringInformation{
+		HasOpenApi:     monitoringInfo.HasOpenApi,
+		OpenApiPath:    monitoringInfo.OpenApiPath,
+		HasOpenClient:  monitoringInfo.HasOpenClient,
+		OpenClientPath: monitoringInfo.OpenClientPath,
 	}
 }

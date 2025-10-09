@@ -18,6 +18,10 @@ type GitInformation struct {
 type MonitoringInformation struct {
 	DependenciesSha string
 	OpenAPISha      string
+	HasOpenApi      bool
+	OpenApiPath     string
+	HasOpenClient   bool
+	OpenClientPath  string
 }
 
 type ApplicationUpdate struct {
