@@ -69,9 +69,16 @@ func (handler *handler) handleCreateApplication(e *gin.Context) {
 			return
 		}
 
-		err = handler.monitoringService.UpdateApplicationInformation(e, app)
+		err = handler.monitoringService.UpdateApplicationDependencies(e, app)
 		if err != nil {
 			handler.logger.Errorf("Failed to update application information after creation: %v", err)
+			_ = e.Error(err)
+			return
+		}
+
+		err = handler.monitoringService.UpdateApplicationOpenAPISpecification(e, app)
+		if err != nil {
+			handler.logger.Errorf("Failed to update application OpenAPI specification after creation: %v", err)
 			_ = e.Error(err)
 			return
 		}
@@ -189,9 +196,16 @@ func (handler *handler) handleUpdateApplication(e *gin.Context) {
 	}
 
 	if updateData.GitInformation != nil {
-		err = handler.monitoringService.UpdateApplicationInformation(e, updatedApp)
+		err = handler.monitoringService.UpdateApplicationDependencies(e, updatedApp)
 		if err != nil {
 			handler.logger.Errorf("Failed to update application information after update: %v", err)
+			_ = e.Error(err)
+			return
+		}
+
+		err = handler.monitoringService.UpdateApplicationOpenAPISpecification(e, updatedApp)
+		if err != nil {
+			handler.logger.Errorf("Failed to update application OpenAPI specification after update: %v", err)
 			_ = e.Error(err)
 			return
 		}

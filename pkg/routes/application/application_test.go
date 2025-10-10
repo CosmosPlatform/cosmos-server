@@ -113,7 +113,7 @@ func handleCreateApplicationSuccess(t *testing.T) {
 	}
 
 	mocks.applicationServiceMock.EXPECT().
-		AddApplication(gomock.Any(), mockedName, mockedDescription, mockedTeam, nil).
+		AddApplication(gomock.Any(), mockedName, mockedDescription, mockedTeam, nil, nil).
 		Return(nil)
 
 	mocks.loggerMock.EXPECT().
@@ -186,7 +186,7 @@ func handleCreateApplicationInsertApplicationError(t *testing.T) {
 	mockedError := errors.NewInternalServerError("Internal test error")
 
 	mocks.applicationServiceMock.EXPECT().
-		AddApplication(gomock.Any(), mockedName, mockedDescription, mockedTeam, nil).
+		AddApplication(gomock.Any(), mockedName, mockedDescription, mockedTeam, nil, nil).
 		Return(mockedError)
 
 	mocks.loggerMock.EXPECT().
@@ -780,7 +780,7 @@ func handleCreateApplicationWithGitInformationSuccess(t *testing.T) {
 	}
 
 	mocks.applicationServiceMock.EXPECT().
-		AddApplication(gomock.Any(), mockedName, mockedDescription, mockedTeam, expectedGitInfo).
+		AddApplication(gomock.Any(), mockedName, mockedDescription, mockedTeam, expectedGitInfo, nil).
 		Return(nil)
 
 	mocks.applicationServiceMock.EXPECT().
@@ -788,7 +788,11 @@ func handleCreateApplicationWithGitInformationSuccess(t *testing.T) {
 		Return(mockedApplication, nil)
 
 	mocks.monitoringServiceMock.EXPECT().
-		UpdateApplicationInformation(gomock.Any(), mockedApplication).
+		UpdateApplicationDependencies(gomock.Any(), mockedApplication).
+		Return(nil)
+
+	mocks.monitoringServiceMock.EXPECT().
+		UpdateApplicationOpenAPISpecification(gomock.Any(), mockedApplication).
 		Return(nil)
 
 	mocks.loggerMock.EXPECT().
@@ -1101,7 +1105,11 @@ func handleUpdateApplicationWithGitInformationSuccess(t *testing.T) {
 		Return(mockedUpdatedApplication, nil)
 
 	mocks.monitoringServiceMock.EXPECT().
-		UpdateApplicationInformation(gomock.Any(), mockedUpdatedApplication).
+		UpdateApplicationDependencies(gomock.Any(), mockedUpdatedApplication).
+		Return(nil)
+
+	mocks.monitoringServiceMock.EXPECT().
+		UpdateApplicationOpenAPISpecification(gomock.Any(), mockedUpdatedApplication).
 		Return(nil)
 
 	mocks.loggerMock.EXPECT().

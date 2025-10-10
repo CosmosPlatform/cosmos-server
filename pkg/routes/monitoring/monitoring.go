@@ -43,7 +43,7 @@ func (handler *handler) handleUpdateApplicationMonitoring(e *gin.Context) {
 		return
 	}
 
-	err = handler.monitoringService.UpdateApplicationInformation(e, applicationToUpdate)
+	err = handler.monitoringService.UpdateApplicationDependencies(e, applicationToUpdate)
 	if err != nil {
 		_ = e.Error(err)
 		return
