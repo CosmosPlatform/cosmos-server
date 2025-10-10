@@ -172,6 +172,14 @@ func (handler *handler) handleUpdateApplication(e *gin.Context) {
 			RepositoryName:   updateRequest.GitInformation.RepositoryName,
 			RepositoryBranch: updateRequest.GitInformation.RepositoryBranch,
 		}
+		if updateRequest.MonitoringInformation != nil {
+			updateData.MonitoringInformation = &model.MonitoringInformation{
+				HasOpenApi:     updateRequest.MonitoringInformation.HasOpenApi,
+				HasOpenClient:  updateRequest.MonitoringInformation.HasOpenClient,
+				OpenApiPath:    updateRequest.MonitoringInformation.OpenApiPath,
+				OpenClientPath: updateRequest.MonitoringInformation.OpenClientPath,
+			}
+		}
 	}
 
 	updatedApp, err := handler.applicationService.UpdateApplication(e, applicationName, updateData)

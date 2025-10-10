@@ -104,6 +104,7 @@ func (r *UpdateApplicationRequest) Validate() error {
 		validation.Field(&r.Name, validation.When(r.Name != nil, validation.Length(1, 100))),
 		validation.Field(&r.Description, validation.When(r.Description != nil, validation.Length(0, 500))),
 		validation.Field(&r.Team, validation.When(r.Team != nil, validation.Length(0, 100))),
+		validation.Field(&r.GitInformation, validation.When(r.MonitoringInformation != nil, validation.Required.Error("git information is required when monitoring is provided"))),
 		validation.Field(&r.GitInformation, validation.When(r.GitInformation != nil,
 			validation.By(func(value interface{}) error {
 				if gi, ok := value.(*GitInformation); ok && gi != nil {
@@ -112,6 +113,20 @@ func (r *UpdateApplicationRequest) Validate() error {
 						validation.Field(&gi.RepositoryOwner, validation.Required),
 						validation.Field(&gi.RepositoryName, validation.Required),
 						validation.Field(&gi.RepositoryBranch, validation.Required),
+					)
+				}
+				return nil
+			}),
+		)),
+		validation.Field(&r.MonitoringInformation, validation.When(r.MonitoringInformation != nil,
+			validation.Required.Error("monitoring information is required when provided"),
+			validation.By(func(value interface{}) error {
+				if mi, ok := value.(*MonitoringInformation); ok && mi != nil {
+					return validation.ValidateStruct(mi,
+						validation.Field(&mi.HasOpenApi, validation.Required),
+						validation.Field(&mi.HasOpenClient, validation.Required),
+						validation.Field(&mi.OpenApiPath, validation.When(mi.HasOpenApi, validation.Required)),
+						validation.Field(&mi.OpenClientPath, validation.When(mi.HasOpenClient, validation.Required)),
 					)
 				}
 				return nil

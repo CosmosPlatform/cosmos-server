@@ -153,6 +153,10 @@ func (s *applicationService) UpdateApplication(ctx context.Context, name string,
 		GitRepositoryBranch: existingApp.GitRepositoryBranch,
 		DependenciesSha:     existingApp.DependenciesSha,
 		OpenAPISha:          existingApp.OpenAPISha,
+		HasOpenApi:          existingApp.HasOpenApi,
+		OpenApiPath:         existingApp.OpenApiPath,
+		HasOpenClient:       existingApp.HasOpenClient,
+		OpenClientPath:      existingApp.OpenClientPath,
 	}
 
 	if updateData.Name != nil {
@@ -183,6 +187,12 @@ func (s *applicationService) UpdateApplication(ctx context.Context, name string,
 		updateObj.GitRepositoryOwner = updateData.GitInformation.RepositoryOwner
 		updateObj.GitRepositoryName = updateData.GitInformation.RepositoryName
 		updateObj.GitRepositoryBranch = updateData.GitInformation.RepositoryBranch
+		if updateData.MonitoringInformation != nil {
+			updateObj.HasOpenApi = updateData.MonitoringInformation.HasOpenApi
+			updateObj.OpenApiPath = updateData.MonitoringInformation.OpenApiPath
+			updateObj.HasOpenClient = updateData.MonitoringInformation.HasOpenClient
+			updateObj.OpenClientPath = updateData.MonitoringInformation.OpenClientPath
+		}
 	}
 
 	err = s.storageService.UpdateApplication(ctx, updateObj)

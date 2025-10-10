@@ -25,8 +25,9 @@ type MonitoringInformation struct {
 }
 
 type ApplicationUpdate struct {
-	Name           *string
-	Description    *string
-	Team           *string
-	GitInformation *GitInformation
+	Name                  *string
+	Description           *string
+	Team                  *string
+	GitInformation        *GitInformation
+	MonitoringInformation *MonitoringInformation
 }
