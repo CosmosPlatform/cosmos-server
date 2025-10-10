@@ -76,10 +76,11 @@ type CreateApplicationResponse struct {
 }
 
 type Application struct {
-	Name           string          `json:"name"`
-	Description    string          `json:"description"`
-	Team           *Team           `json:"team,omitempty"`
-	GitInformation *GitInformation `json:"gitInformation,omitempty"`
+	Name                  string                 `json:"name"`
+	Description           string                 `json:"description"`
+	Team                  *Team                  `json:"team,omitempty"`
+	GitInformation        *GitInformation        `json:"gitInformation,omitempty"`
+	MonitoringInformation *MonitoringInformation `json:"monitoringInformation,omitempty"`
 }
 
 type GetApplicationResponse struct {

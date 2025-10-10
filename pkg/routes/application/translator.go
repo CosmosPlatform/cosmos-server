@@ -71,10 +71,11 @@ func (t *translator) ToGetApplicationsResponse(applicationModels []*model.Applic
 
 func (t *translator) ToApplicationApi(applicationModel *model.Application) *api.Application {
 	return &api.Application{
-		Name:           applicationModel.Name,
-		Description:    applicationModel.Description,
-		Team:           t.ToApiTeam(applicationModel.Team),
-		GitInformation: t.ToApiGitInformation(applicationModel.GitInformation),
+		Name:                  applicationModel.Name,
+		Description:           applicationModel.Description,
+		Team:                  t.ToApiTeam(applicationModel.Team),
+		GitInformation:        t.ToApiGitInformation(applicationModel.GitInformation),
+		MonitoringInformation: t.ToMonitoringInformationApi(applicationModel.MonitoringInformation),
 	}
 }
 
@@ -102,6 +103,19 @@ func (t *translator) ToMonitoringInformationModel(monitoringInfo *api.Monitoring
 	}
 
 	return &model.MonitoringInformation{
+		HasOpenApi:     monitoringInfo.HasOpenApi,
+		OpenApiPath:    monitoringInfo.OpenApiPath,
+		HasOpenClient:  monitoringInfo.HasOpenClient,
+		OpenClientPath: monitoringInfo.OpenClientPath,
+	}
+}
+
+func (t *translator) ToMonitoringInformationApi(monitoringInfo *model.MonitoringInformation) *api.MonitoringInformation {
+	if monitoringInfo == nil {
+		return nil
+	}
+
+	return &api.MonitoringInformation{
 		HasOpenApi:     monitoringInfo.HasOpenApi,
 		OpenApiPath:    monitoringInfo.OpenApiPath,
 		HasOpenClient:  monitoringInfo.HasOpenClient,
