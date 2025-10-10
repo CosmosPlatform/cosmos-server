@@ -62,5 +62,9 @@ func (t *translator) ToModelMonitoringInformation(applicationObj *obj.Applicatio
 	return &model.MonitoringInformation{
 		DependenciesSha: applicationObj.DependenciesSha,
 		OpenAPISha:      applicationObj.OpenAPISha,
+		HasOpenApi:      applicationObj.HasOpenApi,
+		OpenApiPath:     applicationObj.OpenApiPath,
+		HasOpenClient:   applicationObj.HasOpenClient,
+		OpenClientPath:  applicationObj.OpenClientPath,
 	}
 }

@@ -53,8 +53,9 @@ func (handler *handler) handleCreateApplication(e *gin.Context) {
 	}
 
 	gitInformation := handler.translator.ToGitInformationModel(createApplicationRequest.GitInformation)
+	monitoringInformation := handler.translator.ToMonitoringInformationModel(createApplicationRequest.MonitoringInformation)
 
-	err := handler.applicationService.AddApplication(e, createApplicationRequest.Name, createApplicationRequest.Description, createApplicationRequest.Team, gitInformation)
+	err := handler.applicationService.AddApplication(e, createApplicationRequest.Name, createApplicationRequest.Description, createApplicationRequest.Team, gitInformation, monitoringInformation)
 	if err != nil {
 		_ = e.Error(err)
 		return
@@ -68,9 +69,16 @@ func (handler *handler) handleCreateApplication(e *gin.Context) {
 			return
 		}
 
-		err = handler.monitoringService.UpdateApplicationInformation(e, app)
+		err = handler.monitoringService.UpdateApplicationDependencies(e, app)
 		if err != nil {
 			handler.logger.Errorf("Failed to update application information after creation: %v", err)
+			_ = e.Error(err)
+			return
+		}
+
+		err = handler.monitoringService.UpdateApplicationOpenAPISpecification(e, app)
+		if err != nil {
+			handler.logger.Errorf("Failed to update application OpenAPI specification after creation: %v", err)
 			_ = e.Error(err)
 			return
 		}
@@ -171,6 +179,14 @@ func (handler *handler) handleUpdateApplication(e *gin.Context) {
 			RepositoryName:   updateRequest.GitInformation.RepositoryName,
 			RepositoryBranch: updateRequest.GitInformation.RepositoryBranch,
 		}
+		if updateRequest.MonitoringInformation != nil {
+			updateData.MonitoringInformation = &model.MonitoringInformation{
+				HasOpenApi:     updateRequest.MonitoringInformation.HasOpenAPI,
+				HasOpenClient:  updateRequest.MonitoringInformation.HasOpenClient,
+				OpenApiPath:    updateRequest.MonitoringInformation.OpenAPIPath,
+				OpenClientPath: updateRequest.MonitoringInformation.OpenClientPath,
+			}
+		}
 	}
 
 	updatedApp, err := handler.applicationService.UpdateApplication(e, applicationName, updateData)
@@ -180,9 +196,16 @@ func (handler *handler) handleUpdateApplication(e *gin.Context) {
 	}
 
 	if updateData.GitInformation != nil {
-		err = handler.monitoringService.UpdateApplicationInformation(e, updatedApp)
+		err = handler.monitoringService.UpdateApplicationDependencies(e, updatedApp)
 		if err != nil {
 			handler.logger.Errorf("Failed to update application information after update: %v", err)
+			_ = e.Error(err)
+			return
+		}
+
+		err = handler.monitoringService.UpdateApplicationOpenAPISpecification(e, updatedApp)
+		if err != nil {
+			handler.logger.Errorf("Failed to update application OpenAPI specification after update: %v", err)
 			_ = e.Error(err)
 			return
 		}

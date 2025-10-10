@@ -91,7 +91,11 @@ func handleUpdateApplicationMonitoringSuccess(t *testing.T) {
 		Return(modelApplication, nil)
 
 	mocks.monitoringServiceMock.EXPECT().
-		UpdateApplicationInformation(gomock.Any(), modelApplication).
+		UpdateApplicationDependencies(gomock.Any(), modelApplication).
+		Return(nil)
+
+	mocks.monitoringServiceMock.EXPECT().
+		UpdateApplicationOpenAPISpecification(gomock.Any(), modelApplication).
 		Return(nil)
 
 	mocks.loggerMock.EXPECT().
@@ -174,7 +178,7 @@ func handleUpdateApplicationMonitoringInternalServerError(t *testing.T) {
 		Return(modelApplication, nil)
 
 	mocks.monitoringServiceMock.EXPECT().
-		UpdateApplicationInformation(gomock.Any(), modelApplication).
+		UpdateApplicationDependencies(gomock.Any(), modelApplication).
 		Return(mockedError)
 
 	mocks.loggerMock.EXPECT().

@@ -11,6 +11,7 @@ type Translator interface {
 	ToGetApplicationsResponse(applicationObj []*model.Application) *api.GetApplicationsResponse
 	ToUpdateApplicationResponse(app *model.Application) *api.UpdateApplicationResponse
 	ToGitInformationModel(gitInfo *api.GitInformation) *model.GitInformation
+	ToMonitoringInformationModel(monitoringInfo *api.MonitoringInformation) *model.MonitoringInformation
 }
 
 type translator struct{}
@@ -70,10 +71,11 @@ func (t *translator) ToGetApplicationsResponse(applicationModels []*model.Applic
 
 func (t *translator) ToApplicationApi(applicationModel *model.Application) *api.Application {
 	return &api.Application{
-		Name:           applicationModel.Name,
-		Description:    applicationModel.Description,
-		Team:           t.ToApiTeam(applicationModel.Team),
-		GitInformation: t.ToApiGitInformation(applicationModel.GitInformation),
+		Name:                  applicationModel.Name,
+		Description:           applicationModel.Description,
+		Team:                  t.ToApiTeam(applicationModel.Team),
+		GitInformation:        t.ToApiGitInformation(applicationModel.GitInformation),
+		MonitoringInformation: t.ToMonitoringInformationApi(applicationModel.MonitoringInformation),
 	}
 }
 
@@ -92,5 +94,31 @@ func (t *translator) ToGitInformationModel(gitInfo *api.GitInformation) *model.G
 		RepositoryOwner:  gitInfo.RepositoryOwner,
 		RepositoryName:   gitInfo.RepositoryName,
 		RepositoryBranch: gitInfo.RepositoryBranch,
+	}
+}
+
+func (t *translator) ToMonitoringInformationModel(monitoringInfo *api.MonitoringInformation) *model.MonitoringInformation {
+	if monitoringInfo == nil {
+		return nil
+	}
+
+	return &model.MonitoringInformation{
+		HasOpenApi:     monitoringInfo.HasOpenAPI,
+		OpenApiPath:    monitoringInfo.OpenAPIPath,
+		HasOpenClient:  monitoringInfo.HasOpenClient,
+		OpenClientPath: monitoringInfo.OpenClientPath,
+	}
+}
+
+func (t *translator) ToMonitoringInformationApi(monitoringInfo *model.MonitoringInformation) *api.MonitoringInformation {
+	if monitoringInfo == nil {
+		return nil
+	}
+
+	return &api.MonitoringInformation{
+		HasOpenAPI:     monitoringInfo.HasOpenApi,
+		OpenAPIPath:    monitoringInfo.OpenApiPath,
+		HasOpenClient:  monitoringInfo.HasOpenClient,
+		OpenClientPath: monitoringInfo.OpenClientPath,
 	}
 }

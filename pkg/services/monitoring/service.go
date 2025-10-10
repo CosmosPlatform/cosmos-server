@@ -16,7 +16,7 @@ import (
 //go:generate mockgen -destination=./mock/service_mock.go -package=mock cosmos-server/pkg/services/monitoring Service
 
 type Service interface {
-	UpdateApplicationInformation(ctx context.Context, application *model.Application) error
+	UpdateApplicationDependencies(ctx context.Context, application *model.Application) error
 	GetApplicationInteractions(ctx context.Context, applicationName string) (*model.ApplicationsInteractions, error)
 	GetApplicationsInteractions(ctx context.Context, filter model.ApplicationDependencyFilter) (*model.ApplicationsInteractions, error)
 	UpdateApplicationOpenAPISpecification(ctx context.Context, application *model.Application) error
@@ -41,15 +41,25 @@ func NewMonitoringService(storageService storage.Service, gitService GitService,
 	}
 }
 
-func (s *monitoringService) UpdateApplicationInformation(ctx context.Context, application *model.Application) error {
+func (s *monitoringService) UpdateApplicationDependencies(ctx context.Context, application *model.Application) error {
 	if application.GitInformation == nil {
 		s.logger.Infof("No git information for application %s, skipping monitoring update", application.Name)
 		return nil // Could be an error because there is nothing to update.
 	}
 
-	openClientMetadata, err := s.gitService.GetFileMetadata(ctx, application.GitInformation.RepositoryOwner, application.GitInformation.RepositoryName, application.GitInformation.RepositoryBranch, "docs/openclient.json")
+	if application.MonitoringInformation == nil {
+		s.logger.Infof("No monitoring information for application %s, skipping monitoring update", application.Name)
+		return nil
+	}
+
+	if !application.MonitoringInformation.HasOpenClient {
+		s.logger.Infof("Application %s does not have OpenClient enabled, skipping monitoring update", application.Name)
+		return nil
+	}
+
+	openClientMetadata, err := s.gitService.GetFileMetadata(ctx, application.GitInformation.RepositoryOwner, application.GitInformation.RepositoryName, application.GitInformation.RepositoryBranch, application.MonitoringInformation.OpenClientPath)
 	if err != nil {
-		return fmt.Errorf("failed to get openclient.json metadata for application %s: %v", application.Name, err)
+		return fmt.Errorf("failed to get open clientmetadata for application %s: %v", application.Name, err)
 	}
 
 	if application.MonitoringInformation != nil && application.MonitoringInformation.DependenciesSha == openClientMetadata.SHA {
@@ -57,7 +67,7 @@ func (s *monitoringService) UpdateApplicationInformation(ctx context.Context, ap
 		return nil
 	}
 
-	rawOpenClientDefinition, err := s.gitService.GetFileWithContent(ctx, application.GitInformation.RepositoryOwner, application.GitInformation.RepositoryName, application.GitInformation.RepositoryBranch, "docs/openclient.json")
+	rawOpenClientDefinition, err := s.gitService.GetFileWithContent(ctx, application.GitInformation.RepositoryOwner, application.GitInformation.RepositoryName, application.GitInformation.RepositoryBranch, application.MonitoringInformation.OpenClientPath)
 	if err != nil {
 		return fmt.Errorf("failed to get openclient.json for application %s: %v", application.Name, err)
 	}
@@ -235,10 +245,14 @@ func (s *monitoringService) UpdateApplicationOpenAPISpecification(ctx context.Co
 		return nil // Could be an error because there is nothing to update.
 	}
 
-	openApiSpecMetadata, err := s.gitService.GetFileMetadata(ctx, application.GitInformation.RepositoryOwner, application.GitInformation.RepositoryName, application.GitInformation.RepositoryBranch, "docs/swagger.json")
+	if !application.MonitoringInformation.HasOpenApi {
+		s.logger.Infof("Application %s does not have OpenAPI specification enabled, skipping OpenAPI spec update", application.Name)
+		return nil
+	}
+
+	openApiSpecMetadata, err := s.gitService.GetFileMetadata(ctx, application.GitInformation.RepositoryOwner, application.GitInformation.RepositoryName, application.GitInformation.RepositoryBranch, application.MonitoringInformation.OpenApiPath)
 	if err != nil {
-		s.logger.Errorf("Failed to get swagger.json metadata for application %s: %v", application.Name, err)
-		return err
+		return fmt.Errorf("failed to get OpenAPI spec metadata for application %s: %v", application.Name, err)
 	}
 
 	if application.MonitoringInformation != nil && application.MonitoringInformation.OpenAPISha == openApiSpecMetadata.SHA {
@@ -246,7 +260,7 @@ func (s *monitoringService) UpdateApplicationOpenAPISpecification(ctx context.Co
 		return nil
 	}
 
-	openAPISpecRaw, err := s.gitService.GetFileWithContent(ctx, application.GitInformation.RepositoryOwner, application.GitInformation.RepositoryName, application.GitInformation.RepositoryBranch, "docs/swagger.json")
+	openAPISpecRaw, err := s.gitService.GetFileWithContent(ctx, application.GitInformation.RepositoryOwner, application.GitInformation.RepositoryName, application.GitInformation.RepositoryBranch, application.MonitoringInformation.OpenApiPath)
 	if err != nil {
 		s.logger.Errorf("Failed to get swagger.json for application %s: %v", application.Name, err)
 		return err
@@ -278,6 +292,10 @@ func (s *monitoringService) UpdateApplicationOpenAPISpecification(ctx context.Co
 func (s *monitoringService) GetApplicationOpenAPISpecification(ctx context.Context, application *model.Application) (*model.ApplicationOpenAPISpecification, error) {
 	if application.GitInformation == nil {
 		return nil, errors.NewNotFoundError("The application does not have a git repository associated with it")
+	}
+
+	if !application.MonitoringInformation.HasOpenApi {
+		return nil, errors.NewNotFoundError("The application does not have OpenAPI specification enabled")
 	}
 
 	openApiSpecObj, err := s.storageService.GetOpenAPISpecificationByApplicationName(ctx, application.Name)

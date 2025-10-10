@@ -12,4 +12,8 @@ type Application struct {
 	GitRepositoryBranch string
 	DependenciesSha     string
 	OpenAPISha          string
+	HasOpenApi          bool
+	OpenApiPath         string
+	HasOpenClient       bool
+	OpenClientPath      string
 }

@@ -2,8 +2,8 @@ package monitoring
 
 import (
 	"context"
+	"cosmos-server/pkg/errors"
 	"cosmos-server/pkg/model"
-	"fmt"
 	"net/http"
 	"os"
 
@@ -56,7 +56,7 @@ func (g *githubService) GetFileMetadata(ctx context.Context, owner, repo, branch
 		}
 	}
 
-	return nil, fmt.Errorf("file %s not found in repo %s/%s on branch %s", path, owner, repo, branch)
+	return nil, errors.NewNotFoundError("file %s not found in repo %s/%s on branch %s", path, owner, repo, branch)
 }
 
 func (g *githubService) GetFileWithContent(ctx context.Context, owner, repo, branch, path string) (*model.FileContent, error) {

@@ -43,19 +43,17 @@ func (handler *handler) handleUpdateApplicationMonitoring(e *gin.Context) {
 		return
 	}
 
-	err = handler.monitoringService.UpdateApplicationInformation(e, applicationToUpdate)
+	err = handler.monitoringService.UpdateApplicationDependencies(e, applicationToUpdate)
 	if err != nil {
 		_ = e.Error(err)
 		return
 	}
 
-	/*
-		err = handler.monitoringService.UpdateApplicationOpenAPISpecification(e, applicationToUpdate)
-		if err != nil {
-			_ = e.Error(err)
-			return
-		}
-	*/
+	err = handler.monitoringService.UpdateApplicationOpenAPISpecification(e, applicationToUpdate)
+	if err != nil {
+		_ = e.Error(err)
+		return
+	}
 
 	e.JSON(http.StatusNoContent, nil)
 }
