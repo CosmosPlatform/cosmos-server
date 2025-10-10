@@ -103,8 +103,8 @@ func (t *translator) ToMonitoringInformationModel(monitoringInfo *api.Monitoring
 	}
 
 	return &model.MonitoringInformation{
-		HasOpenApi:     monitoringInfo.HasOpenApi,
-		OpenApiPath:    monitoringInfo.OpenApiPath,
+		HasOpenApi:     monitoringInfo.HasOpenAPI,
+		OpenApiPath:    monitoringInfo.OpenAPIPath,
 		HasOpenClient:  monitoringInfo.HasOpenClient,
 		OpenClientPath: monitoringInfo.OpenClientPath,
 	}
@@ -116,8 +116,8 @@ func (t *translator) ToMonitoringInformationApi(monitoringInfo *model.Monitoring
 	}
 
 	return &api.MonitoringInformation{
-		HasOpenApi:     monitoringInfo.HasOpenApi,
-		OpenApiPath:    monitoringInfo.OpenApiPath,
+		HasOpenAPI:     monitoringInfo.HasOpenApi,
+		OpenAPIPath:    monitoringInfo.OpenApiPath,
 		HasOpenClient:  monitoringInfo.HasOpenClient,
 		OpenClientPath: monitoringInfo.OpenClientPath,
 	}

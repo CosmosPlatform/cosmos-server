@@ -24,8 +24,8 @@ type GitInformation struct {
 }
 
 type MonitoringInformation struct {
-	HasOpenApi     bool   `json:"hasOpenApi,omitempty"`
-	OpenApiPath    string `json:"openApiPath,omitempty"`
+	HasOpenAPI     bool   `json:"hasOpenAPI,omitempty"`
+	OpenAPIPath    string `json:"openAPIPath,omitempty"`
 	HasOpenClient  bool   `json:"hasOpenClient,omitempty"`
 	OpenClientPath string `json:"openClientPath,omitempty"`
 }
@@ -59,9 +59,7 @@ func (r *CreateApplicationRequest) Validate() error {
 			validation.By(func(value interface{}) error {
 				if mi, ok := value.(*MonitoringInformation); ok && mi != nil {
 					return validation.ValidateStruct(mi,
-						validation.Field(&mi.HasOpenApi, validation.Required),
-						validation.Field(&mi.HasOpenClient, validation.Required),
-						validation.Field(&mi.OpenApiPath, validation.When(mi.HasOpenApi, validation.Required)),
+						validation.Field(&mi.OpenAPIPath, validation.When(mi.HasOpenAPI, validation.Required)),
 						validation.Field(&mi.OpenClientPath, validation.When(mi.HasOpenClient, validation.Required)),
 					)
 				}
@@ -123,9 +121,7 @@ func (r *UpdateApplicationRequest) Validate() error {
 			validation.By(func(value interface{}) error {
 				if mi, ok := value.(*MonitoringInformation); ok && mi != nil {
 					return validation.ValidateStruct(mi,
-						validation.Field(&mi.HasOpenApi, validation.Required),
-						validation.Field(&mi.HasOpenClient, validation.Required),
-						validation.Field(&mi.OpenApiPath, validation.When(mi.HasOpenApi, validation.Required)),
+						validation.Field(&mi.OpenAPIPath, validation.When(mi.HasOpenAPI, validation.Required)),
 						validation.Field(&mi.OpenClientPath, validation.When(mi.HasOpenClient, validation.Required)),
 					)
 				}

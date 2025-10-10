@@ -174,9 +174,9 @@ func (handler *handler) handleUpdateApplication(e *gin.Context) {
 		}
 		if updateRequest.MonitoringInformation != nil {
 			updateData.MonitoringInformation = &model.MonitoringInformation{
-				HasOpenApi:     updateRequest.MonitoringInformation.HasOpenApi,
+				HasOpenApi:     updateRequest.MonitoringInformation.HasOpenAPI,
 				HasOpenClient:  updateRequest.MonitoringInformation.HasOpenClient,
-				OpenApiPath:    updateRequest.MonitoringInformation.OpenApiPath,
+				OpenApiPath:    updateRequest.MonitoringInformation.OpenAPIPath,
 				OpenClientPath: updateRequest.MonitoringInformation.OpenClientPath,
 			}
 		}

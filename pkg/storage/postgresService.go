@@ -245,7 +245,7 @@ func (s *PostgresService) GetApplicationsByTeam(ctx context.Context, team string
 }
 
 func (s *PostgresService) UpdateApplication(ctx context.Context, application *obj.Application) error {
-	rowsAffected, err := gorm.G[*obj.Application](s.db).Where("id = ?", application.ID).Updates(ctx, application)
+	rowsAffected, err := gorm.G[*obj.Application](s.db).Where("id = ?", application.ID).Select("*").Updates(ctx, application)
 	if err != nil {
 		return fmt.Errorf("failed to update application: %v", err)
 	}
