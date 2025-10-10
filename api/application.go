@@ -9,11 +9,11 @@ import (
 var applicationNameRegex = regexp.MustCompile(`^[a-zA-Z0-9-]+$`)
 
 type CreateApplicationRequest struct {
-	Name           string                 `json:"name"`
-	Description    string                 `json:"description"`
-	Team           string                 `json:"team,omitempty"`
-	GitInformation *GitInformation        `json:"gitInformation,omitempty"`
-	Monitoring     *MonitoringInformation `json:"monitoring,omitempty"`
+	Name                  string                 `json:"name"`
+	Description           string                 `json:"description"`
+	Team                  string                 `json:"team,omitempty"`
+	GitInformation        *GitInformation        `json:"gitInformation,omitempty"`
+	MonitoringInformation *MonitoringInformation `json:"monitoringInformation,omitempty"`
 }
 
 type GitInformation struct {
@@ -39,7 +39,7 @@ func (r *CreateApplicationRequest) Validate() error {
 		),
 		validation.Field(&r.Description, validation.Length(0, 500)),
 		validation.Field(&r.Team, validation.Length(0, 100)),
-		validation.Field(&r.GitInformation, validation.When(r.Monitoring != nil, validation.Required.Error("git information is required when monitoring is provided"))),
+		validation.Field(&r.GitInformation, validation.When(r.MonitoringInformation != nil, validation.Required.Error("git information is required when monitoring is provided"))),
 		validation.Field(&r.GitInformation, validation.When(r.GitInformation != nil,
 			validation.Required.Error("git information is required when provided"),
 			validation.By(func(value interface{}) error {
@@ -54,7 +54,7 @@ func (r *CreateApplicationRequest) Validate() error {
 				return nil
 			}),
 		)),
-		validation.Field(&r.Monitoring, validation.When(r.Monitoring != nil,
+		validation.Field(&r.MonitoringInformation, validation.When(r.MonitoringInformation != nil,
 			validation.Required.Error("monitoring information is required when provided"),
 			validation.By(func(value interface{}) error {
 				if mi, ok := value.(*MonitoringInformation); ok && mi != nil {
@@ -92,10 +92,11 @@ type GetApplicationsResponse struct {
 }
 
 type UpdateApplicationRequest struct {
-	Name           *string         `json:"name,omitempty"`
-	Description    *string         `json:"description,omitempty"`
-	Team           *string         `json:"team,omitempty"`
-	GitInformation *GitInformation `json:"gitInformation,omitempty"`
+	Name                  *string                `json:"name,omitempty"`
+	Description           *string                `json:"description,omitempty"`
+	Team                  *string                `json:"team,omitempty"`
+	GitInformation        *GitInformation        `json:"gitInformation,omitempty"`
+	MonitoringInformation *MonitoringInformation `json:"monitoringInformation,omitempty"`
 }
 
 func (r *UpdateApplicationRequest) Validate() error {
