@@ -297,7 +297,7 @@ func (s *PostgresService) GetApplicationDependenciesWithApplicationInvolved(ctx 
 func (s *PostgresService) GetApplicationDependenciesWithFilter(ctx context.Context, filters model.ApplicationDependencyFilter) ([]*obj.ApplicationDependency, error) {
 	teams := filters.Teams
 
-	if teams == nil || len(teams) == 0 {
+	if len(teams) == 0 {
 		return s.GetAllApplicationDependencies(ctx)
 	}
 
