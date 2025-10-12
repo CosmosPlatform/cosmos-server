@@ -41,14 +41,13 @@ func NewHTTPRoutes(authService auth.Service, userService user.Service, teamServi
 func (r *HTTPRoutes) RegisterUnauthenticatedRoutes(e *gin.RouterGroup) {
 	authRoute.AddAuthHandler(e, r.AuthService, r.Logger)
 	healthcheckRoute.AddHealthcheckHandler(e)
-	monitoringRoute.AddAuthenticatedMonitoringHandler(e, r.MonitoringService, r.ApplicationService, monitoringRoute.NewTranslator(), r.Logger)
-
 }
 
 func (r *HTTPRoutes) RegisterAuthenticatedRoutes(e *gin.RouterGroup) {
 	applicationRoute.AddAuthenticatedApplicationHandler(e, r.ApplicationService, r.MonitoringService, applicationRoute.NewTranslator(), r.Logger)
 	userRoute.AddAuthenticatedUserHandler(e, r.UserService, userRoute.NewTranslator(), r.Logger)
 	teamRoute.AddAuthenticatedTeamHandler(e, r.TeamService, teamRoute.NewTranslator())
+	monitoringRoute.AddAuthenticatedMonitoringHandler(e, r.MonitoringService, r.ApplicationService, monitoringRoute.NewTranslator(), r.Logger)
 }
 
 func (r *HTTPRoutes) RegisterAdminAuthenticatedRoutes(e *gin.RouterGroup) {
