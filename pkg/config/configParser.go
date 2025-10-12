@@ -44,7 +44,6 @@ func readConfig(path string) (*Config, error) {
 		return nil, err
 	}
 
-	fmt.Printf("Configuration: %+v\n", conf)
 	return &conf, nil
 }
 
