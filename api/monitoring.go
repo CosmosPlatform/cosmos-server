@@ -24,3 +24,18 @@ type EndpointMethods map[string]EndpointDetails
 type EndpointDetails struct {
 	Reasons []string `json:"reasons"`
 }
+
+type GetCompleteApplicationMonitoringResponse struct {
+	Application       Application             `json:"application"`
+	OpenAPISpec       string                  `json:"openAPISpec"`
+	Dependencies      []ApplicationDependency `json:"dependencies"`
+	ConsumedEndpoints ConsumedEndpoints       `json:"consumedEndpoints"`
+}
+
+type ConsumedEndpoints map[string]ConsumedEndpointMethods
+
+type ConsumedEndpointMethods map[string]ConsumedEndpointDetails
+
+type ConsumedEndpointDetails struct {
+	Consumers []string `json:"consumers"`
+}

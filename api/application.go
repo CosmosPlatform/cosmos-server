@@ -24,10 +24,10 @@ type GitInformation struct {
 }
 
 type MonitoringInformation struct {
-	HasOpenAPI     bool   `json:"hasOpenAPI,omitempty"`
-	OpenAPIPath    string `json:"openAPIPath,omitempty"`
-	HasOpenClient  bool   `json:"hasOpenClient,omitempty"`
-	OpenClientPath string `json:"openClientPath,omitempty"`
+	HasOpenAPI     bool   `json:"hasOpenAPI"`
+	OpenAPIPath    string `json:"openAPIPath"`
+	HasOpenClient  bool   `json:"hasOpenClient"`
+	OpenClientPath string `json:"openClientPath"`
 }
 
 func (r *CreateApplicationRequest) Validate() error {
@@ -42,7 +42,7 @@ func (r *CreateApplicationRequest) Validate() error {
 		validation.Field(&r.GitInformation, validation.When(r.MonitoringInformation != nil, validation.Required.Error("git information is required when monitoring is provided"))),
 		validation.Field(&r.GitInformation, validation.When(r.GitInformation != nil,
 			validation.Required.Error("git information is required when provided"),
-			validation.By(func(value interface{}) error {
+			validation.By(func(value any) error {
 				if gi, ok := value.(*GitInformation); ok && gi != nil {
 					return validation.ValidateStruct(gi,
 						validation.Field(&gi.Provider, validation.Required),
@@ -56,7 +56,7 @@ func (r *CreateApplicationRequest) Validate() error {
 		)),
 		validation.Field(&r.MonitoringInformation, validation.When(r.MonitoringInformation != nil,
 			validation.Required.Error("monitoring information is required when provided"),
-			validation.By(func(value interface{}) error {
+			validation.By(func(value any) error {
 				if mi, ok := value.(*MonitoringInformation); ok && mi != nil {
 					return validation.ValidateStruct(mi,
 						validation.Field(&mi.OpenAPIPath, validation.When(mi.HasOpenAPI, validation.Required)),
@@ -104,7 +104,7 @@ func (r *UpdateApplicationRequest) Validate() error {
 		validation.Field(&r.Team, validation.When(r.Team != nil, validation.Length(0, 100))),
 		validation.Field(&r.GitInformation, validation.When(r.MonitoringInformation != nil, validation.Required.Error("git information is required when monitoring is provided"))),
 		validation.Field(&r.GitInformation, validation.When(r.GitInformation != nil,
-			validation.By(func(value interface{}) error {
+			validation.By(func(value any) error {
 				if gi, ok := value.(*GitInformation); ok && gi != nil {
 					return validation.ValidateStruct(gi,
 						validation.Field(&gi.Provider, validation.Required),
@@ -118,7 +118,7 @@ func (r *UpdateApplicationRequest) Validate() error {
 		)),
 		validation.Field(&r.MonitoringInformation, validation.When(r.MonitoringInformation != nil,
 			validation.Required.Error("monitoring information is required when provided"),
-			validation.By(func(value interface{}) error {
+			validation.By(func(value any) error {
 				if mi, ok := value.(*MonitoringInformation); ok && mi != nil {
 					return validation.ValidateStruct(mi,
 						validation.Field(&mi.OpenAPIPath, validation.When(mi.HasOpenAPI, validation.Required)),

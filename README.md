@@ -52,3 +52,27 @@ This program expects a set of environment variables to be inserted in order to f
 
 - `JWT_SECRET`: Secret used to sign the JWT tokens.
   -  If you are running this locally you can quickly generate one running `openssl rand -base64 32`
+- `DATABASE_URL`: URL of the database to connect to. It can also be included in the configuration file.
+- `DEFAULT_ADMIN_EMAIL`: Email of the default admin user.
+- `DEFAULT_ADMIN_PASSWORD`: Password of the default admin user.
+- `DEFAULT_ADMIN_USERNAME`: Username of the default admin user.
+- `ENVIRONMENT`: Environment in which the server is running. It can be `LOCAL` for local development.
+- `GITHUB_TOKEN`: A GitHub token to sue the github api with higher rate limits.
+
+## Optional
+
+### dotenvx
+
+You can use `dotenvx` to load the environment variables from a `.env` file.
+
+To install `dotenvx` run
+
+```sh
+curl -fsSL https://dotenvx.sh/install.sh | sudo sh
+```
+
+Then you can create a `.env` file in the root of the project with the environment variablew and run the program with
+
+```sh
+dotenvx run -- go run main.go
+```

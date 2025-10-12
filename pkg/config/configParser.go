@@ -35,8 +35,6 @@ func readConfig(path string) (*Config, error) {
 		return nil, err
 	}
 
-	fmt.Printf("All settings: %+v\n", viper.AllSettings())
-
 	var conf Config
 	if err := viper.Unmarshal(&conf); err != nil {
 		return nil, err
@@ -46,7 +44,6 @@ func readConfig(path string) (*Config, error) {
 		return nil, err
 	}
 
-	fmt.Printf("Configuration: %+v\n", conf)
 	return &conf, nil
 }
 

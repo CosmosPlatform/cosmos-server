@@ -25,3 +25,6 @@ migrate_uri_up:
 
 migrate_uri_down:
 	migrate -path db/migrations -database "$(uri)" down
+
+run:
+	dotenvx run -- go run main.go

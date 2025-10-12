@@ -9,6 +9,7 @@ type Translator interface {
 	ToGetApplicationsInteractionsResponse(interactions *model.ApplicationsInteractions) *api.GetApplicationsInteractionsResponse
 	ToGetApplicationsInteractionsFilters(teams []string, includeNeighbors bool) model.ApplicationDependencyFilter
 	ToGetOpenAPiSpecificationResponse(openAPISpec *model.ApplicationOpenAPISpecification) (*api.GetApplicationOpenAPISpecificationResponse, error)
+	ToGetCompleteApplicationMonitoringResponse(application *model.Application, interactions *model.ApplicationsInteractions, openAPISpec *model.ApplicationOpenAPISpecification) (*api.GetCompleteApplicationMonitoringResponse, error)
 }
 
 type translator struct{}
@@ -113,7 +114,7 @@ func (t *translator) ToGetOpenAPiSpecificationResponse(modelOpenAPISpec *model.A
 		return nil, nil
 	}
 
-	marshalledOpenAPISpec, err := modelOpenAPISpec.OpenAPISpec.MarshalJSON()
+	marshalledOpenAPISpec, err := t.toMarshalledOpenAPISpec(modelOpenAPISpec)
 	if err != nil {
 		return nil, err
 	}
@@ -127,4 +128,117 @@ func (t *translator) ToGetOpenAPiSpecificationResponse(modelOpenAPISpec *model.A
 		ApplicationName: applicationName,
 		OpenAPISpec:     string(marshalledOpenAPISpec),
 	}, nil
+}
+
+func (t *translator) toMarshalledOpenAPISpec(openAPISpec *model.ApplicationOpenAPISpecification) (string, error) {
+	if openAPISpec == nil {
+		return "", nil
+	}
+
+	marshalledOpenAPISpec, err := openAPISpec.OpenAPISpec.MarshalJSON()
+	if err != nil {
+		return "", err
+	}
+
+	return string(marshalledOpenAPISpec), nil
+}
+
+func (t *translator) ToGetCompleteApplicationMonitoringResponse(application *model.Application, interactions *model.ApplicationsInteractions, openAPISpec *model.ApplicationOpenAPISpecification) (*api.GetCompleteApplicationMonitoringResponse, error) {
+	if application == nil {
+		return nil, nil
+	}
+
+	applicationApi := t.ToApplicationApi(application)
+
+	marshalledOpenAPISpec, err := t.toMarshalledOpenAPISpec(openAPISpec)
+	if err != nil {
+		return nil, err
+	}
+
+	dependencies, consumedEndpoints := t.toDependenciesAndConsumedEndpoints(interactions, application.Name)
+
+	return &api.GetCompleteApplicationMonitoringResponse{
+		Application:       *applicationApi,
+		OpenAPISpec:       marshalledOpenAPISpec,
+		Dependencies:      dependencies,
+		ConsumedEndpoints: consumedEndpoints,
+	}, nil
+}
+
+func (t *translator) toDependenciesAndConsumedEndpoints(interactions *model.ApplicationsInteractions, applicationName string) ([]api.ApplicationDependency, api.ConsumedEndpoints) {
+	if interactions == nil {
+		return nil, nil
+	}
+
+	dependencies := make([]api.ApplicationDependency, 0)
+	consumedEndpoints := make(api.ConsumedEndpoints)
+
+	for _, interaction := range interactions.Interactions {
+		if interaction.Consumer.Name == applicationName {
+			dependencies = append(dependencies, t.toApplicationDependency(interaction))
+		} else if interaction.Provider.Name == applicationName {
+			for path, methods := range interaction.Endpoints {
+				if _, exists := consumedEndpoints[path]; !exists {
+					consumedEndpoints[path] = make(api.ConsumedEndpointMethods)
+				}
+				for method := range methods {
+					if _, methodExists := consumedEndpoints[path][method]; !methodExists {
+						consumedEndpoints[path][method] = api.ConsumedEndpointDetails{
+							Consumers: []string{},
+						}
+					}
+					currentConsumedEndpoints := consumedEndpoints[path][method]
+					currentConsumedEndpoints.Consumers = append(currentConsumedEndpoints.Consumers, interaction.Consumer.Name)
+					consumedEndpoints[path][method] = currentConsumedEndpoints
+				}
+			}
+		}
+	}
+
+	return dependencies, consumedEndpoints
+}
+
+func (t *translator) ToApplicationApi(applicationModel *model.Application) *api.Application {
+	return &api.Application{
+		Name:                  applicationModel.Name,
+		Description:           applicationModel.Description,
+		Team:                  t.ToApiTeam(applicationModel.Team),
+		GitInformation:        t.ToApiGitInformation(applicationModel.GitInformation),
+		MonitoringInformation: t.ToMonitoringInformationApi(applicationModel.MonitoringInformation),
+	}
+}
+
+func (t *translator) ToApiTeam(teamModel *model.Team) *api.Team {
+	if teamModel == nil {
+		return nil
+	}
+	return &api.Team{
+		Name:        teamModel.Name,
+		Description: teamModel.Description,
+	}
+}
+
+func (t *translator) ToApiGitInformation(gitInfo *model.GitInformation) *api.GitInformation {
+	if gitInfo == nil {
+		return nil
+	}
+	return &api.GitInformation{
+		Provider:         gitInfo.Provider,
+		RepositoryOwner:  gitInfo.RepositoryOwner,
+		RepositoryName:   gitInfo.RepositoryName,
+		RepositoryBranch: gitInfo.RepositoryBranch,
+	}
+}
+
+func (t *translator) ToMonitoringInformationApi(monitoringInfo *model.MonitoringInformation) *api.MonitoringInformation {
+	if monitoringInfo == nil {
+		return nil
+	}
+
+	return &api.MonitoringInformation{
+		HasOpenAPI:     monitoringInfo.HasOpenApi,
+		OpenAPIPath:    monitoringInfo.OpenApiPath,
+		HasOpenClient:  monitoringInfo.HasOpenClient,
+		OpenClientPath: monitoringInfo.OpenClientPath,
+	}
 }

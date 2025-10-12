@@ -2,6 +2,7 @@ package monitoring
 
 import (
 	"cosmos-server/pkg/log"
+	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/services/application"
 	"cosmos-server/pkg/services/monitoring"
 	"net/http"
@@ -31,6 +32,7 @@ func AddAuthenticatedMonitoringHandler(e *gin.RouterGroup, monitoringService mon
 	monitoringGroup.GET("/interactions/:application", handler.handleGetApplicationInteractions)
 	monitoringGroup.GET("/interactions", handler.handleGetApplicationsInteractions)
 	monitoringGroup.GET("/openapi/:application", handler.handleGetApplicationOpenAPISpecification)
+	monitoringGroup.GET("/complete/:application", handler.handleGetCompleteApplicationMonitoring)
 }
 
 func (handler *handler) handleUpdateApplicationMonitoring(e *gin.Context) {
@@ -127,4 +129,43 @@ func (handler *handler) handleGetApplicationOpenAPISpecification(e *gin.Context)
 	}
 
 	e.JSON(200, getOpenApiSpecificationResponse)
+}
+
+func (handler *handler) handleGetCompleteApplicationMonitoring(e *gin.Context) {
+	applicationName := e.Param("application")
+
+	evaluatedApplication, err := handler.applicationService.GetApplication(e, applicationName)
+	if err != nil {
+		handler.logger.Errorf("Failed to retrieve evaluatedApplication: %v", err)
+		_ = e.Error(err)
+		return
+	}
+
+	var interactions *model.ApplicationsInteractions
+
+	interactions, err = handler.monitoringService.GetApplicationInteractions(e, evaluatedApplication.Name)
+	if err != nil {
+		handler.logger.Errorf("Failed to retrieve evaluatedApplication interactions: %v", err)
+		_ = e.Error(err)
+		return
+	}
+
+	var openAPISpec *model.ApplicationOpenAPISpecification
+	if evaluatedApplication.MonitoringInformation != nil && evaluatedApplication.MonitoringInformation.HasOpenApi {
+		openAPISpec, err = handler.monitoringService.GetApplicationOpenAPISpecification(e, evaluatedApplication)
+		if err != nil {
+			handler.logger.Errorf("Failed to retrieve evaluatedApplication OpenAPI specification: %v", err)
+			_ = e.Error(err)
+			return
+		}
+	}
+
+	getCompleteApplicationMonitoringResponse, err := handler.translator.ToGetCompleteApplicationMonitoringResponse(evaluatedApplication, interactions, openAPISpec)
+	if err != nil {
+		handler.logger.Errorf("Failed to translate OpenAPI specification: %v", err)
+		_ = e.Error(err)
+		return
+	}
+
+	e.JSON(200, getCompleteApplicationMonitoringResponse)
 }
