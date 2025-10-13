@@ -47,6 +47,20 @@ func NewApp(config *c.Config) (*App, error) {
 }
 
 func (app *App) SetUpDatabase() error {
+	err := app.setUpAdminUser()
+	if err != nil {
+		return err
+	}
+
+	err = app.setUpSentinelSettings()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (app *App) setUpAdminUser() error {
 	if adminPresent, err := app.routes.UserService.AdminUserPresent(context.Background()); err != nil {
 		return fmt.Errorf("failed to check for admin user: %v", err)
 	} else {
@@ -57,6 +71,23 @@ func (app *App) SetUpDatabase() error {
 
 			if err := app.routes.UserService.RegisterUser(context.Background(), adminUsername, adminEmail, adminPassword, user.AdminUserRole); err != nil {
 				return fmt.Errorf("failed to register admin user: %v", err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (app *App) setUpSentinelSettings() error {
+	if sentinelSettingsPresent, err := app.routes.MonitoringService.SentinelSettingsPresent(context.Background()); err != nil {
+		return fmt.Errorf("failed to check for sentinel settings: %v", err)
+	} else {
+		if !sentinelSettingsPresent {
+			defaultSentinelInterval := app.config.SentinelConfig.DefaultIntervalSeconds
+			defaultSentinelEnabled := app.config.SentinelConfig.DefaultEnabled
+			err := app.routes.MonitoringService.InsertSentinelIntervalSetting(context.Background(), defaultSentinelInterval, defaultSentinelEnabled)
+			if err != nil {
+				return fmt.Errorf("failed to insert default sentinel interval setting: %v", err)
 			}
 		}
 	}

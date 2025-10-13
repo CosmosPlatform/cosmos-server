@@ -7,5 +7,11 @@
   },
   "log": {
     "level": "info"
+  },
+  "sentinel": {
+    "default_enabled": true,
+    "default_interval": "15m",
+    "min_interval": "30s",
+    "max_interval": "1h"
   }
 }

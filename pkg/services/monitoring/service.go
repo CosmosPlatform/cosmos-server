@@ -13,6 +13,10 @@ import (
 	"strings"
 )
 
+const (
+	SENTINEL_SETTINGS_NAME = "sentinel_settings"
+)
+
 //go:generate mockgen -destination=./mock/service_mock.go -package=mock cosmos-server/pkg/services/monitoring Service
 
 type Service interface {
@@ -21,6 +25,9 @@ type Service interface {
 	GetApplicationsInteractions(ctx context.Context, filter model.ApplicationDependencyFilter) (*model.ApplicationsInteractions, error)
 	UpdateApplicationOpenAPISpecification(ctx context.Context, application *model.Application) error
 	GetApplicationOpenAPISpecification(ctx context.Context, application *model.Application) (*model.ApplicationOpenAPISpecification, error)
+
+	SentinelSettingsPresent(ctx context.Context) (bool, error)
+	InsertSentinelIntervalSetting(ctx context.Context, interval int, enabled bool) error
 }
 
 type monitoringService struct {
@@ -309,4 +316,29 @@ func (s *monitoringService) GetApplicationOpenAPISpecification(ctx context.Conte
 	}
 
 	return applicationOpenApiModel, nil
+}
+
+func (s *monitoringService) SentinelSettingsPresent(ctx context.Context) (bool, error) {
+	setting, err := s.storageService.GetSentinelSetting(ctx, SENTINEL_SETTINGS_NAME)
+	if err != nil {
+		if errorUtils.Is(err, storage.ErrNotFound) {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to get sentinel setting: %v", err)
+	}
+
+	return setting != nil, nil
+}
+
+func (s *monitoringService) InsertSentinelIntervalSetting(ctx context.Context, interval int, enabled bool) error {
+	setting := &obj.SentinelSetting{
+		Name:     SENTINEL_SETTINGS_NAME,
+		Interval: interval,
+		Enabled:  enabled,
+	}
+	err := s.storageService.InsertSentinelSetting(ctx, setting)
+	if err != nil {
+		return fmt.Errorf("failed to insert sentinel setting: %v", err)
+	}
+	return nil
 }

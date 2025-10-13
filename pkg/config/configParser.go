@@ -30,6 +30,10 @@ func readConfig(path string) (*Config, error) {
 		{"system.default_admin.password", "DEFAULT_ADMIN_PASSWORD"},
 		{"server.port", "PORT"},
 		{"log.level", "LOG_LEVEL"},
+		{"sentinel.default_enabled", "SENTINEL_DEFAULT_ENABLED"},
+		{"sentinel.default_interval", "SENTINEL_DEFAULT_INTERVAL"},
+		{"sentinel.min_interval", "SENTINEL_MIN_INTERVAL"},
+		{"sentinel.max_interval", "SENTINEL_MAX_INTERVAL"},
 	})
 	if err != nil {
 		return nil, err
@@ -58,13 +62,16 @@ func bindEnvVars(configEnvVars []EnvVarConfig) error {
 
 func validateConfig(conf *Config) error {
 	requiredFields := map[string]string{
-		"DATABASE_URL":           conf.StorageConfig.DatabaseURL,
-		"JWT_SECRET":             conf.AuthConfig.JWTSecret,
-		"DEFAULT_ADMIN_USERNAME": conf.SystemConfig.DefaultAdmin.Username,
-		"DEFAULT_ADMIN_EMAIL":    conf.SystemConfig.DefaultAdmin.Email,
-		"DEFAULT_ADMIN_PASSWORD": conf.SystemConfig.DefaultAdmin.Password,
-		"SERVER_PORT":            conf.ServerConfig.Port,
-		"LOG_LEVEL":              conf.LogConfig.Level,
+		"DATABASE_URL":              conf.StorageConfig.DatabaseURL,
+		"JWT_SECRET":                conf.AuthConfig.JWTSecret,
+		"DEFAULT_ADMIN_USERNAME":    conf.SystemConfig.DefaultAdmin.Username,
+		"DEFAULT_ADMIN_EMAIL":       conf.SystemConfig.DefaultAdmin.Email,
+		"DEFAULT_ADMIN_PASSWORD":    conf.SystemConfig.DefaultAdmin.Password,
+		"SERVER_PORT":               conf.ServerConfig.Port,
+		"LOG_LEVEL":                 conf.LogConfig.Level,
+		"SENTINEL_DEFAULT_INTERVAL": conf.SentinelConfig.DefaultInterval,
+		"SENTINEL_MIN_INTERVAL":     conf.SentinelConfig.MinInterval,
+		"SENTINEL_MAX_INTERVAL":     conf.SentinelConfig.MaxInterval,
 	}
 
 	var missingFields []string
@@ -76,6 +83,10 @@ func validateConfig(conf *Config) error {
 
 	if len(missingFields) > 0 {
 		return fmt.Errorf("missing required configuration values: %v", missingFields)
+	}
+
+	if err := conf.SentinelConfig.ValidateAndSetDefaults(); err != nil {
+		return err
 	}
 
 	return nil
