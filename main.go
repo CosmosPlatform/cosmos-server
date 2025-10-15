@@ -25,6 +25,8 @@ func main() {
 		return
 	}
 
+	application.StartSentinel()
+
 	if err := application.RunServer(); err != nil {
 		fmt.Printf("Error starting server: %v\n", err)
 		return

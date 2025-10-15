@@ -4,7 +4,9 @@ import (
 	"context"
 	c "cosmos-server/pkg/config"
 	"cosmos-server/pkg/log"
+	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/routes"
+	"cosmos-server/pkg/sentinel"
 	"cosmos-server/pkg/server"
 	"cosmos-server/pkg/services/application"
 	"cosmos-server/pkg/services/auth"
@@ -36,7 +38,7 @@ func NewApp(config *c.Config) (*App, error) {
 	userService := user.NewUserService(storageService, user.NewTranslator(), logger)
 	teamService := team.NewTeamService(storageService, team.NewTranslator())
 	applicationService := application.NewApplicationService(storageService, application.NewTranslator(), logger)
-	monitoringService := monitoring.NewMonitoringService(storageService, monitoring.NewGithubService(), monitoring.NewOpenApiService(), monitoring.NewTranslator(), logger)
+	monitoringService := monitoring.NewMonitoringService(storageService, monitoring.NewGithubService(), monitoring.NewOpenApiService(), config.SentinelConfig.MaxIntervalSeconds, config.SentinelConfig.MinIntervalSeconds, monitoring.NewTranslator(), logger)
 
 	httpRoutes := routes.NewHTTPRoutes(authService, userService, teamService, applicationService, monitoringService, logger)
 
@@ -103,4 +105,13 @@ func (app *App) RunServer() error {
 	}
 
 	return server.StartServer(s)
+}
+
+func (app *App) StartSentinel() {
+	newSettingsChannel := make(chan model.SentinelSettings)
+
+	sentinel := sentinel.NewSentinel(app.routes.Logger, app.routes.ApplicationService, app.routes.MonitoringService, newSettingsChannel)
+	go sentinel.Start(context.Background())
+
+	app.routes.MonitoringService.StoreSentinelChannel(newSettingsChannel)
 }

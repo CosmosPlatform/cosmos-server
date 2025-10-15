@@ -10,6 +10,7 @@ type Translator interface {
 	ToGetApplicationsInteractionsFilters(teams []string, includeNeighbors bool) model.ApplicationDependencyFilter
 	ToGetOpenAPiSpecificationResponse(openAPISpec *model.ApplicationOpenAPISpecification) (*api.GetApplicationOpenAPISpecificationResponse, error)
 	ToGetCompleteApplicationMonitoringResponse(application *model.Application, interactions *model.ApplicationsInteractions, openAPISpec *model.ApplicationOpenAPISpecification) (*api.GetCompleteApplicationMonitoringResponse, error)
+	ToSentinelSettingsUpdateModel(updateSettingsApi *api.UpdateSentinelSettingsRequest) *model.SentinelSettingsUpdate
 }
 
 type translator struct{}
@@ -240,5 +241,16 @@ func (t *translator) ToMonitoringInformationApi(monitoringInfo *model.Monitoring
 		OpenAPIPath:    monitoringInfo.OpenApiPath,
 		HasOpenClient:  monitoringInfo.HasOpenClient,
 		OpenClientPath: monitoringInfo.OpenClientPath,
+	}
+}
+
+func (t *translator) ToSentinelSettingsUpdateModel(updateSettingsApi *api.UpdateSentinelSettingsRequest) *model.SentinelSettingsUpdate {
+	if updateSettingsApi == nil {
+		return nil
+	}
+
+	return &model.SentinelSettingsUpdate{
+		Enabled:  updateSettingsApi.Enabled,
+		Interval: updateSettingsApi.Interval,
 	}
 }

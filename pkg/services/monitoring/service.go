@@ -28,23 +28,31 @@ type Service interface {
 
 	SentinelSettingsPresent(ctx context.Context) (bool, error)
 	InsertSentinelIntervalSetting(ctx context.Context, interval int, enabled bool) error
+	StoreSentinelChannel(newConfigChannel chan<- model.SentinelSettings)
+
+	UpdateSentinelSettings(ctx context.Context, sentinelSettingsUpdate *model.SentinelSettingsUpdate) error
 }
 
 type monitoringService struct {
-	storageService storage.Service
-	gitService     GitService
-	openApiService OpenApiService
-	translator     Translator
-	logger         log.Logger
+	storageService             storage.Service
+	gitService                 GitService
+	openApiService             OpenApiService
+	sentinelConfigChannel      chan<- model.SentinelSettings
+	sentinelMaxIntervalSeconds int
+	sentinelMinIntervalSeconds int
+	translator                 Translator
+	logger                     log.Logger
 }
 
-func NewMonitoringService(storageService storage.Service, gitService GitService, openApiService OpenApiService, translator Translator, logger log.Logger) Service {
+func NewMonitoringService(storageService storage.Service, gitService GitService, openApiService OpenApiService, sentinelMaxIntervalSeconds, sentinelMinIntervalSeconds int, translator Translator, logger log.Logger) Service {
 	return &monitoringService{
-		storageService: storageService,
-		gitService:     gitService,
-		openApiService: openApiService,
-		translator:     translator,
-		logger:         logger,
+		storageService:             storageService,
+		gitService:                 gitService,
+		openApiService:             openApiService,
+		sentinelMaxIntervalSeconds: sentinelMaxIntervalSeconds,
+		sentinelMinIntervalSeconds: sentinelMinIntervalSeconds,
+		translator:                 translator,
+		logger:                     logger,
 	}
 }
 
@@ -340,5 +348,58 @@ func (s *monitoringService) InsertSentinelIntervalSetting(ctx context.Context, i
 	if err != nil {
 		return fmt.Errorf("failed to insert sentinel setting: %v", err)
 	}
+	return nil
+}
+
+func (s *monitoringService) StoreSentinelChannel(newConfigChannel chan<- model.SentinelSettings) {
+	s.sentinelConfigChannel = newConfigChannel
+}
+
+func (s *monitoringService) UpdateSentinelSettings(ctx context.Context, sentinelSettingsUpdate *model.SentinelSettingsUpdate) error {
+	if sentinelSettingsUpdate != nil && sentinelSettingsUpdate.Interval != nil {
+		if *sentinelSettingsUpdate.Interval < s.sentinelMinIntervalSeconds || *sentinelSettingsUpdate.Interval > s.sentinelMaxIntervalSeconds {
+			return errors.NewBadRequestError(fmt.Sprintf("Interval must be between %d and %d seconds", s.sentinelMinIntervalSeconds, s.sentinelMaxIntervalSeconds))
+		}
+	}
+
+	existingSetting, err := s.storageService.GetSentinelSetting(context.Background(), SENTINEL_SETTINGS_NAME)
+	if err != nil {
+		if errorUtils.Is(err, storage.ErrNotFound) {
+			return errors.NewNotFoundError("Sentinel settings not found")
+		}
+		return fmt.Errorf("failed to get existing sentinel setting: %v", err)
+	}
+
+	updateObj := &obj.SentinelSetting{
+		CosmosObj: obj.CosmosObj{
+			ID:        existingSetting.ID,
+			CreatedAt: existingSetting.CreatedAt,
+		},
+		Name:     existingSetting.Name,
+		Interval: existingSetting.Interval,
+		Enabled:  existingSetting.Enabled,
+	}
+
+	if sentinelSettingsUpdate.Enabled != nil {
+		updateObj.Enabled = *sentinelSettingsUpdate.Enabled
+	}
+
+	if sentinelSettingsUpdate.Interval != nil {
+		updateObj.Interval = *sentinelSettingsUpdate.Interval
+	}
+
+	err = s.storageService.UpdateSentinelSetting(ctx, updateObj)
+	if err != nil {
+		return fmt.Errorf("failed to update sentinel setting: %v", err)
+	}
+
+	// if s.sentinelConfigChannel != nil {
+	// 	newSettings := model.SentinelSettings{
+	// 		Interval: updateObj.Interval,
+	// 		Enabled:  updateObj.Enabled,
+	// 	}
+	// 	s.sentinelConfigChannel <- newSettings
+	// }
+
 	return nil
 }

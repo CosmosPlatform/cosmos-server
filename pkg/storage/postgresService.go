@@ -623,7 +623,7 @@ func (s *PostgresService) InsertSentinelSetting(ctx context.Context, setting *ob
 }
 
 func (s *PostgresService) UpdateSentinelSetting(ctx context.Context, setting *obj.SentinelSetting) error {
-	rowsAffected, err := gorm.G[*obj.SentinelSetting](s.db).Where("id = ?", setting.ID).Updates(ctx, setting)
+	rowsAffected, err := gorm.G[*obj.SentinelSetting](s.db).Where("id = ?", setting.ID).Select("*").Updates(ctx, setting)
 	if err != nil {
 		return fmt.Errorf("failed to update sentinel setting: %v", err)
 	}

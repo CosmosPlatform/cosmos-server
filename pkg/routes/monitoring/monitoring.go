@@ -1,10 +1,13 @@
 package monitoring
 
 import (
+	"cosmos-server/api"
+	"cosmos-server/pkg/errors"
 	"cosmos-server/pkg/log"
 	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/services/application"
 	"cosmos-server/pkg/services/monitoring"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -33,6 +36,19 @@ func AddAuthenticatedMonitoringHandler(e *gin.RouterGroup, monitoringService mon
 	monitoringGroup.GET("/interactions", handler.handleGetApplicationsInteractions)
 	monitoringGroup.GET("/openapi/:application", handler.handleGetApplicationOpenAPISpecification)
 	monitoringGroup.GET("/complete/:application", handler.handleGetCompleteApplicationMonitoring)
+}
+
+func AddAdminMonitoringHandler(e *gin.RouterGroup, monitoringService monitoring.Service, applicationService application.Service, translator Translator, logger log.Logger) {
+	handler := &handler{
+		monitoringService:  monitoringService,
+		applicationService: applicationService,
+		translator:         translator,
+		logger:             logger,
+	}
+
+	monitoringGroup := e.Group("/monitoring")
+
+	monitoringGroup.PUT("/sentinelSettings", handler.handleUpdateSentinelConfiguration)
 }
 
 func (handler *handler) handleUpdateApplicationMonitoring(e *gin.Context) {
@@ -168,4 +184,20 @@ func (handler *handler) handleGetCompleteApplicationMonitoring(e *gin.Context) {
 	}
 
 	e.JSON(200, getCompleteApplicationMonitoringResponse)
+}
+
+func (handler *handler) handleUpdateSentinelConfiguration(e *gin.Context) {
+	var updateSentinelConfigurationRequest api.UpdateSentinelSettingsRequest
+	if err := e.ShouldBindJSON(&updateSentinelConfigurationRequest); err != nil {
+		_ = e.Error(errors.NewBadRequestError(fmt.Sprintf("Invalid request format: %v", err)))
+		return
+	}
+
+	err := handler.monitoringService.UpdateSentinelSettings(e, handler.translator.ToSentinelSettingsUpdateModel(&updateSentinelConfigurationRequest))
+	if err != nil {
+		_ = e.Error(err)
+		return
+	}
+
+	e.JSON(http.StatusNoContent, nil)
 }
