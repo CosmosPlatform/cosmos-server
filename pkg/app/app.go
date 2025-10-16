@@ -21,6 +21,7 @@ import (
 type App struct {
 	config *c.Config
 	routes *routes.HTTPRoutes
+	server *http.Server
 }
 
 func NewApp(config *c.Config) (*App, error) {
@@ -99,12 +100,12 @@ func (app *App) setUpSentinelSettings() error {
 
 func (app *App) RunServer() error {
 	address := ":" + app.config.ServerConfig.Port
-	s := &http.Server{
+	app.server = &http.Server{
 		Addr:    address,
 		Handler: server.NewGinHandler(app.routes),
 	}
 
-	return server.StartServer(s)
+	return server.StartServer(app.server)
 }
 
 func (app *App) StartSentinel(ctx context.Context) {
@@ -118,4 +119,11 @@ func (app *App) StartSentinel(ctx context.Context) {
 	go sentinel.Start(ctx, fallbackSettings)
 
 	app.routes.MonitoringService.StoreSentinelChannel(newSettingsChannel)
+}
+
+func (app *App) Shutdown(ctx context.Context) error {
+	if app.server != nil {
+		return app.server.Shutdown(ctx)
+	}
+	return nil
 }

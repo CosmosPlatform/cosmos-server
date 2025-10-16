@@ -31,6 +31,8 @@ func NewSentinel(logger log.Logger, applicationService application.Service, moni
 }
 
 func (s *Sentinel) Start(ctx context.Context, fallbackConfig *model.SentinelSettings) {
+	s.logger.Infof("Sentinel starting with %d workers...", s.workerCount)
+
 	var wg sync.WaitGroup
 	for i := 0; i < s.workerCount; i++ {
 		wg.Add(1)
@@ -98,13 +100,13 @@ func (s *Sentinel) worker(ctx context.Context, id int, wg *sync.WaitGroup) {
 		select {
 		case app, ok := <-s.jobsChan:
 			if !ok {
-				s.logger.Infof("Worker %d: jobs channel closed, exiting", id)
+				s.logger.Infow("Jobs channel closed, exiting", "worker", id)
 				return
 			}
-			s.logger.Infof("Worker %d: monitoring application %s", id, app.Name)
+			s.logger.Infow("Monitoring application", "worker", id, "application", app.Name)
 			s.monitorApplication(ctx, app, id)
 		case <-ctx.Done():
-			s.logger.Infof("Worker %d: context cancelled", id)
+			s.logger.Infow("Context cancelled", "worker", id)
 			return
 		}
 	}
