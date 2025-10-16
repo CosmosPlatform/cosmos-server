@@ -634,3 +634,12 @@ func (s *PostgresService) UpdateSentinelSetting(ctx context.Context, setting *ob
 
 	return nil
 }
+
+func (s *PostgresService) GetApplicationsToMonitor(ctx context.Context) ([]*obj.Application, error) {
+	applications, err := gorm.G[*obj.Application](s.db).Where("has_open_api = ? OR has_open_client = ?", true, true).Find(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get applications to monitor: %v", err)
+	}
+
+	return applications, nil
+}

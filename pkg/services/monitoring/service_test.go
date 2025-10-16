@@ -13,6 +13,7 @@ import (
 	"cosmos-server/pkg/storage/obj"
 	"encoding/json"
 	"errors"
+
 	//"strings"
 	"testing"
 
@@ -60,7 +61,7 @@ func setUp(t *testing.T) (Service, *mocks) {
 		loggerMocks:        log.NewMockLogger(controller),
 	}
 
-	service := NewMonitoringService(mocks.storageServiceMock, mocks.gitServiceMock, NewOpenApiService(), NewTranslator(), mocks.loggerMocks)
+	service := NewMonitoringService(mocks.storageServiceMock, mocks.gitServiceMock, NewOpenApiService(), 30, 900, NewTranslator(), mocks.loggerMocks)
 
 	return service, mocks
 }

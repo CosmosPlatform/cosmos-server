@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"cosmos-server/pkg/app"
 	"cosmos-server/pkg/config"
 	"fmt"
@@ -25,7 +26,7 @@ func main() {
 		return
 	}
 
-	application.StartSentinel()
+	application.StartSentinel(context.Background())
 
 	if err := application.RunServer(); err != nil {
 		fmt.Printf("Error starting server: %v\n", err)

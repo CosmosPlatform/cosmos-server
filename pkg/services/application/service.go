@@ -19,6 +19,8 @@ type Service interface {
 	GetApplicationsWithFilter(ctx context.Context, filter string) ([]*model.Application, error)
 	DeleteApplication(ctx context.Context, name string) error
 	UpdateApplication(ctx context.Context, name string, updateData *model.ApplicationUpdate) (*model.Application, error)
+
+	GetApplicationsToMonitor(ctx context.Context) ([]*model.Application, error)
 }
 
 type applicationService struct {
@@ -212,4 +214,13 @@ func (s *applicationService) UpdateApplication(ctx context.Context, name string,
 
 	s.logger.Infof("Application %s updated successfully", updateObj.Name)
 	return s.translator.ToApplicationModel(updatedApp), nil
+}
+
+func (s *applicationService) GetApplicationsToMonitor(ctx context.Context) ([]*model.Application, error) {
+	applications, err := s.storageService.GetApplicationsToMonitor(ctx)
+	if err != nil {
+		return nil, errors.NewInternalServerError("failed to retrieve applications to monitor: " + err.Error())
+	}
+
+	return s.translator.ToApplicationModels(applications), nil
 }

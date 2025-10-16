@@ -38,6 +38,7 @@ type SentinelConfig struct {
 	DefaultIntervalSeconds int
 	MinIntervalSeconds     int
 	MaxIntervalSeconds     int
+	SentinelWorkers        *int `mapstructure:"sentinel_workers"`
 }
 
 type DefaultAdmin struct {

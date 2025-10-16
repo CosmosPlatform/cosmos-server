@@ -31,6 +31,7 @@ type Service interface {
 	StoreSentinelChannel(newConfigChannel chan<- model.SentinelSettings)
 
 	UpdateSentinelSettings(ctx context.Context, sentinelSettingsUpdate *model.SentinelSettingsUpdate) error
+	GetSentinelSettings(ctx context.Context) (*model.SentinelSettings, error)
 }
 
 type monitoringService struct {
@@ -380,6 +381,8 @@ func (s *monitoringService) UpdateSentinelSettings(ctx context.Context, sentinel
 		Enabled:  existingSetting.Enabled,
 	}
 
+	fmt.Printf("Current settings: %+v\n", updateObj)
+
 	if sentinelSettingsUpdate.Enabled != nil {
 		updateObj.Enabled = *sentinelSettingsUpdate.Enabled
 	}
@@ -388,18 +391,32 @@ func (s *monitoringService) UpdateSentinelSettings(ctx context.Context, sentinel
 		updateObj.Interval = *sentinelSettingsUpdate.Interval
 	}
 
+	fmt.Printf("Updated settings: %+v\n", updateObj)
+
 	err = s.storageService.UpdateSentinelSetting(ctx, updateObj)
 	if err != nil {
 		return fmt.Errorf("failed to update sentinel setting: %v", err)
 	}
 
-	// if s.sentinelConfigChannel != nil {
-	// 	newSettings := model.SentinelSettings{
-	// 		Interval: updateObj.Interval,
-	// 		Enabled:  updateObj.Enabled,
-	// 	}
-	// 	s.sentinelConfigChannel <- newSettings
-	// }
+	if s.sentinelConfigChannel != nil {
+		newSettings := model.SentinelSettings{
+			Interval: updateObj.Interval,
+			Enabled:  updateObj.Enabled,
+		}
+		s.sentinelConfigChannel <- newSettings
+	}
 
 	return nil
+}
+
+func (s *monitoringService) GetSentinelSettings(ctx context.Context) (*model.SentinelSettings, error) {
+	settingObj, err := s.storageService.GetSentinelSetting(ctx, SENTINEL_SETTINGS_NAME)
+	if err != nil {
+		if errorUtils.Is(err, storage.ErrNotFound) {
+			return nil, errors.NewNotFoundError("Sentinel settings not found")
+		}
+		return nil, fmt.Errorf("failed to get sentinel setting: %v", err)
+	}
+
+	return s.translator.ToSentinelSettingsModel(settingObj), nil
 }

@@ -107,11 +107,15 @@ func (app *App) RunServer() error {
 	return server.StartServer(s)
 }
 
-func (app *App) StartSentinel() {
-	newSettingsChannel := make(chan model.SentinelSettings)
+func (app *App) StartSentinel(ctx context.Context) {
+	newSettingsChannel := make(chan model.SentinelSettings, 3) // I think 1 would suffice, but just in case
 
-	sentinel := sentinel.NewSentinel(app.routes.Logger, app.routes.ApplicationService, app.routes.MonitoringService, newSettingsChannel)
-	go sentinel.Start(context.Background())
+	sentinel := sentinel.NewSentinel(app.routes.Logger, app.routes.ApplicationService, app.routes.MonitoringService, newSettingsChannel, *app.config.SentinelConfig.SentinelWorkers)
+	fallbackSettings := &model.SentinelSettings{
+		Interval: app.config.SentinelConfig.DefaultIntervalSeconds,
+		Enabled:  app.config.SentinelConfig.DefaultEnabled,
+	}
+	go sentinel.Start(ctx, fallbackSettings)
 
 	app.routes.MonitoringService.StoreSentinelChannel(newSettingsChannel)
 }

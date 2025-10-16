@@ -17,6 +17,8 @@ type Translator interface {
 
 	ToApplicationOpenApiObj(openApiSpec *openapi3.T) (*obj.ApplicationOpenAPI, error)
 	ToApplicationOpenApiModel(objOpenApi *obj.ApplicationOpenAPI) (*model.ApplicationOpenAPISpecification, error)
+
+	ToSentinelSettingsModel(objSettings *obj.SentinelSetting) *model.SentinelSettings
 }
 
 type translator struct{}
@@ -199,4 +201,15 @@ func (t *translator) ToApplicationOpenApiModel(objOpenApi *obj.ApplicationOpenAP
 		Application: t.ToApplicationModel(objOpenApi.Application),
 		OpenAPISpec: openApiSpec,
 	}, nil
+}
+
+func (t *translator) ToSentinelSettingsModel(objSettings *obj.SentinelSetting) *model.SentinelSettings {
+	if objSettings == nil {
+		return nil
+	}
+
+	return &model.SentinelSettings{
+		Interval: objSettings.Interval,
+		Enabled:  objSettings.Enabled,
+	}
 }
