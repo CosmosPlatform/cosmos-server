@@ -48,7 +48,8 @@ func AddAdminMonitoringHandler(e *gin.RouterGroup, monitoringService monitoring.
 
 	monitoringGroup := e.Group("/monitoring")
 
-	monitoringGroup.PUT("/sentinelSettings", handler.handleUpdateSentinelConfiguration)
+	monitoringGroup.PUT("/sentinel/settings", handler.handleUpdateSentinelConfiguration)
+	monitoringGroup.GET("/sentinel/settings", handler.handleGetSentinelConfiguration)
 }
 
 func (handler *handler) handleUpdateApplicationMonitoring(e *gin.Context) {
@@ -200,4 +201,14 @@ func (handler *handler) handleUpdateSentinelConfiguration(e *gin.Context) {
 	}
 
 	e.JSON(http.StatusNoContent, nil)
+}
+
+func (handler *handler) handleGetSentinelConfiguration(e *gin.Context) {
+	settings, err := handler.monitoringService.GetSentinelSettings(e)
+	if err != nil {
+		_ = e.Error(err)
+		return
+	}
+
+	e.JSON(200, handler.translator.ToGetSentinelSettingsResponse(settings))
 }

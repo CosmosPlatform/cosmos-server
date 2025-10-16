@@ -11,6 +11,7 @@ type Translator interface {
 	ToGetOpenAPiSpecificationResponse(openAPISpec *model.ApplicationOpenAPISpecification) (*api.GetApplicationOpenAPISpecificationResponse, error)
 	ToGetCompleteApplicationMonitoringResponse(application *model.Application, interactions *model.ApplicationsInteractions, openAPISpec *model.ApplicationOpenAPISpecification) (*api.GetCompleteApplicationMonitoringResponse, error)
 	ToSentinelSettingsUpdateModel(updateSettingsApi *api.UpdateSentinelSettingsRequest) *model.SentinelSettingsUpdate
+	ToGetSentinelSettingsResponse(sentinelSettingsModel *model.SentinelSettings) *api.GetSentinelSettingsResponse
 }
 
 type translator struct{}
@@ -252,5 +253,16 @@ func (t *translator) ToSentinelSettingsUpdateModel(updateSettingsApi *api.Update
 	return &model.SentinelSettingsUpdate{
 		Enabled:  updateSettingsApi.Enabled,
 		Interval: updateSettingsApi.Interval,
+	}
+}
+
+func (t *translator) ToGetSentinelSettingsResponse(sentinelSettingsModel *model.SentinelSettings) *api.GetSentinelSettingsResponse {
+	if sentinelSettingsModel == nil {
+		return nil
+	}
+
+	return &api.GetSentinelSettingsResponse{
+		Enabled:  sentinelSettingsModel.Enabled,
+		Interval: sentinelSettingsModel.Interval,
 	}
 }
