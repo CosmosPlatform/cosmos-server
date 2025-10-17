@@ -10,6 +10,8 @@ type Translator interface {
 	ToGetApplicationsInteractionsFilters(teams []string, includeNeighbors bool) model.ApplicationDependencyFilter
 	ToGetOpenAPiSpecificationResponse(openAPISpec *model.ApplicationOpenAPISpecification) (*api.GetApplicationOpenAPISpecificationResponse, error)
 	ToGetCompleteApplicationMonitoringResponse(application *model.Application, interactions *model.ApplicationsInteractions, openAPISpec *model.ApplicationOpenAPISpecification) (*api.GetCompleteApplicationMonitoringResponse, error)
+	ToSentinelSettingsUpdateModel(updateSettingsApi *api.UpdateSentinelSettingsRequest) *model.SentinelSettingsUpdate
+	ToGetSentinelSettingsResponse(sentinelSettingsModel *model.SentinelSettings) *api.GetSentinelSettingsResponse
 }
 
 type translator struct{}
@@ -240,5 +242,27 @@ func (t *translator) ToMonitoringInformationApi(monitoringInfo *model.Monitoring
 		OpenAPIPath:    monitoringInfo.OpenApiPath,
 		HasOpenClient:  monitoringInfo.HasOpenClient,
 		OpenClientPath: monitoringInfo.OpenClientPath,
+	}
+}
+
+func (t *translator) ToSentinelSettingsUpdateModel(updateSettingsApi *api.UpdateSentinelSettingsRequest) *model.SentinelSettingsUpdate {
+	if updateSettingsApi == nil {
+		return nil
+	}
+
+	return &model.SentinelSettingsUpdate{
+		Enabled:  updateSettingsApi.Enabled,
+		Interval: updateSettingsApi.Interval,
+	}
+}
+
+func (t *translator) ToGetSentinelSettingsResponse(sentinelSettingsModel *model.SentinelSettings) *api.GetSentinelSettingsResponse {
+	if sentinelSettingsModel == nil {
+		return nil
+	}
+
+	return &api.GetSentinelSettingsResponse{
+		Enabled:  sentinelSettingsModel.Enabled,
+		Interval: sentinelSettingsModel.Interval,
 	}
 }

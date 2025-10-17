@@ -38,4 +38,9 @@ type Service interface {
 	UpdateApplicationDependencies(ctx context.Context, applicationName string, dependenciesToUpsert map[string]*obj.ApplicationDependency, pendingDependencies map[string]*obj.PendingApplicationDependency, dependenciesToDelete []*obj.ApplicationDependency, applicationDependenciesSHA string) error
 	CheckPendingDependenciesForApplication(ctx context.Context, applicationName string) error
 	GetOpenAPISpecificationByApplicationName(ctx context.Context, applicationName string) (*obj.ApplicationOpenAPI, error)
+
+	GetSentinelSetting(ctx context.Context, name string) (*obj.SentinelSetting, error)
+	InsertSentinelSetting(ctx context.Context, setting *obj.SentinelSetting) error
+	UpdateSentinelSetting(ctx context.Context, setting *obj.SentinelSetting) error
+	GetApplicationsToMonitor(ctx context.Context) ([]*obj.Application, error)
 }

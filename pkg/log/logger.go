@@ -2,6 +2,7 @@ package log
 
 import (
 	"cosmos-server/pkg/config"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -9,11 +10,11 @@ import (
 //go:generate mockgen -destination=./mock/log_mock.go -package=log cosmos-server/pkg/log Logger
 
 type Logger interface {
-	Infof(format string, args ...interface{})
-	Infow(msg string, keysAndValues ...interface{})
-	Errorf(format string, args ...interface{})
-	Debugf(format string, args ...interface{})
-	Warnf(format string, args ...interface{})
+	Infof(format string, args ...any)
+	Infow(msg string, keysAndValues ...any)
+	Errorf(format string, args ...any)
+	Debugf(format string, args ...any)
+	Warnf(format string, args ...any)
 }
 
 type logger struct {
@@ -59,22 +60,22 @@ func getLoggingLevel(logLevel string) zap.AtomicLevel {
 	}
 }
 
-func (l *logger) Infof(format string, args ...interface{}) {
+func (l *logger) Infof(format string, args ...any) {
 	l.zapLogger.Infof(format, args...)
 }
 
-func (l *logger) Errorf(format string, args ...interface{}) {
+func (l *logger) Errorf(format string, args ...any) {
 	l.zapLogger.Errorf(format, args...)
 }
 
-func (l *logger) Debugf(format string, args ...interface{}) {
+func (l *logger) Debugf(format string, args ...any) {
 	l.zapLogger.Debugf(format, args...)
 }
 
-func (l *logger) Warnf(format string, args ...interface{}) {
+func (l *logger) Warnf(format string, args ...any) {
 	l.zapLogger.Warnf(format, args...)
 }
 
-func (l *logger) Infow(msg string, keysAndValues ...interface{}) {
+func (l *logger) Infow(msg string, keysAndValues ...any) {
 	l.zapLogger.Infow(msg, keysAndValues...)
 }

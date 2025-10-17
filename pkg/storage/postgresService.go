@@ -597,3 +597,49 @@ func (s *PostgresService) GetOpenAPISpecificationByApplicationName(ctx context.C
 
 	return openAPISpec, nil
 }
+
+func (s *PostgresService) GetSentinelSetting(ctx context.Context, name string) (*obj.SentinelSetting, error) {
+	setting, err := gorm.G[*obj.SentinelSetting](s.db).Where("name = ?", name).First(ctx)
+	if err != nil {
+		if errorUtils.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to get sentinel setting: %v", err)
+	}
+
+	return setting, nil
+}
+
+func (s *PostgresService) InsertSentinelSetting(ctx context.Context, setting *obj.SentinelSetting) error {
+	err := gorm.G[obj.SentinelSetting](s.db).Create(ctx, setting)
+	if err != nil {
+		if errorUtils.Is(err, gorm.ErrDuplicatedKey) {
+			return ErrAlreadyExists
+		}
+		return fmt.Errorf("failed to insert sentinel setting: %v", err)
+	}
+
+	return nil
+}
+
+func (s *PostgresService) UpdateSentinelSetting(ctx context.Context, setting *obj.SentinelSetting) error {
+	rowsAffected, err := gorm.G[*obj.SentinelSetting](s.db).Where("id = ?", setting.ID).Select("*").Updates(ctx, setting)
+	if err != nil {
+		return fmt.Errorf("failed to update sentinel setting: %v", err)
+	}
+
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}
+
+func (s *PostgresService) GetApplicationsToMonitor(ctx context.Context) ([]*obj.Application, error) {
+	applications, err := gorm.G[*obj.Application](s.db).Where("has_open_api = ? OR has_open_client = ?", true, true).Find(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get applications to monitor: %v", err)
+	}
+
+	return applications, nil
+}

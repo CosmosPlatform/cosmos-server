@@ -13,6 +13,10 @@ import (
 	"strings"
 )
 
+const (
+	SENTINEL_SETTINGS_NAME = "sentinel_settings"
+)
+
 //go:generate mockgen -destination=./mock/service_mock.go -package=mock cosmos-server/pkg/services/monitoring Service
 
 type Service interface {
@@ -21,23 +25,35 @@ type Service interface {
 	GetApplicationsInteractions(ctx context.Context, filter model.ApplicationDependencyFilter) (*model.ApplicationsInteractions, error)
 	UpdateApplicationOpenAPISpecification(ctx context.Context, application *model.Application) error
 	GetApplicationOpenAPISpecification(ctx context.Context, application *model.Application) (*model.ApplicationOpenAPISpecification, error)
+
+	SentinelSettingsPresent(ctx context.Context) (bool, error)
+	InsertSentinelIntervalSetting(ctx context.Context, interval int, enabled bool) error
+	StoreSentinelChannel(newConfigChannel chan<- model.SentinelSettings)
+
+	UpdateSentinelSettings(ctx context.Context, sentinelSettingsUpdate *model.SentinelSettingsUpdate) error
+	GetSentinelSettings(ctx context.Context) (*model.SentinelSettings, error)
 }
 
 type monitoringService struct {
-	storageService storage.Service
-	gitService     GitService
-	openApiService OpenApiService
-	translator     Translator
-	logger         log.Logger
+	storageService             storage.Service
+	gitService                 GitService
+	openApiService             OpenApiService
+	sentinelConfigChannel      chan<- model.SentinelSettings
+	sentinelMaxIntervalSeconds int
+	sentinelMinIntervalSeconds int
+	translator                 Translator
+	logger                     log.Logger
 }
 
-func NewMonitoringService(storageService storage.Service, gitService GitService, openApiService OpenApiService, translator Translator, logger log.Logger) Service {
+func NewMonitoringService(storageService storage.Service, gitService GitService, openApiService OpenApiService, sentinelMaxIntervalSeconds, sentinelMinIntervalSeconds int, translator Translator, logger log.Logger) Service {
 	return &monitoringService{
-		storageService: storageService,
-		gitService:     gitService,
-		openApiService: openApiService,
-		translator:     translator,
-		logger:         logger,
+		storageService:             storageService,
+		gitService:                 gitService,
+		openApiService:             openApiService,
+		sentinelMaxIntervalSeconds: sentinelMaxIntervalSeconds,
+		sentinelMinIntervalSeconds: sentinelMinIntervalSeconds,
+		translator:                 translator,
+		logger:                     logger,
 	}
 }
 
@@ -309,4 +325,98 @@ func (s *monitoringService) GetApplicationOpenAPISpecification(ctx context.Conte
 	}
 
 	return applicationOpenApiModel, nil
+}
+
+func (s *monitoringService) SentinelSettingsPresent(ctx context.Context) (bool, error) {
+	setting, err := s.storageService.GetSentinelSetting(ctx, SENTINEL_SETTINGS_NAME)
+	if err != nil {
+		if errorUtils.Is(err, storage.ErrNotFound) {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to get sentinel setting: %v", err)
+	}
+
+	return setting != nil, nil
+}
+
+func (s *monitoringService) InsertSentinelIntervalSetting(ctx context.Context, interval int, enabled bool) error {
+	setting := &obj.SentinelSetting{
+		Name:     SENTINEL_SETTINGS_NAME,
+		Interval: interval,
+		Enabled:  enabled,
+	}
+	err := s.storageService.InsertSentinelSetting(ctx, setting)
+	if err != nil {
+		return fmt.Errorf("failed to insert sentinel setting: %v", err)
+	}
+	return nil
+}
+
+func (s *monitoringService) StoreSentinelChannel(newConfigChannel chan<- model.SentinelSettings) {
+	s.sentinelConfigChannel = newConfigChannel
+}
+
+func (s *monitoringService) UpdateSentinelSettings(ctx context.Context, sentinelSettingsUpdate *model.SentinelSettingsUpdate) error {
+	if sentinelSettingsUpdate != nil && sentinelSettingsUpdate.Interval != nil {
+		if *sentinelSettingsUpdate.Interval < s.sentinelMinIntervalSeconds || *sentinelSettingsUpdate.Interval > s.sentinelMaxIntervalSeconds {
+			return errors.NewBadRequestError(fmt.Sprintf("Interval must be between %d and %d seconds", s.sentinelMinIntervalSeconds, s.sentinelMaxIntervalSeconds))
+		}
+	}
+
+	existingSetting, err := s.storageService.GetSentinelSetting(context.Background(), SENTINEL_SETTINGS_NAME)
+	if err != nil {
+		if errorUtils.Is(err, storage.ErrNotFound) {
+			return errors.NewNotFoundError("Sentinel settings not found")
+		}
+		return fmt.Errorf("failed to get existing sentinel setting: %v", err)
+	}
+
+	updateObj := &obj.SentinelSetting{
+		CosmosObj: obj.CosmosObj{
+			ID:        existingSetting.ID,
+			CreatedAt: existingSetting.CreatedAt,
+		},
+		Name:     existingSetting.Name,
+		Interval: existingSetting.Interval,
+		Enabled:  existingSetting.Enabled,
+	}
+
+	fmt.Printf("Current settings: %+v\n", updateObj)
+
+	if sentinelSettingsUpdate.Enabled != nil {
+		updateObj.Enabled = *sentinelSettingsUpdate.Enabled
+	}
+
+	if sentinelSettingsUpdate.Interval != nil {
+		updateObj.Interval = *sentinelSettingsUpdate.Interval
+	}
+
+	fmt.Printf("Updated settings: %+v\n", updateObj)
+
+	err = s.storageService.UpdateSentinelSetting(ctx, updateObj)
+	if err != nil {
+		return fmt.Errorf("failed to update sentinel setting: %v", err)
+	}
+
+	if s.sentinelConfigChannel != nil {
+		newSettings := model.SentinelSettings{
+			Interval: updateObj.Interval,
+			Enabled:  updateObj.Enabled,
+		}
+		s.sentinelConfigChannel <- newSettings
+	}
+
+	return nil
+}
+
+func (s *monitoringService) GetSentinelSettings(ctx context.Context) (*model.SentinelSettings, error) {
+	settingObj, err := s.storageService.GetSentinelSetting(ctx, SENTINEL_SETTINGS_NAME)
+	if err != nil {
+		if errorUtils.Is(err, storage.ErrNotFound) {
+			return nil, errors.NewNotFoundError("Sentinel settings not found")
+		}
+		return nil, fmt.Errorf("failed to get sentinel setting: %v", err)
+	}
+
+	return s.translator.ToSentinelSettingsModel(settingObj), nil
 }
