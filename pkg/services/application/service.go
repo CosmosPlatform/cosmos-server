@@ -144,7 +144,8 @@ func (s *applicationService) UpdateApplication(ctx context.Context, name string,
 
 	updateObj := &obj.Application{
 		CosmosObj: obj.CosmosObj{
-			ID: existingApp.ID,
+			ID:        existingApp.ID,
+			CreatedAt: existingApp.CreatedAt,
 		},
 		Name:                existingApp.Name,
 		Description:         existingApp.Description,
