@@ -33,6 +33,7 @@ func NewTokenService(conf config.TokenConfig, storageService storage.Service, tr
 	return &tokenService{
 		storageService: storageService,
 		encriptor:      encryptor,
+		translator:     translator,
 		logger:         logger,
 	}, nil
 }
