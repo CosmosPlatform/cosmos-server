@@ -5,12 +5,13 @@ import (
 	"cosmos-server/pkg/log"
 	"cosmos-server/pkg/server/middleware"
 	"encoding/json"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"net/http/httptest"
+
+	"github.com/gin-gonic/gin"
 )
 
-func NewHTTPRequest(method, url string, body interface{}) (*http.Request, *httptest.ResponseRecorder, error) {
+func NewHTTPRequest(method, url string, body any) (*http.Request, *httptest.ResponseRecorder, error) {
 	var request *http.Request
 	var err error
 

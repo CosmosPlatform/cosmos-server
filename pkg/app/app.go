@@ -12,6 +12,7 @@ import (
 	"cosmos-server/pkg/services/auth"
 	"cosmos-server/pkg/services/monitoring"
 	"cosmos-server/pkg/services/team"
+	"cosmos-server/pkg/services/token"
 	"cosmos-server/pkg/services/user"
 	"cosmos-server/pkg/storage"
 	"fmt"
@@ -41,7 +42,12 @@ func NewApp(config *c.Config) (*App, error) {
 	applicationService := application.NewApplicationService(storageService, application.NewTranslator(), logger)
 	monitoringService := monitoring.NewMonitoringService(storageService, monitoring.NewGithubService(), monitoring.NewOpenApiService(), config.SentinelConfig.MaxIntervalSeconds, config.SentinelConfig.MinIntervalSeconds, monitoring.NewTranslator(), logger)
 
-	httpRoutes := routes.NewHTTPRoutes(authService, userService, teamService, applicationService, monitoringService, logger)
+	tokenService, err := token.NewTokenService(config.TokenConfig, storageService, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create token service: %v", err)
+	}
+
+	httpRoutes := routes.NewHTTPRoutes(authService, userService, teamService, applicationService, monitoringService, tokenService, logger)
 
 	return &App{
 		config: config,

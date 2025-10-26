@@ -43,4 +43,6 @@ type Service interface {
 	InsertSentinelSetting(ctx context.Context, setting *obj.SentinelSetting) error
 	UpdateSentinelSetting(ctx context.Context, setting *obj.SentinelSetting) error
 	GetApplicationsToMonitor(ctx context.Context) ([]*obj.Application, error)
+
+	InsertToken(ctx context.Context, token *obj.Token) error
 }

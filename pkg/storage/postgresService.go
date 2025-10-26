@@ -643,3 +643,15 @@ func (s *PostgresService) GetApplicationsToMonitor(ctx context.Context) ([]*obj.
 
 	return applications, nil
 }
+
+func (s *PostgresService) InsertToken(ctx context.Context, token *obj.Token) error {
+	err := gorm.G[obj.Token](s.db).Create(ctx, token)
+	if err != nil {
+		if errorUtils.Is(err, gorm.ErrDuplicatedKey) {
+			return ErrAlreadyExists
+		}
+		return fmt.Errorf("failed to insert token: %v", err)
+	}
+
+	return nil
+}

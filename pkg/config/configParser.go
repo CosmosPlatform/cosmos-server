@@ -35,6 +35,7 @@ func readConfig(path string) (*Config, error) {
 		{"sentinel.min_interval", "SENTINEL_MIN_INTERVAL"},
 		{"sentinel.max_interval", "SENTINEL_MAX_INTERVAL"},
 		{"sentinel.sentinel_workers", "SENTINEL_WORKERS"},
+		{"token.encryption_key", "TOKEN_ENCRYPTION_KEY"},
 	})
 	if err != nil {
 		return nil, err
@@ -74,6 +75,7 @@ func validateConfig(conf *Config) error {
 		"SENTINEL_MIN_INTERVAL":     conf.SentinelConfig.MinInterval,
 		"SENTINEL_MAX_INTERVAL":     conf.SentinelConfig.MaxInterval,
 		"SENTINEL_WORKERS":          fmt.Sprintf("%d", conf.SentinelConfig.SentinelWorkers),
+		"TOKEN_ENCRYPTION_KEY":      conf.TokenConfig.EncryptionKey,
 	}
 
 	var missingFields []string

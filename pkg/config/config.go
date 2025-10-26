@@ -10,6 +10,7 @@ type Config struct {
 	StorageConfig  `mapstructure:"storage"`
 	AuthConfig     `mapstructure:"auth"`
 	SystemConfig   `mapstructure:"system"`
+	TokenConfig    `mapstructure:"token"`
 	LogConfig      `mapstructure:"log"`
 	SentinelConfig `mapstructure:"sentinel"`
 }
@@ -28,6 +29,10 @@ type SystemConfig struct {
 
 type LogConfig struct {
 	Level string `mapstructure:"level"`
+}
+
+type TokenConfig struct {
+	EncryptionKey string `mapstructure:"encryption_key"`
 }
 
 type SentinelConfig struct {
