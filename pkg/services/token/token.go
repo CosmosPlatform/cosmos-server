@@ -5,6 +5,7 @@ import (
 	"cosmos-server/pkg/config"
 	"cosmos-server/pkg/errors"
 	"cosmos-server/pkg/log"
+	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/storage"
 	"cosmos-server/pkg/storage/obj"
 	errorUtils "errors"
@@ -13,15 +14,17 @@ import (
 
 type Service interface {
 	CreateToken(ctx context.Context, teamName, name, secret string) error
+	GetTokensFromTeam(ctx context.Context, teamName string) ([]*model.Token, error)
 }
 
 type tokenService struct {
 	storageService storage.Service
 	encriptor      Encryptor
+	translator     Translator
 	logger         log.Logger
 }
 
-func NewTokenService(conf config.TokenConfig, storageService storage.Service, logger log.Logger) (Service, error) {
+func NewTokenService(conf config.TokenConfig, storageService storage.Service, translator Translator, logger log.Logger) (Service, error) {
 	encryptor, err := NewAESEncryptor(conf.EncryptionKey)
 	if err != nil {
 		return nil, err
@@ -60,4 +63,13 @@ func (s *tokenService) CreateToken(ctx context.Context, teamName, name, secret s
 	}
 
 	return nil
+}
+
+func (s *tokenService) GetTokensFromTeam(ctx context.Context, teamName string) ([]*model.Token, error) {
+	tokens, err := s.storageService.GetTokensFromTeam(ctx, teamName)
+	if err != nil {
+		return nil, errors.NewInternalServerError("failed to retrieve tokens: " + err.Error())
+	}
+
+	return s.translator.ToModelTokens(tokens), nil
 }

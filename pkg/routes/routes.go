@@ -52,7 +52,7 @@ func (r *HTTPRoutes) RegisterAuthenticatedRoutes(e *gin.RouterGroup) {
 	userRoute.AddAuthenticatedUserHandler(e, r.UserService, userRoute.NewTranslator(), r.Logger)
 	teamRoute.AddAuthenticatedTeamHandler(e, r.TeamService, teamRoute.NewTranslator())
 	monitoringRoute.AddAuthenticatedMonitoringHandler(e, r.MonitoringService, r.ApplicationService, monitoringRoute.NewTranslator(), r.Logger)
-	tokenRoute.AddAuthenticatedTokenHandler(e, r.TokenService, r.UserService, r.Logger)
+	tokenRoute.AddAuthenticatedTokenHandler(e, r.TokenService, r.UserService, tokenRoute.NewTranslator(), r.Logger)
 }
 
 func (r *HTTPRoutes) RegisterAdminAuthenticatedRoutes(e *gin.RouterGroup) {

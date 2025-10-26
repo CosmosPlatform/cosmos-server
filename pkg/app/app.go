@@ -42,7 +42,7 @@ func NewApp(config *c.Config) (*App, error) {
 	applicationService := application.NewApplicationService(storageService, application.NewTranslator(), logger)
 	monitoringService := monitoring.NewMonitoringService(storageService, monitoring.NewGithubService(), monitoring.NewOpenApiService(), config.SentinelConfig.MaxIntervalSeconds, config.SentinelConfig.MinIntervalSeconds, monitoring.NewTranslator(), logger)
 
-	tokenService, err := token.NewTokenService(config.TokenConfig, storageService, logger)
+	tokenService, err := token.NewTokenService(config.TokenConfig, storageService, token.NewTranslator(), logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create token service: %v", err)
 	}

@@ -17,17 +17,20 @@ import (
 type handler struct {
 	tokenService token.Service
 	userService  user.Service
+	translator   Translator
 	logger       log.Logger
 }
 
-func AddAuthenticatedTokenHandler(e *gin.RouterGroup, tokenService token.Service, userService user.Service, logger log.Logger) {
+func AddAuthenticatedTokenHandler(e *gin.RouterGroup, tokenService token.Service, userService user.Service, translator Translator, logger log.Logger) {
 	h := &handler{
 		tokenService: tokenService,
 		userService:  userService,
+		translator:   translator,
 		logger:       logger,
 	}
 
 	e.POST("/tokens/:team", h.handlePostToken)
+	e.GET("/tokens/:team", h.handleGetTokens)
 }
 
 func (h *handler) handlePostToken(c *gin.Context) {
@@ -74,6 +77,22 @@ func (h *handler) handlePostToken(c *gin.Context) {
 	}
 
 	c.Status(http.StatusCreated)
+}
+
+func (h *handler) handleGetTokens(c *gin.Context) {
+	teamName := c.Param("team")
+	if teamName == "" {
+		_ = c.Error(errors.NewBadRequestError("Team name is required"))
+		return
+	}
+
+	tokens, err := h.tokenService.GetTokensFromTeam(c, teamName)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, h.translator.ToGetTokenResponse(tokens))
 }
 
 func getRoleAndEmailFromContext(c *gin.Context) (string, string, error) {

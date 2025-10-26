@@ -655,3 +655,17 @@ func (s *PostgresService) InsertToken(ctx context.Context, token *obj.Token) err
 
 	return nil
 }
+
+func (s *PostgresService) GetTokensFromTeam(ctx context.Context, teamName string) ([]*obj.Token, error) {
+	team, err := s.GetTeamWithName(ctx, teamName)
+	if err != nil {
+		return nil, err
+	}
+
+	tokens, err := gorm.G[*obj.Token](s.db).Where("team_id = ?", team.ID).Find(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tokens for team %s: %v", teamName, err)
+	}
+
+	return tokens, nil
+}

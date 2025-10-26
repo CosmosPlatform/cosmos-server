@@ -13,3 +13,12 @@ func (r *CreateTokenRequest) Validate() error {
 		validation.Field(&r.Value, validation.Required),
 	)
 }
+
+type GetTokensResponse struct {
+	Tokens []*Token `json:"tokens"`
+}
+
+type Token struct {
+	Name string `json:"name"`
+	Team string `json:"team"`
+}

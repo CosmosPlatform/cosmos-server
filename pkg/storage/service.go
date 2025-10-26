@@ -45,4 +45,5 @@ type Service interface {
 	GetApplicationsToMonitor(ctx context.Context) ([]*obj.Application, error)
 
 	InsertToken(ctx context.Context, token *obj.Token) error
+	GetTokensFromTeam(ctx context.Context, teamName string) ([]*obj.Token, error)
 }
