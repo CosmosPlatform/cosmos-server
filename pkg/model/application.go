@@ -6,6 +6,7 @@ type Application struct {
 	Team                  *Team
 	GitInformation        *GitInformation
 	MonitoringInformation *MonitoringInformation
+	Token                 *Token
 }
 
 type GitInformation struct {

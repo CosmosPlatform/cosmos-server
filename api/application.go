@@ -14,6 +14,7 @@ type CreateApplicationRequest struct {
 	Team                  string                 `json:"team,omitempty"`
 	GitInformation        *GitInformation        `json:"gitInformation,omitempty"`
 	MonitoringInformation *MonitoringInformation `json:"monitoringInformation,omitempty"`
+	TokenName             string                 `json:"tokenName,omitempty"`
 }
 
 type GitInformation struct {
@@ -79,6 +80,7 @@ type Application struct {
 	Team                  *Team                  `json:"team,omitempty"`
 	GitInformation        *GitInformation        `json:"gitInformation,omitempty"`
 	MonitoringInformation *MonitoringInformation `json:"monitoringInformation,omitempty"`
+	Token                 *Token                 `json:"token,omitempty"`
 }
 
 type GetApplicationResponse struct {

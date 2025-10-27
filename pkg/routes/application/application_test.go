@@ -113,7 +113,7 @@ func handleCreateApplicationSuccess(t *testing.T) {
 	}
 
 	mocks.applicationServiceMock.EXPECT().
-		AddApplication(gomock.Any(), mockedName, mockedDescription, mockedTeam, nil, nil).
+		AddApplication(gomock.Any(), mockedName, mockedDescription, mockedTeam, nil, nil, "").
 		Return(nil)
 
 	mocks.loggerMock.EXPECT().
@@ -186,7 +186,7 @@ func handleCreateApplicationInsertApplicationError(t *testing.T) {
 	mockedError := errors.NewInternalServerError("Internal test error")
 
 	mocks.applicationServiceMock.EXPECT().
-		AddApplication(gomock.Any(), mockedName, mockedDescription, mockedTeam, nil, nil).
+		AddApplication(gomock.Any(), mockedName, mockedDescription, mockedTeam, nil, nil, "").
 		Return(mockedError)
 
 	mocks.loggerMock.EXPECT().
@@ -780,7 +780,7 @@ func handleCreateApplicationWithGitInformationSuccess(t *testing.T) {
 	}
 
 	mocks.applicationServiceMock.EXPECT().
-		AddApplication(gomock.Any(), mockedName, mockedDescription, mockedTeam, expectedGitInfo, nil).
+		AddApplication(gomock.Any(), mockedName, mockedDescription, mockedTeam, expectedGitInfo, nil, "").
 		Return(nil)
 
 	mocks.applicationServiceMock.EXPECT().

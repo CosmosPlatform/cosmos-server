@@ -6,7 +6,7 @@ import (
 )
 
 type Translator interface {
-	ToCreateApplicationResponse(name, description, team string, gitInformation *model.GitInformation) *api.CreateApplicationResponse
+	ToCreateApplicationResponse(name, description, team string, gitInformation *model.GitInformation, tokenName string) *api.CreateApplicationResponse
 	ToGetApplicationResponse(applicationObj *model.Application) *api.GetApplicationResponse
 	ToGetApplicationsResponse(applicationObj []*model.Application) *api.GetApplicationsResponse
 	ToUpdateApplicationResponse(app *model.Application) *api.UpdateApplicationResponse
@@ -20,13 +20,29 @@ func NewTranslator() Translator {
 	return &translator{}
 }
 
-func (t *translator) ToCreateApplicationResponse(name, description, team string, gitInformation *model.GitInformation) *api.CreateApplicationResponse {
+func (t *translator) ToCreateApplicationResponse(name, description, team string, gitInformation *model.GitInformation, tokenName string) *api.CreateApplicationResponse {
+	var teamApi *api.Team = nil
+	if team != "" {
+		teamApi = &api.Team{
+			Name: team,
+		}
+	}
+
+	var apiToken *api.Token = nil
+	if tokenName != "" {
+		apiToken = &api.Token{
+			Name: tokenName,
+			Team: team,
+		}
+	}
+
 	return &api.CreateApplicationResponse{
 		Application: &api.Application{
 			Name:           name,
 			Description:    description,
-			Team:           &api.Team{Name: team},
+			Team:           teamApi,
 			GitInformation: t.ToApiGitInformation(gitInformation),
+			Token:          apiToken,
 		},
 	}
 }
@@ -76,6 +92,23 @@ func (t *translator) ToApplicationApi(applicationModel *model.Application) *api.
 		Team:                  t.ToApiTeam(applicationModel.Team),
 		GitInformation:        t.ToApiGitInformation(applicationModel.GitInformation),
 		MonitoringInformation: t.ToMonitoringInformationApi(applicationModel.MonitoringInformation),
+		Token:                 t.ToTokenApi(applicationModel.Token),
+	}
+}
+
+func (t *translator) ToTokenApi(tokenModel *model.Token) *api.Token {
+	if tokenModel == nil {
+		return nil
+	}
+
+	team := ""
+	if tokenModel.Team != nil {
+		team = tokenModel.Team.Name
+	}
+
+	return &api.Token{
+		Name: tokenModel.Name,
+		Team: team,
 	}
 }
 

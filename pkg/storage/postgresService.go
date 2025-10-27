@@ -197,7 +197,7 @@ func (s *PostgresService) InsertApplication(ctx context.Context, application *ob
 }
 
 func (s *PostgresService) GetApplicationWithName(ctx context.Context, name string) (*obj.Application, error) {
-	application, err := gorm.G[*obj.Application](s.db).Preload("Team", nil).Where("LOWER(name) = LOWER(?)", name).First(ctx)
+	application, err := gorm.G[*obj.Application](s.db).Preload("Team", nil).Preload("Token", nil).Where("LOWER(name) = LOWER(?)", name).First(ctx)
 	if err != nil {
 		if errorUtils.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrNotFound
@@ -209,7 +209,7 @@ func (s *PostgresService) GetApplicationWithName(ctx context.Context, name strin
 }
 
 func (s *PostgresService) GetApplicationsWithFilter(ctx context.Context, filter string) ([]*obj.Application, error) {
-	applications, err := gorm.G[*obj.Application](s.db).Preload("Team", nil).Where("name ILIKE ?", "%"+filter+"%").Order("name").Find(ctx)
+	applications, err := gorm.G[*obj.Application](s.db).Preload("Team", nil).Preload("Token", nil).Where("name ILIKE ?", "%"+filter+"%").Order("name").Find(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get applications with filter '%s': %v", filter, err)
 	}
@@ -236,7 +236,7 @@ func (s *PostgresService) GetApplicationsByTeam(ctx context.Context, team string
 		return nil, err
 	}
 
-	applications, err := gorm.G[*obj.Application](s.db).Preload("Team", nil).Where("team_id = ?", teamObj.ID).Order("name").Find(ctx)
+	applications, err := gorm.G[*obj.Application](s.db).Preload("Team", nil).Preload("Token", nil).Where("team_id = ?", teamObj.ID).Order("name").Find(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get applications for team %s: %v", team, err)
 	}
@@ -668,4 +668,15 @@ func (s *PostgresService) GetTokensFromTeam(ctx context.Context, teamName string
 	}
 
 	return tokens, nil
+}
+
+func (s *PostgresService) GetTokenWithNameAndTeamID(ctx context.Context, name string, teamID int) (*obj.Token, error) {
+	token, err := gorm.G[*obj.Token](s.db).Preload("Team", nil).Where("name = ? AND team_id = ?", name, teamID).First(ctx)
+	if err != nil {
+		if errorUtils.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to get token: %v", err)
+	}
+	return token, nil
 }

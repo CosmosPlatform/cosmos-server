@@ -207,6 +207,23 @@ func (t *translator) ToApplicationApi(applicationModel *model.Application) *api.
 		Team:                  t.ToApiTeam(applicationModel.Team),
 		GitInformation:        t.ToApiGitInformation(applicationModel.GitInformation),
 		MonitoringInformation: t.ToMonitoringInformationApi(applicationModel.MonitoringInformation),
+		Token:                 t.ToTokenApi(applicationModel.Token),
+	}
+}
+
+func (t *translator) ToTokenApi(tokenModel *model.Token) *api.Token {
+	if tokenModel == nil {
+		return nil
+	}
+
+	team := ""
+	if tokenModel.Team != nil {
+		team = tokenModel.Team.Name
+	}
+
+	return &api.Token{
+		Name: tokenModel.Name,
+		Team: team,
 	}
 }
 
