@@ -31,4 +31,5 @@ type ApplicationUpdate struct {
 	Team                  *string
 	GitInformation        *GitInformation
 	MonitoringInformation *MonitoringInformation
+	TokenName             *string
 }

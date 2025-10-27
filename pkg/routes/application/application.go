@@ -170,6 +170,7 @@ func (handler *handler) handleUpdateApplication(e *gin.Context) {
 		Name:        updateRequest.Name,
 		Description: updateRequest.Description,
 		Team:        updateRequest.Team,
+		TokenName:   updateRequest.TokenName,
 	}
 
 	if updateRequest.GitInformation != nil {

@@ -97,6 +97,7 @@ type UpdateApplicationRequest struct {
 	Team                  *string                `json:"team,omitempty"`
 	GitInformation        *GitInformation        `json:"gitInformation,omitempty"`
 	MonitoringInformation *MonitoringInformation `json:"monitoringInformation,omitempty"`
+	TokenName             *string                `json:"tokenName,omitempty"`
 }
 
 func (r *UpdateApplicationRequest) Validate() error {
