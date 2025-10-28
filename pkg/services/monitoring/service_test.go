@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	//"cosmos-server/pkg/storage"
+	tokenMock "cosmos-server/pkg/services/token/mock"
 	storageMock "cosmos-server/pkg/storage/mock"
 	"cosmos-server/pkg/storage/obj"
 	"encoding/json"
@@ -48,6 +49,7 @@ type mocks struct {
 	controller         *gomock.Controller
 	gitServiceMock     *mock.MockGitService
 	storageServiceMock *storageMock.MockService
+	encryptorMock      *tokenMock.MockEncryptor
 	loggerMocks        *log.MockLogger
 }
 
@@ -58,10 +60,11 @@ func setUp(t *testing.T) (Service, *mocks) {
 		controller:         controller,
 		gitServiceMock:     mock.NewMockGitService(controller),
 		storageServiceMock: storageMock.NewMockService(controller),
+		encryptorMock:      tokenMock.NewMockEncryptor(controller),
 		loggerMocks:        log.NewMockLogger(controller),
 	}
 
-	service := NewMonitoringService(mocks.storageServiceMock, mocks.gitServiceMock, NewOpenApiService(), 30, 900, NewTranslator(), mocks.loggerMocks)
+	service := NewMonitoringService(mocks.storageServiceMock, mocks.gitServiceMock, NewOpenApiService(), 30, 900, mocks.encryptorMock, NewTranslator(), mocks.loggerMocks)
 
 	return service, mocks
 }
@@ -136,11 +139,11 @@ func updateApplicationInformationSuccess(t *testing.T) {
 	mockedDependenciesToDelete := make([]*obj.ApplicationDependency, 0)
 
 	mocks.gitServiceMock.EXPECT().
-		GetFileMetadata(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, openClientPath).
+		GetFileMetadata(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, openClientPath, "").
 		Return(metadata, nil)
 
 	mocks.gitServiceMock.EXPECT().
-		GetFileWithContent(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, openClientPath).
+		GetFileWithContent(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, openClientPath, "").
 		Return(fileContent, nil)
 
 	mocks.storageServiceMock.EXPECT().
@@ -264,7 +267,7 @@ func updateApplicationInformationGetFileError(t *testing.T) {
 	gitError := errors.New("repository not found")
 
 	mocks.gitServiceMock.EXPECT().
-		GetFileMetadata(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, openClientPath).
+		GetFileMetadata(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, openClientPath, "").
 		Return(nil, gitError)
 
 	err := service.UpdateApplicationDependencies(context.TODO(), modelApplication)
@@ -321,11 +324,11 @@ func updateApplicationInformationInvalidJSON(t *testing.T) {
 	}
 
 	mocks.gitServiceMock.EXPECT().
-		GetFileMetadata(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, openClientPath).
+		GetFileMetadata(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, openClientPath, "").
 		Return(metadata, nil)
 
 	mocks.gitServiceMock.EXPECT().
-		GetFileWithContent(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, openClientPath).
+		GetFileWithContent(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, openClientPath, "").
 		Return(fileContent, nil)
 
 	err := service.UpdateApplicationDependencies(context.TODO(), modelApplication)
@@ -385,11 +388,11 @@ func updateApplicationInformationInvalidSpecification(t *testing.T) {
 	}
 
 	mocks.gitServiceMock.EXPECT().
-		GetFileMetadata(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, openClientPath).
+		GetFileMetadata(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, openClientPath, "").
 		Return(metadata, nil)
 
 	mocks.gitServiceMock.EXPECT().
-		GetFileWithContent(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, openClientPath).
+		GetFileWithContent(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, openClientPath, "").
 		Return(fileContent, nil)
 
 	err := service.UpdateApplicationDependencies(context.TODO(), modelApplication)
@@ -476,11 +479,11 @@ func updateApplicationInformationProviderNotFound(t *testing.T) {
 	mockedDependenciesToDelete := make([]*obj.ApplicationDependency, 0)
 
 	mocks.gitServiceMock.EXPECT().
-		GetFileMetadata(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, openClientPath).
+		GetFileMetadata(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, openClientPath, "").
 		Return(metadata, nil)
 
 	mocks.gitServiceMock.EXPECT().
-		GetFileWithContent(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, openClientPath).
+		GetFileWithContent(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, openClientPath, "").
 		Return(fileContent, nil)
 
 	mocks.storageServiceMock.EXPECT().
@@ -573,11 +576,11 @@ func updateApplicationInformationUpsertDependencyError(t *testing.T) {
 	upsertError := errors.New("database connection failed")
 
 	mocks.gitServiceMock.EXPECT().
-		GetFileMetadata(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, openClientPath).
+		GetFileMetadata(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, openClientPath, "").
 		Return(metadata, nil)
 
 	mocks.gitServiceMock.EXPECT().
-		GetFileWithContent(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, openClientPath).
+		GetFileWithContent(gomock.Any(), gitInformation.RepositoryOwner, gitInformation.RepositoryName, gitInformation.RepositoryBranch, openClientPath, "").
 		Return(fileContent, nil)
 
 	mocks.storageServiceMock.EXPECT().

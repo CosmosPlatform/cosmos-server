@@ -2,7 +2,6 @@ package token
 
 import (
 	"context"
-	"cosmos-server/pkg/config"
 	"cosmos-server/pkg/errors"
 	"cosmos-server/pkg/log"
 	"cosmos-server/pkg/model"
@@ -26,18 +25,13 @@ type tokenService struct {
 	logger         log.Logger
 }
 
-func NewTokenService(conf config.TokenConfig, storageService storage.Service, translator Translator, logger log.Logger) (Service, error) {
-	encryptor, err := NewAESEncryptor(conf.EncryptionKey)
-	if err != nil {
-		return nil, err
-	}
-
+func NewTokenService(encryptor Encryptor, storageService storage.Service, translator Translator, logger log.Logger) Service {
 	return &tokenService{
 		storageService: storageService,
 		encriptor:      encryptor,
 		translator:     translator,
 		logger:         logger,
-	}, nil
+	}
 }
 
 func (s *tokenService) CreateToken(ctx context.Context, teamName, name, secret string) error {

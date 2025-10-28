@@ -5,6 +5,7 @@ import (
 	"cosmos-server/pkg/errors"
 	"cosmos-server/pkg/log"
 	"cosmos-server/pkg/model"
+	"cosmos-server/pkg/services/token"
 	"cosmos-server/pkg/storage"
 	"cosmos-server/pkg/storage/obj"
 	"encoding/json"
@@ -14,7 +15,7 @@ import (
 )
 
 const (
-	SENTINEL_SETTINGS_NAME = "sentinel_settings"
+	SentinelSettingsName = "sentinel_settings"
 )
 
 //go:generate mockgen -destination=./mock/service_mock.go -package=mock cosmos-server/pkg/services/monitoring Service
@@ -37,6 +38,7 @@ type Service interface {
 type monitoringService struct {
 	storageService             storage.Service
 	gitService                 GitService
+	encryptor                  token.Encryptor
 	openApiService             OpenApiService
 	sentinelConfigChannel      chan<- model.SentinelSettings
 	sentinelMaxIntervalSeconds int
@@ -45,10 +47,11 @@ type monitoringService struct {
 	logger                     log.Logger
 }
 
-func NewMonitoringService(storageService storage.Service, gitService GitService, openApiService OpenApiService, sentinelMaxIntervalSeconds, sentinelMinIntervalSeconds int, translator Translator, logger log.Logger) Service {
+func NewMonitoringService(storageService storage.Service, gitService GitService, openApiService OpenApiService, sentinelMaxIntervalSeconds, sentinelMinIntervalSeconds int, encryptor token.Encryptor, translator Translator, logger log.Logger) Service {
 	return &monitoringService{
 		storageService:             storageService,
 		gitService:                 gitService,
+		encryptor:                  encryptor,
 		openApiService:             openApiService,
 		sentinelMaxIntervalSeconds: sentinelMaxIntervalSeconds,
 		sentinelMinIntervalSeconds: sentinelMinIntervalSeconds,
@@ -73,7 +76,17 @@ func (s *monitoringService) UpdateApplicationDependencies(ctx context.Context, a
 		return nil
 	}
 
-	openClientMetadata, err := s.gitService.GetFileMetadata(ctx, application.GitInformation.RepositoryOwner, application.GitInformation.RepositoryName, application.GitInformation.RepositoryBranch, application.MonitoringInformation.OpenClientPath)
+	var applicationToken string
+	if application.Token != nil {
+		encryptedToken := application.Token.EncryptedValue
+		decryptedToken, err := s.encryptor.Decrypt(encryptedToken)
+		if err != nil {
+			return fmt.Errorf("failed to decrypt token for application %s: %v", application.Name, err)
+		}
+		applicationToken = decryptedToken
+	}
+
+	openClientMetadata, err := s.gitService.GetFileMetadata(ctx, application.GitInformation.RepositoryOwner, application.GitInformation.RepositoryName, application.GitInformation.RepositoryBranch, application.MonitoringInformation.OpenClientPath, applicationToken)
 	if err != nil {
 		return fmt.Errorf("failed to get open clientmetadata for application %s: %v", application.Name, err)
 	}
@@ -83,7 +96,7 @@ func (s *monitoringService) UpdateApplicationDependencies(ctx context.Context, a
 		return nil
 	}
 
-	rawOpenClientDefinition, err := s.gitService.GetFileWithContent(ctx, application.GitInformation.RepositoryOwner, application.GitInformation.RepositoryName, application.GitInformation.RepositoryBranch, application.MonitoringInformation.OpenClientPath)
+	rawOpenClientDefinition, err := s.gitService.GetFileWithContent(ctx, application.GitInformation.RepositoryOwner, application.GitInformation.RepositoryName, application.GitInformation.RepositoryBranch, application.MonitoringInformation.OpenClientPath, applicationToken)
 	if err != nil {
 		return fmt.Errorf("failed to get openclient.json for application %s: %v", application.Name, err)
 	}
@@ -137,29 +150,6 @@ func (s *monitoringService) getDependenciesToModify(ctx context.Context, applica
 	}
 
 	return dependenciesToUpsert, pendingDependencies, nil
-}
-
-func (s *monitoringService) getOpenClientDefinition(ctx context.Context, application *model.Application) (*model.OpenClientSpecification, error) {
-	rawOpenClientDefinition, err := s.gitService.GetFileWithContent(ctx, application.GitInformation.RepositoryOwner, application.GitInformation.RepositoryName, application.GitInformation.RepositoryBranch, "docs/openclient.json")
-	if err != nil {
-		s.logger.Errorf("Failed to get openclient.json for application %s: %v", application.Name, err)
-		return nil, err
-	}
-
-	var openClientDef model.OpenClientSpecification
-	decoder := json.NewDecoder(strings.NewReader(rawOpenClientDefinition.Content))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&openClientDef); err != nil {
-		s.logger.Errorf("Failed to unmarshal openclient.json for application %s: %v", application.Name, err)
-		return nil, err
-	}
-
-	if err := openClientDef.Validate(); err != nil {
-		s.logger.Errorf("Invalid openclient.json for application %s: %v", application.Name, err)
-		return nil, err
-	}
-
-	return &openClientDef, nil
 }
 
 func (s *monitoringService) transformToOpenClientDefinition(rawOpenClientDefinition *model.FileContent) (*model.OpenClientSpecification, error) {
@@ -266,7 +256,17 @@ func (s *monitoringService) UpdateApplicationOpenAPISpecification(ctx context.Co
 		return nil
 	}
 
-	openApiSpecMetadata, err := s.gitService.GetFileMetadata(ctx, application.GitInformation.RepositoryOwner, application.GitInformation.RepositoryName, application.GitInformation.RepositoryBranch, application.MonitoringInformation.OpenApiPath)
+	var applicationToken string
+	if application.Token != nil {
+		encryptedToken := application.Token.EncryptedValue
+		decryptedToken, err := s.encryptor.Decrypt(encryptedToken)
+		if err != nil {
+			return fmt.Errorf("failed to decrypt token for application %s: %v", application.Name, err)
+		}
+		applicationToken = decryptedToken
+	}
+
+	openApiSpecMetadata, err := s.gitService.GetFileMetadata(ctx, application.GitInformation.RepositoryOwner, application.GitInformation.RepositoryName, application.GitInformation.RepositoryBranch, application.MonitoringInformation.OpenApiPath, applicationToken)
 	if err != nil {
 		return fmt.Errorf("failed to get OpenAPI spec metadata for application %s: %v", application.Name, err)
 	}
@@ -276,7 +276,7 @@ func (s *monitoringService) UpdateApplicationOpenAPISpecification(ctx context.Co
 		return nil
 	}
 
-	openAPISpecRaw, err := s.gitService.GetFileWithContent(ctx, application.GitInformation.RepositoryOwner, application.GitInformation.RepositoryName, application.GitInformation.RepositoryBranch, application.MonitoringInformation.OpenApiPath)
+	openAPISpecRaw, err := s.gitService.GetFileWithContent(ctx, application.GitInformation.RepositoryOwner, application.GitInformation.RepositoryName, application.GitInformation.RepositoryBranch, application.MonitoringInformation.OpenApiPath, applicationToken)
 	if err != nil {
 		s.logger.Errorf("Failed to get swagger.json for application %s: %v", application.Name, err)
 		return err
@@ -328,7 +328,7 @@ func (s *monitoringService) GetApplicationOpenAPISpecification(ctx context.Conte
 }
 
 func (s *monitoringService) SentinelSettingsPresent(ctx context.Context) (bool, error) {
-	setting, err := s.storageService.GetSentinelSetting(ctx, SENTINEL_SETTINGS_NAME)
+	setting, err := s.storageService.GetSentinelSetting(ctx, SentinelSettingsName)
 	if err != nil {
 		if errorUtils.Is(err, storage.ErrNotFound) {
 			return false, nil
@@ -341,7 +341,7 @@ func (s *monitoringService) SentinelSettingsPresent(ctx context.Context) (bool, 
 
 func (s *monitoringService) InsertSentinelIntervalSetting(ctx context.Context, interval int, enabled bool) error {
 	setting := &obj.SentinelSetting{
-		Name:     SENTINEL_SETTINGS_NAME,
+		Name:     SentinelSettingsName,
 		Interval: interval,
 		Enabled:  enabled,
 	}
@@ -363,7 +363,7 @@ func (s *monitoringService) UpdateSentinelSettings(ctx context.Context, sentinel
 		}
 	}
 
-	existingSetting, err := s.storageService.GetSentinelSetting(context.Background(), SENTINEL_SETTINGS_NAME)
+	existingSetting, err := s.storageService.GetSentinelSetting(context.Background(), SentinelSettingsName)
 	if err != nil {
 		if errorUtils.Is(err, storage.ErrNotFound) {
 			return errors.NewNotFoundError("Sentinel settings not found")
@@ -410,7 +410,7 @@ func (s *monitoringService) UpdateSentinelSettings(ctx context.Context, sentinel
 }
 
 func (s *monitoringService) GetSentinelSettings(ctx context.Context) (*model.SentinelSettings, error) {
-	settingObj, err := s.storageService.GetSentinelSetting(ctx, SENTINEL_SETTINGS_NAME)
+	settingObj, err := s.storageService.GetSentinelSetting(ctx, SentinelSettingsName)
 	if err != nil {
 		if errorUtils.Is(err, storage.ErrNotFound) {
 			return nil, errors.NewNotFoundError("Sentinel settings not found")

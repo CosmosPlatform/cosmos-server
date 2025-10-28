@@ -36,16 +36,18 @@ func NewApp(config *c.Config) (*App, error) {
 		return nil, err
 	}
 
+	encryptor, err := token.NewAESEncryptor(config.TokenConfig.EncryptionKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create encryptor: %v", err)
+	}
+
 	authService := auth.NewAuthService(config.AuthConfig, storageService, auth.NewTranslator(), logger)
 	userService := user.NewUserService(storageService, user.NewTranslator(), logger)
 	teamService := team.NewTeamService(storageService, team.NewTranslator())
 	applicationService := application.NewApplicationService(storageService, application.NewTranslator(), logger)
-	monitoringService := monitoring.NewMonitoringService(storageService, monitoring.NewGithubService(), monitoring.NewOpenApiService(), config.SentinelConfig.MaxIntervalSeconds, config.SentinelConfig.MinIntervalSeconds, monitoring.NewTranslator(), logger)
+	monitoringService := monitoring.NewMonitoringService(storageService, monitoring.NewGithubService(), monitoring.NewOpenApiService(), config.SentinelConfig.MaxIntervalSeconds, config.SentinelConfig.MinIntervalSeconds, encryptor, monitoring.NewTranslator(), logger)
 
-	tokenService, err := token.NewTokenService(config.TokenConfig, storageService, token.NewTranslator(), logger)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create token service: %v", err)
-	}
+	tokenService := token.NewTokenService(encryptor, storageService, token.NewTranslator(), logger)
 
 	httpRoutes := routes.NewHTTPRoutes(authService, userService, teamService, applicationService, monitoringService, tokenService, logger)
 

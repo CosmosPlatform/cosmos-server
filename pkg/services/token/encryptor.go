@@ -9,6 +9,8 @@ import (
 	"io"
 )
 
+//go:generate mockgen -destination=./mock/encryptor_mock.go -package=mock cosmos-server/pkg/services/token Encryptor
+
 type Encryptor interface {
 	Encrypt(plaintext string) (string, error)
 	Decrypt(encrypted string) (string, error)

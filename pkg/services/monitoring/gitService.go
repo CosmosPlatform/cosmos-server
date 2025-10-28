@@ -6,6 +6,7 @@ import (
 	"cosmos-server/pkg/model"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/google/go-github/v74/github"
 	"golang.org/x/oauth2"
@@ -14,12 +15,14 @@ import (
 //go:generate mockgen -destination=./mock/gitService_mock.go -package=mock cosmos-server/pkg/services/monitoring GitService
 
 type GitService interface {
-	GetFileMetadata(ctx context.Context, owner, repo, branch, path string) (*model.FileMetadata, error)
-	GetFileWithContent(ctx context.Context, owner, repo, branch, path string) (*model.FileContent, error)
+	GetFileMetadata(ctx context.Context, owner, repo, branch, path, token string) (*model.FileMetadata, error)
+	GetFileWithContent(ctx context.Context, owner, repo, branch, path, token string) (*model.FileContent, error)
 }
 
 type githubService struct {
-	client *github.Client
+	defaultToken  string
+	clients       sync.Map // map[string]*github.Client
+	defaultClient *github.Client
 }
 
 func NewGithubService() GitService {
@@ -33,11 +36,29 @@ func NewGithubService() GitService {
 	}
 
 	client := github.NewClient(httpClient)
-	return &githubService{client: client}
+	return &githubService{defaultClient: client}
 }
 
-func (g *githubService) GetFileMetadata(ctx context.Context, owner, repo, branch, path string) (*model.FileMetadata, error) {
-	tree, _, err := g.client.Git.GetTree(ctx, owner, repo, branch, true)
+func (g *githubService) getClient(token string) *github.Client {
+	if token == "" {
+		return g.defaultClient
+	}
+
+	if client, ok := g.clients.Load(token); ok {
+		return client.(*github.Client)
+	}
+
+	src := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: token},
+	)
+	httpClient := oauth2.NewClient(context.Background(), src)
+	client := github.NewClient(httpClient)
+	g.clients.Store(token, client)
+	return client
+}
+
+func (g *githubService) GetFileMetadata(ctx context.Context, owner, repo, branch, path, token string) (*model.FileMetadata, error) {
+	tree, _, err := g.getClient(token).Git.GetTree(ctx, owner, repo, branch, true)
 	if err != nil {
 		return nil, err
 	}
@@ -59,8 +80,8 @@ func (g *githubService) GetFileMetadata(ctx context.Context, owner, repo, branch
 	return nil, errors.NewNotFoundError("file %s not found in repo %s/%s on branch %s", path, owner, repo, branch)
 }
 
-func (g *githubService) GetFileWithContent(ctx context.Context, owner, repo, branch, path string) (*model.FileContent, error) {
-	file, _, _, err := g.client.Repositories.GetContents(ctx, owner, repo, path, &github.RepositoryContentGetOptions{Ref: branch})
+func (g *githubService) GetFileWithContent(ctx context.Context, owner, repo, branch, path, token string) (*model.FileContent, error) {
+	file, _, _, err := g.getClient(token).Repositories.GetContents(ctx, owner, repo, path, &github.RepositoryContentGetOptions{Ref: branch})
 	if err != nil {
 		return nil, err
 	}
