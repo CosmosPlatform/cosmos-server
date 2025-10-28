@@ -48,4 +48,5 @@ type Service interface {
 	GetTokensFromTeam(ctx context.Context, teamName string) ([]*obj.Token, error)
 	GetTokenWithNameAndTeamID(ctx context.Context, name string, teamID int) (*obj.Token, error)
 	DeleteToken(ctx context.Context, name string, team string) error
+	UpdateToken(ctx context.Context, token *obj.Token) error
 }

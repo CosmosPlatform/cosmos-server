@@ -16,6 +16,7 @@ type Service interface {
 	CreateToken(ctx context.Context, teamName, name, secret string) error
 	GetTokensFromTeam(ctx context.Context, teamName string) ([]*model.Token, error)
 	DeleteToken(ctx context.Context, teamName, name string) error
+	UpdateToken(ctx context.Context, teamName string, tokenName string, updateTokenModel *model.TokenUpdate) error
 }
 
 type tokenService struct {
@@ -83,6 +84,43 @@ func (s *tokenService) DeleteToken(ctx context.Context, teamName, name string) e
 			return errors.NewNotFoundError("token not found")
 		}
 		return errors.NewInternalServerError("failed to delete token: " + err.Error())
+	}
+
+	return nil
+}
+
+func (s *tokenService) UpdateToken(ctx context.Context, teamName string, tokenName string, updateTokenModel *model.TokenUpdate) error {
+	teamObj, err := s.storageService.GetTeamWithName(ctx, teamName)
+	if err != nil {
+		if errorUtils.Is(err, storage.ErrNotFound) {
+			return errors.NewNotFoundError(fmt.Sprintf("Team %s not found", teamName))
+		}
+		return errors.NewInternalServerError("failed to retrieve team: " + err.Error())
+	}
+
+	tokenToUpdate, err := s.storageService.GetTokenWithNameAndTeamID(ctx, tokenName, int(teamObj.ID))
+	if err != nil {
+		if errorUtils.Is(err, storage.ErrNotFound) {
+			return errors.NewNotFoundError("token not found")
+		}
+		return errors.NewInternalServerError("failed to retrieve token: " + err.Error())
+	}
+
+	if updateTokenModel.Name != nil {
+		tokenToUpdate.Name = *updateTokenModel.Name
+	}
+
+	if updateTokenModel.Value != nil {
+		encryptedSecret, err := s.encriptor.Encrypt(*updateTokenModel.Value)
+		if err != nil {
+			return errors.NewInternalServerError("failed to encrypt token secret")
+		}
+		tokenToUpdate.EncryptedValue = encryptedSecret
+	}
+
+	err = s.storageService.UpdateToken(ctx, tokenToUpdate)
+	if err != nil {
+		return errors.NewInternalServerError("failed to update token: " + err.Error())
 	}
 
 	return nil

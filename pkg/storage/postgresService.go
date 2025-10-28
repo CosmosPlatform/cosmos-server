@@ -701,3 +701,16 @@ func (s *PostgresService) DeleteToken(ctx context.Context, name string, team str
 
 	return nil
 }
+
+func (s *PostgresService) UpdateToken(ctx context.Context, token *obj.Token) error {
+	rowsAffected, err := gorm.G[*obj.Token](s.db).Where("id = ?", token.ID).Select("*").Updates(ctx, token)
+	if err != nil {
+		return fmt.Errorf("failed to update token: %v", err)
+	}
+
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}

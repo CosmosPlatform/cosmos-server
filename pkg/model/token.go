@@ -5,3 +5,8 @@ type Token struct {
 	EncryptedValue string
 	Team           *Team
 }
+
+type TokenUpdate struct {
+	Name  *string
+	Value *string
+}

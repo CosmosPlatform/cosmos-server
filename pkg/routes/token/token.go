@@ -32,6 +32,7 @@ func AddAuthenticatedTokenHandler(e *gin.RouterGroup, tokenService token.Service
 	e.POST("/tokens/:team", h.handlePostToken)
 	e.GET("/tokens/:team", h.handleGetTokens)
 	e.DELETE("/tokens/:team/:name", h.handleDeleteToken)
+	e.PUT("/tokens/:team/:name", h.handleUpdateToken)
 }
 
 func (h *handler) handlePostToken(c *gin.Context) {
@@ -160,4 +161,56 @@ func (h *handler) userIsFromTeam(context context.Context, userEmail, team string
 	}
 
 	return user.Team.Name == team, nil
+}
+
+func (h *handler) handleUpdateToken(c *gin.Context) {
+	var updateTokenRequest api.UpdateTokenRequest
+
+	if err := c.ShouldBindJSON(&updateTokenRequest); err != nil {
+		h.logger.Errorf("Failed to bind JSON for update token request: %v", err)
+		_ = c.Error(errors.NewBadRequestError(fmt.Sprintf("Invalid request format: %v", err)))
+		return
+	}
+
+	err := updateTokenRequest.Validate()
+	if err != nil {
+		_ = c.Error(errors.NewBadRequestError(err.Error()))
+		return
+	}
+
+	teamName := c.Param("team")
+	if teamName == "" {
+		_ = c.Error(errors.NewBadRequestError("Team name is required"))
+		return
+	}
+
+	tokenName := c.Param("name")
+	if tokenName == "" {
+		_ = c.Error(errors.NewBadRequestError("Token name is required"))
+		return
+	}
+
+	role, email, err := getRoleAndEmailFromContext(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	if role != user.AdminUserRole {
+		if isFromTeam, err := h.userIsFromTeam(c, email, teamName); err != nil {
+			_ = c.Error(err)
+			return
+		} else if !isFromTeam {
+			_ = c.Error(errors.NewForbiddenError("regular users cannot update token for other teams"))
+			return
+		}
+	}
+
+	err = h.tokenService.UpdateToken(c, teamName, tokenName, h.translator.ToUpdateTokenModel(&updateTokenRequest))
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
 }

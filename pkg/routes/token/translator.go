@@ -9,6 +9,7 @@ type Translator interface {
 	ToGetTokenResponse(modelTokens []*model.Token) *api.GetTokensResponse
 	ToApiToken(modelToken *model.Token) *api.Token
 	ToApiTokens(modelTokens []*model.Token) []*api.Token
+	ToUpdateTokenModel(apiTokenUpdate *api.UpdateTokenRequest) *model.TokenUpdate
 }
 
 type translator struct{}
@@ -46,4 +47,15 @@ func (t *translator) ToApiTokens(modelTokens []*model.Token) []*api.Token {
 	}
 
 	return apiTokens
+}
+
+func (t *translator) ToUpdateTokenModel(apiTokenUpdate *api.UpdateTokenRequest) *model.TokenUpdate {
+	if apiTokenUpdate == nil {
+		return nil
+	}
+
+	return &model.TokenUpdate{
+		Name:  apiTokenUpdate.Name,
+		Value: apiTokenUpdate.Value,
+	}
 }
