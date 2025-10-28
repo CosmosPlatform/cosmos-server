@@ -680,3 +680,24 @@ func (s *PostgresService) GetTokenWithNameAndTeamID(ctx context.Context, name st
 	}
 	return token, nil
 }
+
+func (s *PostgresService) DeleteToken(ctx context.Context, name string, team string) error {
+	teamObj, err := s.GetTeamWithName(ctx, team)
+	if err != nil {
+		if errorUtils.Is(err, ErrNotFound) {
+			return ErrNotFound
+		}
+		return err
+	}
+
+	rowsAffected, err := gorm.G[obj.Token](s.db).Where("name = ? AND team_id = ?", name, teamObj.ID).Delete(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to delete token %s for team %s: %v", name, team, err)
+	}
+
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}

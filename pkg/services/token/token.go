@@ -15,6 +15,7 @@ import (
 type Service interface {
 	CreateToken(ctx context.Context, teamName, name, secret string) error
 	GetTokensFromTeam(ctx context.Context, teamName string) ([]*model.Token, error)
+	DeleteToken(ctx context.Context, teamName, name string) error
 }
 
 type tokenService struct {
@@ -73,4 +74,16 @@ func (s *tokenService) GetTokensFromTeam(ctx context.Context, teamName string) (
 	}
 
 	return s.translator.ToModelTokens(tokens), nil
+}
+
+func (s *tokenService) DeleteToken(ctx context.Context, teamName, name string) error {
+	err := s.storageService.DeleteToken(ctx, name, teamName)
+	if err != nil {
+		if errorUtils.Is(err, storage.ErrNotFound) {
+			return errors.NewNotFoundError("token not found")
+		}
+		return errors.NewInternalServerError("failed to delete token: " + err.Error())
+	}
+
+	return nil
 }

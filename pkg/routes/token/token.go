@@ -31,6 +31,7 @@ func AddAuthenticatedTokenHandler(e *gin.RouterGroup, tokenService token.Service
 
 	e.POST("/tokens/:team", h.handlePostToken)
 	e.GET("/tokens/:team", h.handleGetTokens)
+	e.DELETE("/tokens/:team/:name", h.handleDeleteToken)
 }
 
 func (h *handler) handlePostToken(c *gin.Context) {
@@ -93,6 +94,44 @@ func (h *handler) handleGetTokens(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, h.translator.ToGetTokenResponse(tokens))
+}
+
+func (h *handler) handleDeleteToken(c *gin.Context) {
+	teamName := c.Param("team")
+	if teamName == "" {
+		_ = c.Error(errors.NewBadRequestError("Team name is required"))
+		return
+	}
+
+	tokenName := c.Param("name")
+	if tokenName == "" {
+		_ = c.Error(errors.NewBadRequestError("Token name is required"))
+		return
+	}
+
+	role, email, err := getRoleAndEmailFromContext(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	if role != user.AdminUserRole {
+		if isFromTeam, err := h.userIsFromTeam(c, email, teamName); err != nil {
+			_ = c.Error(err)
+			return
+		} else if !isFromTeam {
+			_ = c.Error(errors.NewForbiddenError("regular users cannot create token for other teams"))
+			return
+		}
+	}
+
+	err = h.tokenService.DeleteToken(c, teamName, tokenName)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
 }
 
 func getRoleAndEmailFromContext(c *gin.Context) (string, string, error) {
