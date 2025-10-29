@@ -16,4 +16,6 @@ type Application struct {
 	OpenApiPath         string
 	HasOpenClient       bool
 	OpenClientPath      string
+	TokenID             *int
+	Token               *Token `gorm:"foreignKey:TokenID"`
 }

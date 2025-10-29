@@ -55,7 +55,7 @@ func (handler *handler) handleCreateApplication(e *gin.Context) {
 	gitInformation := handler.translator.ToGitInformationModel(createApplicationRequest.GitInformation)
 	monitoringInformation := handler.translator.ToMonitoringInformationModel(createApplicationRequest.MonitoringInformation)
 
-	err := handler.applicationService.AddApplication(e, createApplicationRequest.Name, createApplicationRequest.Description, createApplicationRequest.Team, gitInformation, monitoringInformation)
+	err := handler.applicationService.AddApplication(e, createApplicationRequest.Name, createApplicationRequest.Description, createApplicationRequest.Team, gitInformation, monitoringInformation, createApplicationRequest.TokenName)
 	if err != nil {
 		_ = e.Error(err)
 		return
@@ -84,7 +84,7 @@ func (handler *handler) handleCreateApplication(e *gin.Context) {
 		}
 	}
 
-	e.JSON(http.StatusCreated, handler.translator.ToCreateApplicationResponse(createApplicationRequest.Name, createApplicationRequest.Description, createApplicationRequest.Team, gitInformation))
+	e.JSON(http.StatusCreated, handler.translator.ToCreateApplicationResponse(createApplicationRequest.Name, createApplicationRequest.Description, createApplicationRequest.Team, gitInformation, createApplicationRequest.TokenName))
 }
 
 func (handler *handler) handleGetApplication(e *gin.Context) {
@@ -170,6 +170,7 @@ func (handler *handler) handleUpdateApplication(e *gin.Context) {
 		Name:        updateRequest.Name,
 		Description: updateRequest.Description,
 		Team:        updateRequest.Team,
+		TokenName:   updateRequest.TokenName,
 	}
 
 	if updateRequest.GitInformation != nil {

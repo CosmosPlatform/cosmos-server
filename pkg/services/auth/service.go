@@ -9,9 +9,10 @@ import (
 	"cosmos-server/pkg/storage"
 	errorUtils "errors"
 	"fmt"
+	"time"
+
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
-	"time"
 )
 
 const (
@@ -76,9 +77,9 @@ func (s *authService) Authenticate(ctx context.Context, email, password string) 
 }
 
 func (s *authService) IsAuthenticated(tokenString string) (*jwt.Token, error) {
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, errors.NewUnauthorizedError(fmt.Sprintf("unexpected signing method"))
+			return nil, errors.NewUnauthorizedError("unexpected signing method")
 		}
 		return []byte(s.config.JWTSecret), nil
 	})
@@ -88,7 +89,7 @@ func (s *authService) IsAuthenticated(tokenString string) (*jwt.Token, error) {
 	}
 
 	if !token.Valid {
-		return nil, errors.NewUnauthorizedError(fmt.Sprintf("invalid token"))
+		return nil, errors.NewUnauthorizedError("invalid token")
 	}
 
 	return token, nil

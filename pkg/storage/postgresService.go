@@ -197,7 +197,7 @@ func (s *PostgresService) InsertApplication(ctx context.Context, application *ob
 }
 
 func (s *PostgresService) GetApplicationWithName(ctx context.Context, name string) (*obj.Application, error) {
-	application, err := gorm.G[*obj.Application](s.db).Preload("Team", nil).Where("LOWER(name) = LOWER(?)", name).First(ctx)
+	application, err := gorm.G[*obj.Application](s.db).Preload("Team", nil).Preload("Token", nil).Where("LOWER(name) = LOWER(?)", name).First(ctx)
 	if err != nil {
 		if errorUtils.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrNotFound
@@ -209,7 +209,7 @@ func (s *PostgresService) GetApplicationWithName(ctx context.Context, name strin
 }
 
 func (s *PostgresService) GetApplicationsWithFilter(ctx context.Context, filter string) ([]*obj.Application, error) {
-	applications, err := gorm.G[*obj.Application](s.db).Preload("Team", nil).Where("name ILIKE ?", "%"+filter+"%").Order("name").Find(ctx)
+	applications, err := gorm.G[*obj.Application](s.db).Preload("Team", nil).Preload("Token", nil).Where("name ILIKE ?", "%"+filter+"%").Order("name").Find(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get applications with filter '%s': %v", filter, err)
 	}
@@ -236,7 +236,7 @@ func (s *PostgresService) GetApplicationsByTeam(ctx context.Context, team string
 		return nil, err
 	}
 
-	applications, err := gorm.G[*obj.Application](s.db).Preload("Team", nil).Where("team_id = ?", teamObj.ID).Order("name").Find(ctx)
+	applications, err := gorm.G[*obj.Application](s.db).Preload("Team", nil).Preload("Token", nil).Where("team_id = ?", teamObj.ID).Order("name").Find(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get applications for team %s: %v", team, err)
 	}
@@ -642,4 +642,75 @@ func (s *PostgresService) GetApplicationsToMonitor(ctx context.Context) ([]*obj.
 	}
 
 	return applications, nil
+}
+
+func (s *PostgresService) InsertToken(ctx context.Context, token *obj.Token) error {
+	err := gorm.G[obj.Token](s.db).Create(ctx, token)
+	if err != nil {
+		if errorUtils.Is(err, gorm.ErrDuplicatedKey) {
+			return ErrAlreadyExists
+		}
+		return fmt.Errorf("failed to insert token: %v", err)
+	}
+
+	return nil
+}
+
+func (s *PostgresService) GetTokensFromTeam(ctx context.Context, teamName string) ([]*obj.Token, error) {
+	team, err := s.GetTeamWithName(ctx, teamName)
+	if err != nil {
+		return nil, err
+	}
+
+	tokens, err := gorm.G[*obj.Token](s.db).Preload("Team", nil).Where("team_id = ?", team.ID).Find(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tokens for team %s: %v", teamName, err)
+	}
+
+	return tokens, nil
+}
+
+func (s *PostgresService) GetTokenWithNameAndTeamID(ctx context.Context, name string, teamID int) (*obj.Token, error) {
+	token, err := gorm.G[*obj.Token](s.db).Preload("Team", nil).Where("name = ? AND team_id = ?", name, teamID).First(ctx)
+	if err != nil {
+		if errorUtils.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to get token: %v", err)
+	}
+	return token, nil
+}
+
+func (s *PostgresService) DeleteToken(ctx context.Context, name string, team string) error {
+	teamObj, err := s.GetTeamWithName(ctx, team)
+	if err != nil {
+		if errorUtils.Is(err, ErrNotFound) {
+			return ErrNotFound
+		}
+		return err
+	}
+
+	rowsAffected, err := gorm.G[obj.Token](s.db).Where("name = ? AND team_id = ?", name, teamObj.ID).Delete(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to delete token %s for team %s: %v", name, team, err)
+	}
+
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}
+
+func (s *PostgresService) UpdateToken(ctx context.Context, token *obj.Token) error {
+	rowsAffected, err := gorm.G[*obj.Token](s.db).Where("id = ?", token.ID).Select("*").Updates(ctx, token)
+	if err != nil {
+		return fmt.Errorf("failed to update token: %v", err)
+	}
+
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	return nil
 }

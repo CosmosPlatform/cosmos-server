@@ -12,6 +12,7 @@ import (
 	"cosmos-server/pkg/services/auth"
 	"cosmos-server/pkg/services/monitoring"
 	"cosmos-server/pkg/services/team"
+	"cosmos-server/pkg/services/token"
 	"cosmos-server/pkg/services/user"
 	"cosmos-server/pkg/storage"
 	"fmt"
@@ -35,13 +36,20 @@ func NewApp(config *c.Config) (*App, error) {
 		return nil, err
 	}
 
+	encryptor, err := token.NewAESEncryptor(config.TokenConfig.EncryptionKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create encryptor: %v", err)
+	}
+
 	authService := auth.NewAuthService(config.AuthConfig, storageService, auth.NewTranslator(), logger)
 	userService := user.NewUserService(storageService, user.NewTranslator(), logger)
 	teamService := team.NewTeamService(storageService, team.NewTranslator())
 	applicationService := application.NewApplicationService(storageService, application.NewTranslator(), logger)
-	monitoringService := monitoring.NewMonitoringService(storageService, monitoring.NewGithubService(), monitoring.NewOpenApiService(), config.SentinelConfig.MaxIntervalSeconds, config.SentinelConfig.MinIntervalSeconds, monitoring.NewTranslator(), logger)
+	monitoringService := monitoring.NewMonitoringService(storageService, monitoring.NewGithubService(), monitoring.NewOpenApiService(), config.SentinelConfig.MaxIntervalSeconds, config.SentinelConfig.MinIntervalSeconds, encryptor, monitoring.NewTranslator(), logger)
 
-	httpRoutes := routes.NewHTTPRoutes(authService, userService, teamService, applicationService, monitoringService, logger)
+	tokenService := token.NewTokenService(encryptor, storageService, token.NewTranslator(), logger)
+
+	httpRoutes := routes.NewHTTPRoutes(authService, userService, teamService, applicationService, monitoringService, tokenService, logger)
 
 	return &App{
 		config: config,

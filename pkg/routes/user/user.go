@@ -7,6 +7,7 @@ import (
 	"cosmos-server/pkg/services/auth"
 	"cosmos-server/pkg/services/user"
 	"fmt"
+
 	"github.com/gin-gonic/gin"
 )
 

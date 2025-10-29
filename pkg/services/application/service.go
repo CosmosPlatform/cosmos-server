@@ -13,7 +13,7 @@ import (
 //go:generate mockgen -destination=./mock/service_mock.go -package=mock cosmos-server/pkg/services/application Service
 
 type Service interface {
-	AddApplication(ctx context.Context, name, description, team string, gitInformation *model.GitInformation, monitoringInformation *model.MonitoringInformation) error
+	AddApplication(ctx context.Context, name, description, team string, gitInformation *model.GitInformation, monitoringInformation *model.MonitoringInformation, tokenName string) error
 	GetApplication(ctx context.Context, name string) (*model.Application, error)
 	GetApplicationsByTeam(ctx context.Context, team string) ([]*model.Application, error)
 	GetApplicationsWithFilter(ctx context.Context, filter string) ([]*model.Application, error)
@@ -37,7 +37,7 @@ func NewApplicationService(storageService storage.Service, translator Translator
 	}
 }
 
-func (s *applicationService) AddApplication(ctx context.Context, name, description, team string, gitInformation *model.GitInformation, monitoringInformation *model.MonitoringInformation) error {
+func (s *applicationService) AddApplication(ctx context.Context, name, description, team string, gitInformation *model.GitInformation, monitoringInformation *model.MonitoringInformation, tokenName string) error {
 	applicationObj := &obj.Application{
 		Name:        name,
 		Description: description,
@@ -67,6 +67,21 @@ func (s *applicationService) AddApplication(ctx context.Context, name, descripti
 		applicationObj.HasOpenApi = monitoringInformation.HasOpenApi
 		applicationObj.OpenApiPath = monitoringInformation.OpenApiPath
 		applicationObj.OpenClientPath = monitoringInformation.OpenClientPath
+	}
+
+	if tokenName != "" {
+		if team == "" || applicationObj.TeamID == nil {
+			return errors.NewBadRequestError("Cannot associate a token to an application without a team")
+		}
+		tokenObj, err := s.storageService.GetTokenWithNameAndTeamID(ctx, tokenName, *applicationObj.TeamID)
+		if err != nil {
+			if errorUtils.Is(err, storage.ErrNotFound) {
+				return errors.NewNotFoundError("token not found")
+			}
+			return errors.NewInternalServerError("failed to retrieve token: " + err.Error())
+		}
+		tokenIDInt := int(tokenObj.ID)
+		applicationObj.TokenID = &tokenIDInt
 	}
 
 	err := s.storageService.InsertApplication(ctx, applicationObj)
@@ -160,6 +175,7 @@ func (s *applicationService) UpdateApplication(ctx context.Context, name string,
 		OpenApiPath:         existingApp.OpenApiPath,
 		HasOpenClient:       existingApp.HasOpenClient,
 		OpenClientPath:      existingApp.OpenClientPath,
+		TokenID:             existingApp.TokenID,
 	}
 
 	if updateData.Name != nil {
@@ -195,6 +211,25 @@ func (s *applicationService) UpdateApplication(ctx context.Context, name string,
 			updateObj.OpenApiPath = updateData.MonitoringInformation.OpenApiPath
 			updateObj.HasOpenClient = updateData.MonitoringInformation.HasOpenClient
 			updateObj.OpenClientPath = updateData.MonitoringInformation.OpenClientPath
+		}
+	}
+
+	if updateData.TokenName != nil {
+		if *updateData.TokenName == "" {
+			updateObj.TokenID = nil
+		} else {
+			if updateObj.TeamID == nil {
+				return nil, errors.NewBadRequestError("Cannot associate a token to an application without a team")
+			}
+			tokenObj, err := s.storageService.GetTokenWithNameAndTeamID(ctx, *updateData.TokenName, *updateObj.TeamID)
+			if err != nil {
+				if errorUtils.Is(err, storage.ErrNotFound) {
+					return nil, errors.NewNotFoundError("token not found")
+				}
+				return nil, errors.NewInternalServerError("failed to retrieve token: " + err.Error())
+			}
+			tokenIDInt := int(tokenObj.ID)
+			updateObj.TokenID = &tokenIDInt
 		}
 	}
 

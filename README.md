@@ -58,6 +58,8 @@ This program expects a set of environment variables to be inserted in order to f
 - `DEFAULT_ADMIN_USERNAME`: Username of the default admin user.
 - `ENVIRONMENT`: Environment in which the server is running. It can be `LOCAL` for local development.
 - `GITHUB_TOKEN`: A GitHub token to sue the github api with higher rate limits.
+- `TOKEN_ENCRYPTION_KEY`: Key used to ecrypt private github tokens. It must be 32 bytes long.
+  - If you are running this locally you can quickly generate one running `openssl rand -base64 32`. It is important that it is base64 encoded for the program to accept it.
 
 ## Optional
 

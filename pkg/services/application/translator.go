@@ -22,6 +22,7 @@ func (t *translator) ToApplicationModel(applicationObj *obj.Application) *model.
 		Description:           applicationObj.Description,
 		Team:                  t.ToModelTeam(applicationObj.Team),
 		MonitoringInformation: t.ToModelMonitoringInformation(applicationObj),
+		Token:                 t.ToModelToken(applicationObj.Token),
 	}
 
 	if applicationObj.GitProvider != "" || applicationObj.GitRepositoryName != "" || applicationObj.GitRepositoryOwner != "" || applicationObj.GitRepositoryBranch != "" {
@@ -66,5 +67,17 @@ func (t *translator) ToModelMonitoringInformation(applicationObj *obj.Applicatio
 		OpenApiPath:     applicationObj.OpenApiPath,
 		HasOpenClient:   applicationObj.HasOpenClient,
 		OpenClientPath:  applicationObj.OpenClientPath,
+	}
+}
+
+func (t *translator) ToModelToken(tokenObj *obj.Token) *model.Token {
+	if tokenObj == nil {
+		return nil
+	}
+
+	return &model.Token{
+		Name:           tokenObj.Name,
+		EncryptedValue: tokenObj.EncryptedValue,
+		Team:           t.ToModelTeam(tokenObj.Team),
 	}
 }

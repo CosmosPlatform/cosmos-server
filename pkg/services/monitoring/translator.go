@@ -37,6 +37,7 @@ func (t *translator) ToApplicationModel(applicationObj *obj.Application) *model.
 		Description:           applicationObj.Description,
 		Team:                  t.ToModelTeam(applicationObj.Team),
 		MonitoringInformation: t.ToModelMonitoringInformation(applicationObj),
+		Token:                 t.ToModelToken(applicationObj.Token),
 	}
 
 	if applicationObj.GitProvider != "" || applicationObj.GitRepositoryName != "" || applicationObj.GitRepositoryOwner != "" || applicationObj.GitRepositoryBranch != "" {
@@ -211,5 +212,17 @@ func (t *translator) ToSentinelSettingsModel(objSettings *obj.SentinelSetting) *
 	return &model.SentinelSettings{
 		Interval: objSettings.Interval,
 		Enabled:  objSettings.Enabled,
+	}
+}
+
+func (t *translator) ToModelToken(tokenObj *obj.Token) *model.Token {
+	if tokenObj == nil {
+		return nil
+	}
+
+	return &model.Token{
+		Name:           tokenObj.Name,
+		EncryptedValue: tokenObj.EncryptedValue,
+		Team:           t.ToModelTeam(tokenObj.Team),
 	}
 }

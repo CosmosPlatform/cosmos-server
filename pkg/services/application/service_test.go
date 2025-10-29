@@ -117,7 +117,7 @@ func addApplicationSuccess(t *testing.T) {
 	mocks.loggerMocks.EXPECT().
 		Infof(gomock.Any(), gomock.Any())
 
-	err := applicationService.AddApplication(context.Background(), applicationName, applicationDescription, applicationTeam, nil, nil)
+	err := applicationService.AddApplication(context.Background(), applicationName, applicationDescription, applicationTeam, nil, nil, "")
 	require.NoError(t, err)
 }
 
@@ -144,7 +144,7 @@ func addApplicationNoTeamSuccess(t *testing.T) {
 	mocks.loggerMocks.EXPECT().
 		Infof(gomock.Any(), gomock.Any())
 
-	err := applicationService.AddApplication(context.Background(), applicationName, applicationDescription, applicationTeam, nil, nil)
+	err := applicationService.AddApplication(context.Background(), applicationName, applicationDescription, applicationTeam, nil, nil, "")
 	require.NoError(t, err)
 }
 
@@ -159,7 +159,7 @@ func addApplicationInvalidTeamError(t *testing.T) {
 		GetTeamWithName(gomock.Any(), applicationTeam).
 		Return(nil, storage.ErrNotFound)
 
-	err := applicationService.AddApplication(context.Background(), applicationName, applicationDescription, applicationTeam, nil, nil)
+	err := applicationService.AddApplication(context.Background(), applicationName, applicationDescription, applicationTeam, nil, nil, "")
 	require.Error(t, err)
 	require.True(t, strings.Contains(err.Error(), "team not found"))
 }
@@ -195,7 +195,7 @@ func addApplicationInsertApplicationError(t *testing.T) {
 		InsertApplication(gomock.Any(), applicationObj).
 		Return(storage.ErrAlreadyExists)
 
-	err := applicationService.AddApplication(context.Background(), applicationName, applicationDescription, applicationTeam, nil, nil)
+	err := applicationService.AddApplication(context.Background(), applicationName, applicationDescription, applicationTeam, nil, nil, "")
 	require.Error(t, err)
 	require.True(t, strings.Contains(err.Error(), "application with name "+applicationName+" already exists"))
 }
@@ -464,7 +464,7 @@ func addApplicationWithGitInformationSuccess(t *testing.T) {
 	mocks.loggerMocks.EXPECT().
 		Infof(gomock.Any(), gomock.Any())
 
-	err := applicationService.AddApplication(context.Background(), applicationName, applicationDescription, applicationTeam, gitInformation, nil)
+	err := applicationService.AddApplication(context.Background(), applicationName, applicationDescription, applicationTeam, gitInformation, nil, "")
 	require.NoError(t, err)
 }
 
@@ -516,7 +516,7 @@ func addApplicationWithGitInformationAndTeamSuccess(t *testing.T) {
 	mocks.loggerMocks.EXPECT().
 		Infof(gomock.Any(), gomock.Any())
 
-	err := applicationService.AddApplication(context.Background(), applicationName, applicationDescription, applicationTeam, gitInformation, nil)
+	err := applicationService.AddApplication(context.Background(), applicationName, applicationDescription, applicationTeam, gitInformation, nil, "")
 	require.NoError(t, err)
 }
 
