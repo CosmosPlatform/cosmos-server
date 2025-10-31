@@ -58,8 +58,20 @@ This program expects a set of environment variables to be inserted in order to f
 - `DEFAULT_ADMIN_USERNAME`: Username of the default admin user.
 - `ENVIRONMENT`: Environment in which the server is running. It can be `LOCAL` for local development.
 - `GITHUB_TOKEN`: A GitHub token to sue the github api with higher rate limits.
-- `TOKEN_ENCRYPTION_KEY`: Key used to ecrypt private github tokens. It must be 32 bytes long.
+- `TOKEN_ENCRYPTION_KEY`: Key used to encrypt private github tokens. It must be 32 bytes long.
   - If you are running this locally you can quickly generate one running `openssl rand -base64 32`. It is important that it is base64 encoded for the program to accept it.
+
+### Email Service
+
+- This program has the capability to send emails using an SMTP server. To enable this feature you need an email with an app password from which the mails will be sent.
+  - Create a gmail account to be used as the sender.
+  - Activate 2FA on the account (necessary to create app passwords).
+  - Go to [the page to create app passwords](https://myaccount.google.com/apppasswords) and generate one.
+- You need to set the following environment variables:
+  - `SMTP_HOST`: SMTP host of the email service. For gmail it is `smtp.gmail.com`.
+  - `SMTP_PORT`: SMTP port of the email service. For gmail it is `587`.
+  - `SMTP_EMAIL`: Email address of the sender.
+  - `SMTP_PASSWORD`: App password generated for the email address.
 
 ## Optional
 

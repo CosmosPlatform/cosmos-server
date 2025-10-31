@@ -10,6 +10,7 @@ import (
 	"cosmos-server/pkg/server"
 	"cosmos-server/pkg/services/application"
 	"cosmos-server/pkg/services/auth"
+	"cosmos-server/pkg/services/mail"
 	"cosmos-server/pkg/services/monitoring"
 	"cosmos-server/pkg/services/team"
 	"cosmos-server/pkg/services/token"
@@ -40,6 +41,8 @@ func NewApp(config *c.Config) (*App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create encryptor: %v", err)
 	}
+
+	mailService, err := mail.NewMailService(config.MailConfig, logger)
 
 	authService := auth.NewAuthService(config.AuthConfig, storageService, auth.NewTranslator(), logger)
 	userService := user.NewUserService(storageService, user.NewTranslator(), logger)
