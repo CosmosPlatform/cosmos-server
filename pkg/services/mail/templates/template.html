@@ -1,133 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
+<body style="margin:0; padding:30px; background-color:#f9fafb; font-family:Arial, Helvetica, sans-serif; color:#111827;">
+<table align="center" cellpadding="0" cellspacing="0" width="100%" style="max-width:700px; margin:auto;">
+    <tr>
+        <td align="center" style="padding-bottom:30px;">
+            <h1 style="font-size:24px; font-weight:bold; margin:0; color:#111827;">
+                Changes in {{ .RevisionVersion }} endpoints that application {{ .BaseVersion }} uses
+            </h1>
+        </td>
+    </tr>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>API Changelog</title>
-    <style>
+    {{ range $endpoint, $changes := .APIChanges }}
+    <tr>
+        <td style="background-color:#ffffff; border:1px solid #e5e7eb; border-radius:10px; padding:20px; margin-bottom:20px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
 
-        @import url(//fonts.googleapis.com/css?family=Nunito);
-
-        * {
-            font-family: 'Nunito','Helvetica Neue',Helvetica,Arial,sans-serif;
-        }
-
-        .title {
-            margin: 1em 0 0.5em 0;
-            font-size: 36px;
-        }
-
-        .path {
-            color: #016BF8;
-            font-size: 18px;
-            font-weight: 600;
-        }
-
-        .endpoint {
-            color: #21313c;
-            line-height: 24px;
-            margin: 22px 0;
-        }
-
-        .endpoint-header {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .change-type {
-            box-sizing: border-box;
-            font-weight: 700;
-            font-size: 12px;
-            line-height: 16px;
-            border-radius: 5px;
-            height: 18px;
-            padding-left: 6px;
-            padding-right: 6px;
-            text-transform: uppercase;
-            border: 1px solid;
-            letter-spacing: 1px;
-            background-color: #E3FCF7;
-            border-color: #C0FAE6;
-            color: #00684A;
-            margin-top: 2px;
-        }
-
-        .change {
-        }
-
-        .breaking {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            margin-right: 5px;
-        }
-
-        .breaking-icon {
-            color: #DB3030;
-        }
-
-        .endpoint-changes {
-        }
-
-        .tooltip {
-            position:relative; /* making the .tooltip span a container for the tooltip text */
-        }
-
-        .tooltip:before {
-            content: attr(data-text); /* here's the magic */
-            position:absolute;
-
-            /* vertically center */
-            top:50%;
-            transform:translateY(-50%);
-
-            /* move to right */
-            left:100%;
-            margin-left:15px; /* and add a small left margin */
-
-            /* basic styles */
-            width:200px;
-            padding:10px;
-            border-radius:10px;
-            background:#000;
-            color: #fff;
-            text-align:center;
-
-            display:none; /* hide by default */
-        }
-
-        .tooltip:hover:before {
-            display:block;
-        }
-    </style>
-</head>
-
-<body>
-<div class="title">Changes in endpoints your application uses</div>
-{{ range $endpoint, $changes := .APIChanges }}
-<div class="endpoint">
-    <div class="endpoint-header">
-            <span class="path">
-                <div class="">{{ $endpoint.Operation }}<!-- --> <!-- -->{{ $endpoint.Path }}</div>
+            <!-- Endpoint header -->
+            <div style="margin-bottom:10px;">
+            <span style="display:inline-block; background-color:#eff6ff; color:#0369a1; font-family:monospace; padding:4px 10px; border-radius:6px; font-weight:bold; font-size:14px;">
+              {{ $endpoint.Operation }} {{ $endpoint.Path }}
             </span>
-        <div class="change-type">Updated</div>
-    </div>
-    <ul class="endpoint-changes">
-        {{ range $changes }}
-        <li class="change">
-            {{ if .IsBreaking }}
-            <div class="breaking tooltip" data-text="Breaking Change">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 16 16" class="breaking-icon" role="img" aria-label="Important With Circle Icon"><path fill="currentColor" fill-rule="evenodd" d="M8 15A7 7 0 1 0 8 1a7 7 0 0 0 0 14ZM7 4.5a1 1 0 0 1 2 0v4a1 1 0 0 1-2 0v-4Zm2 7a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z" clip-rule="evenodd"></path></svg>
+                <span style="display:inline-block; background-color:#dcfce7; color:#166534; font-weight:bold; font-size:12px; border-radius:6px; padding:3px 8px; margin-left:8px; text-transform:uppercase; letter-spacing:0.5px;">
+              Updated
+            </span>
             </div>
-            {{ end }}
-            {{ .Text }}
-        </li>
-        {{ end }}
-    </ul>
-</div>
-{{ end }}
-</body>
 
+            <!-- Changes list -->
+            <ul style="margin:10px 0 0 20px; padding:0; list-style-type:disc; color:#374151;">
+                {{ range $changes }}
+                <li style="margin-bottom:8px; line-height:1.6; font-size:14px;">
+                    {{ if .IsBreaking }}
+                    <span style="color:#dc2626; font-weight:bold; margin-right:5px;">❗</span>
+                    {{ end }}
+                    {{ .Text }}
+                </li>
+                {{ end }}
+            </ul>
+
+        </td>
+    </tr>
+    {{ end }}
+</table>
+</body>
 </html>

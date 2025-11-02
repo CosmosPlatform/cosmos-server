@@ -134,7 +134,7 @@ func (ms *mailService) isChangeRelevant(change checker.Change, appEndpoints map[
 
 func (ms *mailService) sendEmailToTeamMembers(teamMembersEmails []string, changes checker.Changes, updatedApplication *model.Application, dependingApplication *model.Application) error {
 	subject := fmt.Sprintf("[%s application dependency change] Detected changes in used %s endpoints", dependingApplication.Name, updatedApplication.Name)
-	body, err := ms.formatChangesAsHTML(changes)
+	body, err := ms.formatChangesAsHTML(changes, updatedApplication.Name, dependingApplication.Name)
 	if err != nil {
 		return fmt.Errorf("failed to format changes as HTML: %s", err.Error())
 	}
@@ -149,7 +149,7 @@ func (ms *mailService) sendEmailToTeamMembers(teamMembersEmails []string, change
 	return nil
 }
 
-func (ms *mailService) formatChangesAsHTML(changes checker.Changes) (string, error) {
+func (ms *mailService) formatChangesAsHTML(changes checker.Changes, updatedApplicationName, dependingApplicationName string) (string, error) {
 	htmlFormatter, err := formatters.Lookup(string(formatters.FormatHTML), formatters.FormatterOpts{
 		Language: "en",
 	})
@@ -165,7 +165,7 @@ func (ms *mailService) formatChangesAsHTML(changes checker.Changes) (string, err
 		return "", fmt.Errorf("failed to get template path: %s", err.Error())
 	}
 	formatedOptions.TemplatePath = templatePath
-	htmlBytes, err := htmlFormatter.RenderChangelog(changes, formatedOptions, "old", "new")
+	htmlBytes, err := htmlFormatter.RenderChangelog(changes, formatedOptions, dependingApplicationName, updatedApplicationName)
 	if err != nil {
 		return "", fmt.Errorf("failed to render HTML changelog: %s", err.Error())
 	}
