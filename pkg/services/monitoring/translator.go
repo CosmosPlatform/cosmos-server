@@ -19,6 +19,8 @@ type Translator interface {
 	ToApplicationOpenApiModel(objOpenApi *obj.ApplicationOpenAPI) (*model.ApplicationOpenAPISpecification, error)
 
 	ToSentinelSettingsModel(objSettings *obj.SentinelSetting) *model.SentinelSettings
+
+	ToModelAppEndpointDependencies(objApplicationDependencies []*obj.ApplicationDependency) []*model.AppEndpointDependencies
 }
 
 type translator struct{}
@@ -225,4 +227,33 @@ func (t *translator) ToModelToken(tokenObj *obj.Token) *model.Token {
 		EncryptedValue: tokenObj.EncryptedValue,
 		Team:           t.ToModelTeam(tokenObj.Team),
 	}
+}
+
+func (t *translator) ToModelAppEndpointDependencies(objApplicationDependencies []*obj.ApplicationDependency) []*model.AppEndpointDependencies {
+	appEndpointDependencies := make([]*model.AppEndpointDependencies, 0)
+
+	for _, objDependency := range objApplicationDependencies {
+		dependency := t.toModelAppEndpointDependency(objDependency)
+		appEndpointDependencies = append(appEndpointDependencies, dependency)
+	}
+
+	return appEndpointDependencies
+}
+
+func (t *translator) toModelAppEndpointDependency(objDependency *obj.ApplicationDependency) *model.AppEndpointDependencies {
+	endpointDependencies := make(map[string]bool)
+
+	for endpoint, methods := range objDependency.Endpoints {
+		for method := range methods {
+			key := method + " " + endpoint
+			endpointDependencies[key] = true
+		}
+	}
+
+	dependency := &model.AppEndpointDependencies{
+		Application: t.ToApplicationModel(objDependency.Consumer),
+		Endpoints:   endpointDependencies,
+	}
+
+	return dependency
 }

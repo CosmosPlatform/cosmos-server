@@ -375,6 +375,26 @@ func (s *PostgresService) GetApplicationDependenciesByConsumer(ctx context.Conte
 	return dependencies, nil
 }
 
+func (s *PostgresService) GetApplicationDependenciesByProvider(ctx context.Context, providerName string) ([]*obj.ApplicationDependency, error) {
+	provider, err := gorm.G[*obj.Application](s.db).Where("name = ?", providerName).First(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get consumer application: %v", err)
+	}
+
+	dependencies, err := gorm.G[*obj.ApplicationDependency](s.db).
+		Preload("Consumer", nil).
+		Preload("Consumer.Team", nil).
+		Preload("Provider", nil).
+		Preload("Provider.Team", nil).
+		Where("provider_id = ?", provider.ID).
+		Find(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get application dependencies for provider %s: %v", providerName, err)
+	}
+
+	return dependencies, nil
+}
+
 func (s *PostgresService) UpdateApplicationDependencies(ctx context.Context, consumerName string, dependenciesToUpsert map[string]*obj.ApplicationDependency, pendingDependencies map[string]*obj.PendingApplicationDependency, dependenciesToDelete []*obj.ApplicationDependency, applicationDependenciesSHA string) error {
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		consumer, err := gorm.G[*obj.Application](tx).Where("LOWER(name) = LOWER(?)", consumerName).First(ctx)
@@ -713,4 +733,18 @@ func (s *PostgresService) UpdateToken(ctx context.Context, token *obj.Token) err
 	}
 
 	return nil
+}
+
+func (s *PostgresService) GetTeamMembers(ctx context.Context, teamName string) ([]*obj.User, error) {
+	team, err := s.GetTeamWithName(ctx, teamName)
+	if err != nil {
+		return nil, err
+	}
+
+	users, err := gorm.G[*obj.User](s.db).Where("team_id = ?", team.ID).Find(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get team members for team %s: %v", teamName, err)
+	}
+
+	return users, nil
 }

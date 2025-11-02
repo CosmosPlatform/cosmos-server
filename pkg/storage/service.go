@@ -21,6 +21,7 @@ type Service interface {
 	GetTeamWithName(ctx context.Context, name string) (*obj.Team, error)
 	AddUserToTeam(ctx context.Context, teamName, username string) error
 	RemoveUserFromTeam(ctx context.Context, username string) error
+	GetTeamMembers(ctx context.Context, teamName string) ([]*obj.User, error)
 
 	InsertApplication(ctx context.Context, application *obj.Application) error
 	GetApplicationWithName(ctx context.Context, name string) (*obj.Application, error)
@@ -33,6 +34,7 @@ type Service interface {
 	GetApplicationDependenciesWithApplicationInvolved(ctx context.Context, applicationName string) ([]*obj.ApplicationDependency, error)
 	GetApplicationDependenciesWithFilter(ctx context.Context, filters model.ApplicationDependencyFilter) ([]*obj.ApplicationDependency, error)
 	GetApplicationDependenciesByConsumer(ctx context.Context, consumerName string) ([]*obj.ApplicationDependency, error)
+	GetApplicationDependenciesByProvider(ctx context.Context, providerName string) ([]*obj.ApplicationDependency, error)
 
 	UpsertOpenAPISpecification(ctx context.Context, applicationName string, openAPISpec *obj.ApplicationOpenAPI, applicationOpenApiSHA string) error
 	UpdateApplicationDependencies(ctx context.Context, applicationName string, dependenciesToUpsert map[string]*obj.ApplicationDependency, pendingDependencies map[string]*obj.PendingApplicationDependency, dependenciesToDelete []*obj.ApplicationDependency, applicationDependenciesSHA string) error

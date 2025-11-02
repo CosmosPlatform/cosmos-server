@@ -5,6 +5,7 @@ import (
 	"cosmos-server/pkg/errors"
 	"cosmos-server/pkg/log"
 	"cosmos-server/pkg/model"
+	"cosmos-server/pkg/services/mail"
 	"cosmos-server/pkg/services/token"
 	"cosmos-server/pkg/storage"
 	"cosmos-server/pkg/storage/obj"
@@ -40,6 +41,7 @@ type monitoringService struct {
 	gitService                 GitService
 	encryptor                  token.Encryptor
 	openApiService             OpenApiService
+	mailService                mail.Service
 	sentinelConfigChannel      chan<- model.SentinelSettings
 	sentinelMaxIntervalSeconds int
 	sentinelMinIntervalSeconds int
@@ -47,12 +49,13 @@ type monitoringService struct {
 	logger                     log.Logger
 }
 
-func NewMonitoringService(storageService storage.Service, gitService GitService, openApiService OpenApiService, sentinelMaxIntervalSeconds, sentinelMinIntervalSeconds int, encryptor token.Encryptor, translator Translator, logger log.Logger) Service {
+func NewMonitoringService(storageService storage.Service, gitService GitService, openApiService OpenApiService, mailService mail.Service, sentinelMaxIntervalSeconds, sentinelMinIntervalSeconds int, encryptor token.Encryptor, translator Translator, logger log.Logger) Service {
 	return &monitoringService{
 		storageService:             storageService,
 		gitService:                 gitService,
 		encryptor:                  encryptor,
 		openApiService:             openApiService,
+		mailService:                mailService,
 		sentinelMaxIntervalSeconds: sentinelMaxIntervalSeconds,
 		sentinelMinIntervalSeconds: sentinelMinIntervalSeconds,
 		translator:                 translator,
@@ -297,10 +300,57 @@ func (s *monitoringService) UpdateApplicationOpenAPISpecification(ctx context.Co
 		return fmt.Errorf("failed to transform OpenAPI spec for application %s: %v", application.Name, err)
 	}
 
+	previousApplicationOpenApiObj, err := s.storageService.GetOpenAPISpecificationByApplicationName(ctx, application.Name)
+	if err != nil && !errorUtils.Is(err, storage.ErrNotFound) {
+		return fmt.Errorf("failed to get existing OpenAPI spec for application %s: %v", application.Name, err)
+	}
+
 	err = s.storageService.UpsertOpenAPISpecification(ctx, application.Name, applicationOpenApiObj, openAPISpecRaw.Metadata.SHA)
 	if err != nil {
 		return fmt.Errorf("failed to upsert OpenAPI spec for application %s: %v", application.Name, err)
 	}
+
+	if previousApplicationOpenApiObj != nil {
+		go func() {
+			err := s.compareVersionsAndNotifyDifferences(ctx, application, previousApplicationOpenApiObj, applicationOpenApiObj)
+			if err != nil {
+				s.logger.Errorf("Failed to compare OpenAPI spec versions for application and notify its users: %s: %v", application.Name, err)
+			}
+		}()
+	}
+
+	return nil
+}
+
+func (s *monitoringService) compareVersionsAndNotifyDifferences(ctx context.Context, application *model.Application, previousSpec *obj.ApplicationOpenAPI, currentSpec *obj.ApplicationOpenAPI) error {
+	previousOpenApiModel, err := s.translator.ToApplicationOpenApiModel(previousSpec)
+	if err != nil {
+		return fmt.Errorf("failed to transform OpenAPI spec for application %s: %v", application.Name, err)
+	}
+
+	currentOpenApiModel, err := s.translator.ToApplicationOpenApiModel(currentSpec)
+	if err != nil {
+		return fmt.Errorf("failed to transform OpenAPI spec for application %s: %v", application.Name, err)
+	}
+
+	changes, err := s.openApiService.CompareOpenApiSpecs(previousOpenApiModel.OpenAPISpec, currentOpenApiModel.OpenAPISpec)
+	if err != nil {
+		return fmt.Errorf("failed to compare OpenAPI specs for application %s: %v", application.Name, err)
+	}
+
+	if len(changes) == 0 {
+		s.logger.Infof("No changes detected in OpenAPI spec for application %s", application.Name)
+		return nil
+	}
+
+	dependencies, err := s.storageService.GetApplicationDependenciesByProvider(ctx, application.Name)
+	if err != nil {
+		return fmt.Errorf("failed to get dependencies for application %s: %v", application.Name, err)
+	}
+
+	applicationDependencies := s.translator.ToModelAppEndpointDependencies(dependencies)
+
+	s.mailService.SendOpenAPIDifferencesNotification(ctx, application, applicationDependencies, changes)
 
 	return nil
 }

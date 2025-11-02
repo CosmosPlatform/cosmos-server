@@ -36,6 +36,10 @@ func readConfig(path string) (*Config, error) {
 		{"sentinel.max_interval", "SENTINEL_MAX_INTERVAL"},
 		{"sentinel.sentinel_workers", "SENTINEL_WORKERS"},
 		{"token.encryption_key", "TOKEN_ENCRYPTION_KEY"},
+		{"mail.smtp_host", "MAIL_SMTP_HOST"},
+		{"mail.smtp_port", "MAIL_SMTP_PORT"},
+		{"mail.sender_email", "MAIL_SENDER_EMAIL"},
+		{"mail.smtp_password", "MAIL_SMTP_PASSWORD"},
 	})
 	if err != nil {
 		return nil, err
@@ -76,6 +80,10 @@ func validateConfig(conf *Config) error {
 		"SENTINEL_MAX_INTERVAL":     conf.SentinelConfig.MaxInterval,
 		"SENTINEL_WORKERS":          fmt.Sprintf("%d", conf.SentinelConfig.SentinelWorkers),
 		"TOKEN_ENCRYPTION_KEY":      conf.TokenConfig.EncryptionKey,
+		"MAIL_SMTP_HOST":            conf.MailConfig.SMTPHost,
+		"MAIL_SMTP_PORT":            fmt.Sprintf("%d", conf.MailConfig.SMTPPort),
+		"MAIL_SENDER_EMAIL":         conf.MailConfig.SenderEmail,
+		"MAIL_SMTP_PASSWORD":        conf.MailConfig.SMTPPassword,
 	}
 
 	var missingFields []string
@@ -90,6 +98,10 @@ func validateConfig(conf *Config) error {
 	}
 
 	if err := conf.SentinelConfig.ValidateAndSetDefaults(); err != nil {
+		return err
+	}
+
+	if err := conf.MailConfig.Validate(); err != nil {
 		return err
 	}
 

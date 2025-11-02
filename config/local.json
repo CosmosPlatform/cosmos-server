@@ -14,5 +14,9 @@
     "min_interval": "30s",
     "max_interval": "1h",
     "sentinel_workers": 5
+  },
+  "mail" : {
+    "smtp_host": "smtp.gmail.com",
+    "smtp_port": 587
   }
 }

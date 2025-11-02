@@ -13,6 +13,7 @@ type Config struct {
 	TokenConfig    `mapstructure:"token"`
 	LogConfig      `mapstructure:"log"`
 	SentinelConfig `mapstructure:"sentinel"`
+	MailConfig     `mapstructure:"mail"`
 }
 
 type ServerConfig struct {
@@ -56,6 +57,13 @@ type AuthConfig struct {
 	JWTSecret string `mapstructure:"jwt_secret"`
 }
 
+type MailConfig struct {
+	SMTPHost     string `mapstructure:"smtp_host"`
+	SMTPPort     int    `mapstructure:"smtp_port"`
+	SenderEmail  string `mapstructure:"sender_email"`
+	SMTPPassword string `mapstructure:"smtp_password"`
+}
+
 func NewConfiguration() (*Config, error) {
 	if conf, err := readConfig("config/local.json"); err != nil {
 		return nil, err
@@ -65,23 +73,23 @@ func NewConfiguration() (*Config, error) {
 }
 
 func (sc *SentinelConfig) ValidateAndSetDefaults() error {
-	defaultIntervalSeconds, err := time.ParseDuration(sc.DefaultInterval)
+	defaultInterval, err := time.ParseDuration(sc.DefaultInterval)
 	if err != nil {
 		return err
 	}
-	sc.DefaultIntervalSeconds = int(defaultIntervalSeconds.Seconds())
+	sc.DefaultIntervalSeconds = int(defaultInterval.Seconds())
 
-	minIntervalSeconds, err := time.ParseDuration(sc.MinInterval)
+	minInterval, err := time.ParseDuration(sc.MinInterval)
 	if err != nil {
 		return err
 	}
-	sc.MinIntervalSeconds = int(minIntervalSeconds.Seconds())
+	sc.MinIntervalSeconds = int(minInterval.Seconds())
 
-	maxIntervalSeconds, err := time.ParseDuration(sc.MaxInterval)
+	maxInterval, err := time.ParseDuration(sc.MaxInterval)
 	if err != nil {
 		return err
 	}
-	sc.MaxIntervalSeconds = int(maxIntervalSeconds.Seconds())
+	sc.MaxIntervalSeconds = int(maxInterval.Seconds())
 
 	if sc.MinIntervalSeconds <= 0 {
 		return fmt.Errorf("min_interval must be greater than 0")
@@ -93,6 +101,14 @@ func (sc *SentinelConfig) ValidateAndSetDefaults() error {
 
 	if sc.DefaultIntervalSeconds < sc.MinIntervalSeconds || sc.DefaultIntervalSeconds > sc.MaxIntervalSeconds {
 		return fmt.Errorf("default_interval must be between min_interval and max_interval")
+	}
+
+	return nil
+}
+
+func (mc *MailConfig) Validate() error {
+	if mc.SMTPPort <= 0 || mc.SMTPPort > 65535 {
+		return fmt.Errorf("invalid SMTP port: %d", mc.SMTPPort)
 	}
 
 	return nil
