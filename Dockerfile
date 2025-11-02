@@ -1,4 +1,4 @@
-FROM golang:1.23.1 AS builder
+FROM golang:alpine3.22 AS builder
 LABEL intermediateStageToBeDeleted=true
 
 RUN mkdir -p /build
@@ -11,7 +11,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o bin/cosmos-server .
 
 # Stage 2
-FROM alpine:3.20
+FROM alpine:3.22.2
 
 COPY --from=builder /build/bin/cosmos-server /cosmos-server
 
