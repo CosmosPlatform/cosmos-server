@@ -8,11 +8,15 @@ import (
 	"github.com/getkin/kin-openapi/openapi2"
 	"github.com/getkin/kin-openapi/openapi2conv"
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/oasdiff/oasdiff/checker"
+	"github.com/oasdiff/oasdiff/diff"
+	"github.com/oasdiff/oasdiff/load"
 	"gopkg.in/yaml.v3"
 )
 
 type OpenApiService interface {
 	ParseOpenApiSpec(specContent string) (*openapi3.T, error)
+	CompareOpenApiSpecs(spec1, spec2 *openapi3.T) (checker.Changes, error)
 }
 
 type openApiService struct{}
@@ -76,4 +80,19 @@ func (s *openApiService) detectOpenAPIVersion(spec string) (int, error) {
 		}
 	}
 	return 0, fmt.Errorf("could not detect OpenAPI version")
+}
+
+func (s *openApiService) CompareOpenApiSpecs(spec1, spec2 *openapi3.T) (checker.Changes, error) {
+	loadSpec1 := &load.SpecInfo{Spec: spec1}
+	loadSpec2 := &load.SpecInfo{Spec: spec2}
+
+	diffReport, operationsSources, err := diff.GetWithOperationsSourcesMap(diff.NewConfig(), loadSpec1, loadSpec2)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compare OpenAPI specs: %s", err.Error())
+	}
+
+	checkerConfig := checker.NewConfig(checker.GetAllChecks())
+	changes := checker.CheckBackwardCompatibilityUntilLevel(checkerConfig, diffReport, operationsSources, checker.INFO)
+
+	return changes, nil
 }

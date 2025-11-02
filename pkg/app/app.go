@@ -42,13 +42,13 @@ func NewApp(config *c.Config) (*App, error) {
 		return nil, fmt.Errorf("failed to create encryptor: %v", err)
 	}
 
-	mailService, err := mail.NewMailService(config.MailConfig, logger)
+	mailService, err := mail.NewMailService(config.MailConfig, storageService, logger)
 
 	authService := auth.NewAuthService(config.AuthConfig, storageService, auth.NewTranslator(), logger)
 	userService := user.NewUserService(storageService, user.NewTranslator(), logger)
 	teamService := team.NewTeamService(storageService, team.NewTranslator())
 	applicationService := application.NewApplicationService(storageService, application.NewTranslator(), logger)
-	monitoringService := monitoring.NewMonitoringService(storageService, monitoring.NewGithubService(), monitoring.NewOpenApiService(), config.SentinelConfig.MaxIntervalSeconds, config.SentinelConfig.MinIntervalSeconds, encryptor, monitoring.NewTranslator(), logger)
+	monitoringService := monitoring.NewMonitoringService(storageService, monitoring.NewGithubService(), monitoring.NewOpenApiService(), mailService, config.SentinelConfig.MaxIntervalSeconds, config.SentinelConfig.MinIntervalSeconds, encryptor, monitoring.NewTranslator(), logger)
 
 	tokenService := token.NewTokenService(encryptor, storageService, token.NewTranslator(), logger)
 

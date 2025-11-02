@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	//"cosmos-server/pkg/storage"
+	mailMock "cosmos-server/pkg/services/mail/mock"
 	tokenMock "cosmos-server/pkg/services/token/mock"
 	storageMock "cosmos-server/pkg/storage/mock"
 	"cosmos-server/pkg/storage/obj"
@@ -50,6 +51,7 @@ type mocks struct {
 	gitServiceMock     *mock.MockGitService
 	storageServiceMock *storageMock.MockService
 	encryptorMock      *tokenMock.MockEncryptor
+	mailMock           *mailMock.MockService
 	loggerMocks        *log.MockLogger
 }
 
@@ -61,10 +63,11 @@ func setUp(t *testing.T) (Service, *mocks) {
 		gitServiceMock:     mock.NewMockGitService(controller),
 		storageServiceMock: storageMock.NewMockService(controller),
 		encryptorMock:      tokenMock.NewMockEncryptor(controller),
+		mailMock:           mailMock.NewMockService(controller),
 		loggerMocks:        log.NewMockLogger(controller),
 	}
 
-	service := NewMonitoringService(mocks.storageServiceMock, mocks.gitServiceMock, NewOpenApiService(), 30, 900, mocks.encryptorMock, NewTranslator(), mocks.loggerMocks)
+	service := NewMonitoringService(mocks.storageServiceMock, mocks.gitServiceMock, NewOpenApiService(), mocks.mailMock, 30, 900, mocks.encryptorMock, NewTranslator(), mocks.loggerMocks)
 
 	return service, mocks
 }
