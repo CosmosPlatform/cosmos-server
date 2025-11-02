@@ -68,10 +68,10 @@ This program expects a set of environment variables to be inserted in order to f
   - Activate 2FA on the account (necessary to create app passwords).
   - Go to [the page to create app passwords](https://myaccount.google.com/apppasswords) and generate one.
 - You need to set the following environment variables:
-  - `SMTP_HOST`: SMTP host of the email service. For gmail it is `smtp.gmail.com`.
-  - `SMTP_PORT`: SMTP port of the email service. For gmail it is `587`.
-  - `SMTP_EMAIL`: Email address of the sender.
-  - `SMTP_PASSWORD`: App password generated for the email address.
+  - `MAIL_SMTP_HOST`: SMTP host of the email service. For gmail it is `smtp.gmail.com`.
+  - `MAIL_SMTP_HOST`: SMTP port of the email service. For gmail it is `587`.
+  - `MAIL_SENDER_EMAIL`: Email address of the sender.
+  - `MAIL_SMTP_PASSWORD`: App password generated for the email address.
 
 ## Optional
 
