@@ -748,3 +748,12 @@ func (s *PostgresService) GetTeamMembers(ctx context.Context, teamName string) (
 
 	return users, nil
 }
+
+func (s *PostgresService) GetAllTokens(ctx context.Context) ([]*obj.Token, error) {
+	tokens, err := gorm.G[*obj.Token](s.db).Preload("Team", nil).Find(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all tokens: %v", err)
+	}
+
+	return tokens, nil
+}

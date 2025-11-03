@@ -14,13 +14,14 @@ import (
 type Service interface {
 	CreateToken(ctx context.Context, teamName, name, secret string) error
 	GetTokensFromTeam(ctx context.Context, teamName string) ([]*model.Token, error)
+	GetAllTokens(ctx context.Context) ([]*model.Token, error)
 	DeleteToken(ctx context.Context, teamName, name string) error
 	UpdateToken(ctx context.Context, teamName string, tokenName string, updateTokenModel *model.TokenUpdate) error
 }
 
 type tokenService struct {
 	storageService storage.Service
-	encriptor      Encryptor
+	encryptor      Encryptor
 	translator     Translator
 	logger         log.Logger
 }
@@ -28,7 +29,7 @@ type tokenService struct {
 func NewTokenService(encryptor Encryptor, storageService storage.Service, translator Translator, logger log.Logger) Service {
 	return &tokenService{
 		storageService: storageService,
-		encriptor:      encryptor,
+		encryptor:      encryptor,
 		translator:     translator,
 		logger:         logger,
 	}
@@ -43,7 +44,7 @@ func (s *tokenService) CreateToken(ctx context.Context, teamName, name, secret s
 		return errors.NewInternalServerError("failed to retrieve team: " + err.Error())
 	}
 
-	encryptedSecret, err := s.encriptor.Encrypt(secret)
+	encryptedSecret, err := s.encryptor.Encrypt(secret)
 	if err != nil {
 		return errors.NewInternalServerError("failed to encrypt token secret")
 	}
@@ -105,7 +106,7 @@ func (s *tokenService) UpdateToken(ctx context.Context, teamName string, tokenNa
 	}
 
 	if updateTokenModel.Value != nil {
-		encryptedSecret, err := s.encriptor.Encrypt(*updateTokenModel.Value)
+		encryptedSecret, err := s.encryptor.Encrypt(*updateTokenModel.Value)
 		if err != nil {
 			return errors.NewInternalServerError("failed to encrypt token secret")
 		}
@@ -118,4 +119,13 @@ func (s *tokenService) UpdateToken(ctx context.Context, teamName string, tokenNa
 	}
 
 	return nil
+}
+
+func (s *tokenService) GetAllTokens(ctx context.Context) ([]*model.Token, error) {
+	tokens, err := s.storageService.GetAllTokens(ctx)
+	if err != nil {
+		return nil, errors.NewInternalServerError("failed to retrieve tokens: " + err.Error())
+	}
+
+	return s.translator.ToModelTokens(tokens), nil
 }

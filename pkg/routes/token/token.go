@@ -35,6 +35,17 @@ func AddAuthenticatedTokenHandler(e *gin.RouterGroup, tokenService token.Service
 	e.PUT("/tokens/:team/:name", h.handleUpdateToken)
 }
 
+func AddAdminTokenHandler(e *gin.RouterGroup, tokenService token.Service, userService user.Service, translator Translator, logger log.Logger) {
+	h := &handler{
+		tokenService: tokenService,
+		userService:  userService,
+		translator:   translator,
+		logger:       logger,
+	}
+
+	e.GET("/tokens", h.handleGetAllTokens)
+}
+
 func (h *handler) handlePostToken(c *gin.Context) {
 	var req api.CreateTokenRequest
 
@@ -213,4 +224,14 @@ func (h *handler) handleUpdateToken(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+func (h *handler) handleGetAllTokens(c *gin.Context) {
+	tokens, err := h.tokenService.GetAllTokens(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, h.translator.ToGetTokenResponse(tokens))
 }

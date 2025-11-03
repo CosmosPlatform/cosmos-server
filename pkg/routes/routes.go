@@ -59,4 +59,5 @@ func (r *HTTPRoutes) RegisterAdminAuthenticatedRoutes(e *gin.RouterGroup) {
 	userRoute.AddAdminUserHandler(e, r.UserService, userRoute.NewTranslator(), r.Logger)
 	teamRoute.AddAdminTeamHandler(e, r.TeamService, teamRoute.NewTranslator())
 	monitoringRoute.AddAdminMonitoringHandler(e, r.MonitoringService, r.ApplicationService, monitoringRoute.NewTranslator(), r.Logger)
+	tokenRoute.AddAdminTokenHandler(e, r.TokenService, r.UserService, tokenRoute.NewTranslator(), r.Logger)
 }
