@@ -819,3 +819,16 @@ func (s *PostgresService) GetApplicationDependenciesFromGroup(ctx context.Contex
 
 	return dependencies, nil
 }
+
+func (s *PostgresService) DeleteGroupByName(ctx context.Context, name string) error {
+	rowsAffected, err := gorm.G[obj.Group](s.db).Where("name = ?", name).Delete(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to delete group %s: %v", name, err)
+	}
+
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}

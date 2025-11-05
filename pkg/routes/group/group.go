@@ -29,6 +29,7 @@ func AddAuthenticatedGroupHandler(e *gin.RouterGroup, groupService group.Service
 	groupsGroup.POST("", handler.handleCreateGroup)
 	groupsGroup.GET("", handler.handleListGroups)
 	groupsGroup.GET("/:groupName", handler.handleGetGroup)
+	groupsGroup.DELETE("/:groupName", handler.handleDeleteGroup)
 }
 
 func (handler *handler) handleCreateGroup(e *gin.Context) {
@@ -74,4 +75,16 @@ func (handler *handler) handleGetGroup(e *gin.Context) {
 	}
 
 	e.JSON(http.StatusOK, handler.translator.ToGetGroupResponse(groupObj))
+}
+
+func (handler *handler) handleDeleteGroup(e *gin.Context) {
+	groupName := e.Param("groupName")
+
+	err := handler.groupService.DeleteGroup(e, groupName)
+	if err != nil {
+		_ = e.Error(err)
+		return
+	}
+
+	e.Status(http.StatusNoContent)
 }

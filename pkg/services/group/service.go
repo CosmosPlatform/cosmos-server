@@ -15,6 +15,7 @@ type Service interface {
 	CreateGroup(ctx context.Context, name, description string, members []string) error
 	GetAllGroups(ctx context.Context) ([]*model.Group, error)
 	GetGroupByName(ctx context.Context, name string) (*model.Group, error)
+	DeleteGroup(ctx context.Context, name string) error
 }
 
 type groupService struct {
@@ -75,4 +76,16 @@ func (s *groupService) GetGroupByName(ctx context.Context, name string) (*model.
 	}
 
 	return s.translator.ToGroupModel(groupObj), nil
+}
+
+func (s *groupService) DeleteGroup(ctx context.Context, name string) error {
+	err := s.storageService.DeleteGroupByName(ctx, name)
+	if err != nil {
+		if errorUtils.Is(err, storage.ErrNotFound) {
+			return errors.NewNotFoundError(fmt.Sprintf("group %s not found", name))
+		}
+		s.logger.Errorf("Failed to delete group %s: %v", name, err)
+		return fmt.Errorf("failed to delete group %s: %v", name, err)
+	}
+	return nil
 }
