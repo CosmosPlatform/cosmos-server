@@ -28,6 +28,8 @@ type Service interface {
 	UpdateApplicationOpenAPISpecification(ctx context.Context, application *model.Application) error
 	GetApplicationOpenAPISpecification(ctx context.Context, application *model.Application) (*model.ApplicationOpenAPISpecification, error)
 
+	GetGroupApplicationsInteractions(ctx context.Context, groupName string) (*model.ApplicationsInteractions, error)
+
 	SentinelSettingsPresent(ctx context.Context) (bool, error)
 	InsertSentinelIntervalSetting(ctx context.Context, interval int, enabled bool) error
 	StoreSentinelChannel(newConfigChannel chan<- model.SentinelSettings)
@@ -469,4 +471,21 @@ func (s *monitoringService) GetSentinelSettings(ctx context.Context) (*model.Sen
 	}
 
 	return s.translator.ToSentinelSettingsModel(settingObj), nil
+}
+
+func (s *monitoringService) GetGroupApplicationsInteractions(ctx context.Context, groupName string) (*model.ApplicationsInteractions, error) {
+	groupObj, err := s.storageService.GetGroupByName(ctx, groupName)
+	if err != nil {
+		if errorUtils.Is(err, storage.ErrNotFound) {
+			return nil, errors.NewNotFoundError(fmt.Sprintf("group %s not found", groupName))
+		}
+		return nil, fmt.Errorf("failed to get group %s: %v", groupName, err)
+	}
+
+	objDependencies, err := s.storageService.GetApplicationDependenciesFromGroup(ctx, groupObj)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.translator.ToApplicationsInteractionsModel(objDependencies), nil
 }

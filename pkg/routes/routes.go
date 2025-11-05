@@ -5,6 +5,7 @@ import (
 	monitoringRoute "cosmos-server/pkg/routes/monitoring"
 	"cosmos-server/pkg/services/application"
 	"cosmos-server/pkg/services/auth"
+	"cosmos-server/pkg/services/group"
 	"cosmos-server/pkg/services/monitoring"
 	"cosmos-server/pkg/services/team"
 	"cosmos-server/pkg/services/token"
@@ -14,6 +15,7 @@ import (
 
 	applicationRoute "cosmos-server/pkg/routes/application"
 	authRoute "cosmos-server/pkg/routes/auth"
+	groupRoute "cosmos-server/pkg/routes/group"
 	healthcheckRoute "cosmos-server/pkg/routes/healthcheck"
 	teamRoute "cosmos-server/pkg/routes/team"
 	tokenRoute "cosmos-server/pkg/routes/token"
@@ -27,10 +29,11 @@ type HTTPRoutes struct {
 	ApplicationService application.Service
 	MonitoringService  monitoring.Service
 	TokenService       token.Service
+	GroupService       group.Service
 	Logger             log.Logger
 }
 
-func NewHTTPRoutes(authService auth.Service, userService user.Service, teamService team.Service, applicationService application.Service, monitoringService monitoring.Service, tokenService token.Service, logger log.Logger) *HTTPRoutes {
+func NewHTTPRoutes(authService auth.Service, userService user.Service, teamService team.Service, applicationService application.Service, monitoringService monitoring.Service, tokenService token.Service, groupService group.Service, logger log.Logger) *HTTPRoutes {
 	return &HTTPRoutes{
 		AuthService:        authService,
 		UserService:        userService,
@@ -38,6 +41,7 @@ func NewHTTPRoutes(authService auth.Service, userService user.Service, teamServi
 		ApplicationService: applicationService,
 		MonitoringService:  monitoringService,
 		TokenService:       tokenService,
+		GroupService:       groupService,
 		Logger:             logger,
 	}
 }
@@ -53,6 +57,7 @@ func (r *HTTPRoutes) RegisterAuthenticatedRoutes(e *gin.RouterGroup) {
 	teamRoute.AddAuthenticatedTeamHandler(e, r.TeamService, teamRoute.NewTranslator())
 	monitoringRoute.AddAuthenticatedMonitoringHandler(e, r.MonitoringService, r.ApplicationService, monitoringRoute.NewTranslator(), r.Logger)
 	tokenRoute.AddAuthenticatedTokenHandler(e, r.TokenService, r.UserService, tokenRoute.NewTranslator(), r.Logger)
+	groupRoute.AddAuthenticatedGroupHandler(e, r.GroupService, groupRoute.NewTranslator(), r.Logger)
 }
 
 func (r *HTTPRoutes) RegisterAdminAuthenticatedRoutes(e *gin.RouterGroup) {

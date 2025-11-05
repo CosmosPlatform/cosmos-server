@@ -757,3 +757,62 @@ func (s *PostgresService) GetAllTokens(ctx context.Context) ([]*obj.Token, error
 
 	return tokens, nil
 }
+
+func (s *PostgresService) CreateGroup(ctx context.Context, name, description string, applications []*obj.Application) error {
+	group := &obj.Group{
+		Name:         name,
+		Description:  description,
+		Applications: applications,
+	}
+
+	err := gorm.G[obj.Group](s.db).Create(ctx, group)
+	if err != nil {
+		if errorUtils.Is(err, gorm.ErrDuplicatedKey) {
+			return ErrAlreadyExists
+		}
+		return fmt.Errorf("failed to create group: %v", err)
+	}
+
+	return nil
+}
+
+func (s *PostgresService) GetGroups(ctx context.Context) ([]*obj.Group, error) {
+	groups, err := gorm.G[*obj.Group](s.db).Preload("Applications", nil).Find(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get groups: %v", err)
+	}
+
+	return groups, nil
+}
+
+func (s *PostgresService) GetGroupByName(ctx context.Context, name string) (*obj.Group, error) {
+	group, err := gorm.G[*obj.Group](s.db).Preload("Applications", nil).Where("name = ?", name).First(ctx)
+	if err != nil {
+		if errorUtils.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to get group with name %s: %v", name, err)
+	}
+
+	return group, nil
+}
+
+func (s *PostgresService) GetApplicationDependenciesFromGroup(ctx context.Context, group *obj.Group) ([]*obj.ApplicationDependency, error) {
+	appIDs := make([]int, len(group.Applications))
+	for i, app := range group.Applications {
+		appIDs[i] = int(app.ID)
+	}
+
+	dependencies, err := gorm.G[*obj.ApplicationDependency](s.db).
+		Preload("Consumer", nil).
+		Preload("Consumer.Team", nil).
+		Preload("Provider", nil).
+		Preload("Provider.Team", nil).
+		Where("consumer_id IN ? AND provider_id IN ?", appIDs, appIDs).
+		Find(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get application dependencies for group %s: %v", group.Name, err)
+	}
+
+	return dependencies, nil
+}

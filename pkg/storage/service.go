@@ -35,6 +35,7 @@ type Service interface {
 	GetApplicationDependenciesWithFilter(ctx context.Context, filters model.ApplicationDependencyFilter) ([]*obj.ApplicationDependency, error)
 	GetApplicationDependenciesByConsumer(ctx context.Context, consumerName string) ([]*obj.ApplicationDependency, error)
 	GetApplicationDependenciesByProvider(ctx context.Context, providerName string) ([]*obj.ApplicationDependency, error)
+	GetApplicationDependenciesFromGroup(ctx context.Context, group *obj.Group) ([]*obj.ApplicationDependency, error)
 
 	UpsertOpenAPISpecification(ctx context.Context, applicationName string, openAPISpec *obj.ApplicationOpenAPI, applicationOpenApiSHA string) error
 	UpdateApplicationDependencies(ctx context.Context, applicationName string, dependenciesToUpsert map[string]*obj.ApplicationDependency, pendingDependencies map[string]*obj.PendingApplicationDependency, dependenciesToDelete []*obj.ApplicationDependency, applicationDependenciesSHA string) error
@@ -52,4 +53,8 @@ type Service interface {
 	GetAllTokens(ctx context.Context) ([]*obj.Token, error)
 	DeleteToken(ctx context.Context, name string, team string) error
 	UpdateToken(ctx context.Context, token *obj.Token) error
+
+	CreateGroup(ctx context.Context, name, description string, applications []*obj.Application) error
+	GetGroups(ctx context.Context) ([]*obj.Group, error)
+	GetGroupByName(ctx context.Context, name string) (*obj.Group, error)
 }
