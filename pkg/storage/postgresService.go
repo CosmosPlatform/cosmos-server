@@ -767,9 +767,12 @@ func (s *PostgresService) CreateGroup(ctx context.Context, name, description str
 
 	err := gorm.G[obj.Group](s.db).Create(ctx, group)
 	if err != nil {
-		if errorUtils.Is(err, gorm.ErrDuplicatedKey) {
+		if strings.Contains(err.Error(), "duplicate key") {
 			return ErrAlreadyExists
 		}
+		//if errorUtils.Is(err, gorm.ErrDuplicatedKey) {
+		//	return ErrAlreadyExists
+		//}
 		return fmt.Errorf("failed to create group: %v", err)
 	}
 
