@@ -34,6 +34,7 @@ func AddAuthenticatedMonitoringHandler(e *gin.RouterGroup, monitoringService mon
 	monitoringGroup.POST("/update/:application", handler.handleUpdateApplicationMonitoring)
 	monitoringGroup.GET("/interactions/:application", handler.handleGetApplicationInteractions)
 	monitoringGroup.GET("/interactions", handler.handleGetApplicationsInteractions)
+	monitoringGroup.GET("/interactions/group/:group", handler.handleGetGroupApplicationsInteractions)
 	monitoringGroup.GET("/openapi/:application", handler.handleGetApplicationOpenAPISpecification)
 	monitoringGroup.GET("/complete/:application", handler.handleGetCompleteApplicationMonitoring)
 }
@@ -211,4 +212,17 @@ func (handler *handler) handleGetSentinelConfiguration(e *gin.Context) {
 	}
 
 	e.JSON(200, handler.translator.ToGetSentinelSettingsResponse(settings))
+}
+
+func (handler *handler) handleGetGroupApplicationsInteractions(e *gin.Context) {
+	groupName := e.Param("group")
+
+	interactions, err := handler.monitoringService.GetGroupApplicationsInteractions(e, groupName)
+	if err != nil {
+		handler.logger.Errorf("Failed to retrieve group applications interactions: %v", err)
+		_ = e.Error(err)
+		return
+	}
+
+	e.JSON(200, handler.translator.ToGetApplicationsInteractionsResponse(interactions))
 }

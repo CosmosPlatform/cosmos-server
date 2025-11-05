@@ -10,6 +10,7 @@ import (
 	"cosmos-server/pkg/server"
 	"cosmos-server/pkg/services/application"
 	"cosmos-server/pkg/services/auth"
+	"cosmos-server/pkg/services/group"
 	"cosmos-server/pkg/services/mail"
 	"cosmos-server/pkg/services/monitoring"
 	"cosmos-server/pkg/services/team"
@@ -49,10 +50,10 @@ func NewApp(config *c.Config) (*App, error) {
 	teamService := team.NewTeamService(storageService, team.NewTranslator())
 	applicationService := application.NewApplicationService(storageService, application.NewTranslator(), logger)
 	monitoringService := monitoring.NewMonitoringService(storageService, monitoring.NewGithubService(), monitoring.NewOpenApiService(), mailService, config.SentinelConfig.MaxIntervalSeconds, config.SentinelConfig.MinIntervalSeconds, encryptor, monitoring.NewTranslator(), logger)
-
 	tokenService := token.NewTokenService(encryptor, storageService, token.NewTranslator(), logger)
+	groupService := group.NewGroupService(storageService, group.NewTranslator(), logger)
 
-	httpRoutes := routes.NewHTTPRoutes(authService, userService, teamService, applicationService, monitoringService, tokenService, logger)
+	httpRoutes := routes.NewHTTPRoutes(authService, userService, teamService, applicationService, monitoringService, tokenService, groupService, logger)
 
 	return &App{
 		config: config,
