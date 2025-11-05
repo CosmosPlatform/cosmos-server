@@ -58,4 +58,5 @@ type Service interface {
 	GetGroups(ctx context.Context) ([]*obj.Group, error)
 	GetGroupByName(ctx context.Context, name string) (*obj.Group, error)
 	DeleteGroupByName(ctx context.Context, name string) error
+	UpdateGroup(ctx context.Context, group *obj.Group) error
 }

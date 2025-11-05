@@ -33,3 +33,9 @@ type Group struct {
 type GetGroupResponse struct {
 	Group *Group `json:"group"`
 }
+
+type UpdateGroupRequest struct {
+	Name        *string  `json:"name"`
+	Description *string  `json:"description"`
+	Members     []string `json:"members"`
+}

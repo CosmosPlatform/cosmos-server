@@ -4,6 +4,7 @@ import (
 	"cosmos-server/api"
 	"cosmos-server/pkg/errors"
 	"cosmos-server/pkg/log"
+	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/services/group"
 	"fmt"
 	"net/http"
@@ -30,6 +31,7 @@ func AddAuthenticatedGroupHandler(e *gin.RouterGroup, groupService group.Service
 	groupsGroup.GET("", handler.handleListGroups)
 	groupsGroup.GET("/:groupName", handler.handleGetGroup)
 	groupsGroup.DELETE("/:groupName", handler.handleDeleteGroup)
+	groupsGroup.PUT("/:groupName", handler.handleUpdateGroup)
 }
 
 func (handler *handler) handleCreateGroup(e *gin.Context) {
@@ -81,6 +83,33 @@ func (handler *handler) handleDeleteGroup(e *gin.Context) {
 	groupName := e.Param("groupName")
 
 	err := handler.groupService.DeleteGroup(e, groupName)
+	if err != nil {
+		_ = e.Error(err)
+		return
+	}
+
+	e.Status(http.StatusNoContent)
+}
+
+func (handler *handler) handleUpdateGroup(e *gin.Context) {
+	groupName := e.Param("groupName")
+
+	var editGroupRequest api.UpdateGroupRequest
+	if err := e.ShouldBindJSON(&editGroupRequest); err != nil {
+		handler.logger.Errorf("Failed to bind JSON for edit group request: %v", err)
+		_ = e.Error(err)
+		return
+	}
+
+	updateDate := &model.GroupUpdate{
+		Name:        editGroupRequest.Name,
+		Description: editGroupRequest.Description,
+		Members:     editGroupRequest.Members,
+	}
+
+	fmt.Printf("DEBUG: UpdateGroupRequest Members: %+v\n", editGroupRequest.Members)
+
+	err := handler.groupService.UpdateGroup(e, groupName, updateDate)
 	if err != nil {
 		_ = e.Error(err)
 		return

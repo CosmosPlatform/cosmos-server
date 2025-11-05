@@ -832,3 +832,35 @@ func (s *PostgresService) DeleteGroupByName(ctx context.Context, name string) er
 
 	return nil
 }
+
+//func (s *PostgresService) UpdateGroup(ctx context.Context, group *obj.Group) error {
+//	rowsAffected, err := gorm.G[*obj.Group](s.db).Where("id = ?", group.ID).Select("*").Updates(ctx, group)
+//	if err != nil {
+//		return fmt.Errorf("failed to update group: %v", err)
+//	}
+//
+//	if rowsAffected == 0 {
+//		return ErrNotFound
+//	}
+//
+//	return nil
+//}
+
+func (s *PostgresService) UpdateGroup(ctx context.Context, group *obj.Group) error {
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		rowsAffected, err := gorm.G[*obj.Group](tx).Where("id = ?", group.ID).Select("*").Updates(ctx, group)
+		if err != nil {
+			return fmt.Errorf("failed to update group: %v", err)
+		}
+		if rowsAffected == 0 {
+			return ErrNotFound
+		}
+
+		if err := tx.Model(&obj.Group{CosmosObj: obj.CosmosObj{ID: group.ID}}).
+			Association("Applications").Replace(group.Applications); err != nil {
+			return fmt.Errorf("failed to update group applications: %v", err)
+		}
+
+		return nil
+	})
+}
