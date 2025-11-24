@@ -5,8 +5,9 @@ import (
 	"cosmos-server/pkg/errors"
 	"cosmos-server/pkg/services/team"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 type handler struct {
@@ -22,6 +23,7 @@ func AddAdminTeamHandler(e *gin.RouterGroup, teamService team.Service, translato
 
 	e.GET("/teams/:teamName", h.handleGetTeam)
 	e.POST("/teams", h.handleCreateTeam)
+	e.PUT("/teams/:teamName", h.handleUpdateTeam)
 	e.DELETE("/teams/:teamName", h.handleDeleteTeam)
 
 	e.POST("/teams/:teamName/members", h.handleAddUserToTeam)
@@ -155,4 +157,31 @@ func (h *handler) handleGetTeam(c *gin.Context) {
 	}
 
 	c.JSON(200, h.translator.ToGetTeamResponse(teamModel))
+}
+
+func (h *handler) handleUpdateTeam(c *gin.Context) {
+	teamName := c.Param("teamName")
+	if teamName == "" {
+		_ = c.Error(errors.NewBadRequestError("team name is required"))
+		return
+	}
+
+	var updateRequest api.UpdateTeamRequest
+	if err := c.ShouldBindJSON(&updateRequest); err != nil {
+		_ = c.Error(errors.NewBadRequestError(fmt.Sprintf("Invalid request format: %v", err)))
+		return
+	}
+
+	if err := updateRequest.Validate(); err != nil {
+		_ = c.Error(errors.NewBadRequestError(err.Error()))
+		return
+	}
+
+	updatedTeam, err := h.teamService.UpdateTeam(c, teamName, updateRequest.Name, updateRequest.Description)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, h.translator.ToUpdateTeamResponse(updatedTeam))
 }

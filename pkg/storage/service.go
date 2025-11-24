@@ -19,6 +19,7 @@ type Service interface {
 	GetTeamsWithFilter(ctx context.Context, filter string) ([]*obj.Team, error)
 	DeleteTeam(ctx context.Context, name string) error
 	GetTeamWithName(ctx context.Context, name string) (*obj.Team, error)
+	UpdateTeam(ctx context.Context, team *obj.Team) error
 	AddUserToTeam(ctx context.Context, teamName, username string) error
 	RemoveUserFromTeam(ctx context.Context, username string) error
 	GetTeamMembers(ctx context.Context, teamName string) ([]*obj.User, error)

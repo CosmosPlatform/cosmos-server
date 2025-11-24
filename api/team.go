@@ -43,3 +43,19 @@ func (r *AddUserToTeamRequest) Validate() error {
 type GetTeamResponse struct {
 	Team *Team `json:"team"`
 }
+
+type UpdateTeamRequest struct {
+	Name        *string `json:"name,omitempty"`
+	Description *string `json:"description,omitempty"`
+}
+
+func (r *UpdateTeamRequest) Validate() error {
+	return validation.ValidateStruct(r,
+		validation.Field(&r.Name, validation.When(r.Name != nil, validation.Length(1, 100))),
+		validation.Field(&r.Description, validation.When(r.Description != nil, validation.Length(0, 500))),
+	)
+}
+
+type UpdateTeamResponse struct {
+	Team *Team `json:"team"`
+}

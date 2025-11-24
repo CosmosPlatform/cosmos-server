@@ -176,6 +176,22 @@ func (s *PostgresService) GetTeamWithName(ctx context.Context, name string) (*ob
 	return team, nil
 }
 
+func (s *PostgresService) UpdateTeam(ctx context.Context, team *obj.Team) error {
+	rowsAffected, err := gorm.G[*obj.Team](s.db).Where("id = ?", team.ID).Select("*").Updates(ctx, team)
+	if err != nil {
+		if errorUtils.Is(err, gorm.ErrDuplicatedKey) {
+			return ErrAlreadyExists
+		}
+		return fmt.Errorf("failed to update team: %v", err)
+	}
+
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}
+
 func (s *PostgresService) InsertApplication(ctx context.Context, application *obj.Application) error {
 	existing, err := gorm.G[*obj.Application](s.db).Where("LOWER(name) = LOWER(?)", application.Name).First(ctx)
 	if err == nil && existing != nil {

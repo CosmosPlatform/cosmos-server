@@ -5,6 +5,7 @@ import (
 	"cosmos-server/pkg/errors"
 	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/storage"
+	"cosmos-server/pkg/storage/obj"
 	errorUtils "errors"
 	"fmt"
 )
@@ -18,6 +19,7 @@ type Service interface {
 	AddUserToTeam(ctx context.Context, userEmail, teamName string) error
 	RemoveUserFromTeam(ctx context.Context, userEmail string) error
 	GetTeamByName(ctx context.Context, name string) (*model.Team, error)
+	UpdateTeam(ctx context.Context, currentName string, newName, newDescription *string) (*model.Team, error)
 }
 
 type teamService struct {
@@ -104,4 +106,45 @@ func (s *teamService) GetTeamByName(ctx context.Context, name string) (*model.Te
 	}
 
 	return s.translator.ToModelTeam(team), nil
+}
+
+func (s *teamService) UpdateTeam(ctx context.Context, currentName string, newName, newDescription *string) (*model.Team, error) {
+	existingTeam, err := s.storageService.GetTeamWithName(ctx, currentName)
+	if err != nil {
+		if errorUtils.Is(err, storage.ErrNotFound) {
+			return nil, errors.NewNotFoundError(fmt.Sprintf("team with name %s not found", currentName))
+		}
+		return nil, errors.NewInternalServerError(fmt.Sprintf("failed to get team with name %s: %v", currentName, err))
+	}
+
+	updateObj := &obj.Team{
+		CosmosObj: obj.CosmosObj{
+			ID:        existingTeam.ID,
+			CreatedAt: existingTeam.CreatedAt,
+		},
+		Name:        existingTeam.Name,
+		Description: existingTeam.Description,
+	}
+
+	if newName != nil {
+		updateObj.Name = *newName
+	}
+	if newDescription != nil {
+		updateObj.Description = *newDescription
+	}
+
+	err = s.storageService.UpdateTeam(ctx, updateObj)
+	if err != nil {
+		if errorUtils.Is(err, storage.ErrAlreadyExists) {
+			return nil, errors.NewConflictError(fmt.Sprintf("team with name %s already exists", updateObj.Name))
+		}
+		return nil, errors.NewInternalServerError(fmt.Sprintf("failed to update team: %v", err))
+	}
+
+	updatedTeam, err := s.storageService.GetTeamWithName(ctx, updateObj.Name)
+	if err != nil {
+		return nil, errors.NewInternalServerError(fmt.Sprintf("failed to get updated team: %v", err))
+	}
+
+	return s.translator.ToModelTeam(updatedTeam), nil
 }

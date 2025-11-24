@@ -11,6 +11,7 @@ type Translator interface {
 	ToGetTeamsResponse(teams []*model.Team) *api.GetTeamsResponse
 	ToGetTeamResponse(team *model.Team) *api.GetTeamResponse
 	ToInsertTeamResponse(name, description string) *api.CreateTeamResponse
+	ToUpdateTeamResponse(team *model.Team) *api.UpdateTeamResponse
 	ToModelTeam(name, description string) *model.Team
 }
 
@@ -55,5 +56,14 @@ func (t *translator) ToModelTeam(name, description string) *model.Team {
 	return &model.Team{
 		Name:        name,
 		Description: description,
+	}
+}
+
+func (t *translator) ToUpdateTeamResponse(team *model.Team) *api.UpdateTeamResponse {
+	return &api.UpdateTeamResponse{
+		Team: &api.Team{
+			Name:        team.Name,
+			Description: team.Description,
+		},
 	}
 }
