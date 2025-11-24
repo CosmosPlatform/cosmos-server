@@ -27,7 +27,7 @@ cosmos-server
 
 ### Golang
 
-This program uses ``go 1.23.1`, so you should have go downloaded to run it.
+This program uses ``go 1.25.0`, so you should have go downloaded to run it.
 
 ### Migrations
 
