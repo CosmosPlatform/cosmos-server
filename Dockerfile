@@ -14,5 +14,6 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o bin/cosmos-server .
 FROM alpine:3.22.2
 
 COPY --from=builder /build/bin/cosmos-server /cosmos-server
+COPY --from=builder /build/mail/templates/template.html mail/templates/template.html
 
 ENTRYPOINT ["/cosmos-server"]

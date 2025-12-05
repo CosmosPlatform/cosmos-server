@@ -7,8 +7,6 @@ import (
 	"cosmos-server/pkg/model"
 	"cosmos-server/pkg/storage"
 	"fmt"
-	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/oasdiff/oasdiff/checker"
@@ -160,24 +158,11 @@ func (ms *mailService) formatChangesAsHTML(changes checker.Changes, updatedAppli
 
 	formatedOptions := formatters.NewRenderOpts()
 
-	templatePath, err := getTemplatePath("templates/template.html")
-	if err != nil {
-		return "", fmt.Errorf("failed to get template path: %s", err.Error())
-	}
-	formatedOptions.TemplatePath = templatePath
+	formatedOptions.TemplatePath = "mail/templates/template.html"
 	htmlBytes, err := htmlFormatter.RenderChangelog(changes, formatedOptions, dependingApplicationName, updatedApplicationName)
 	if err != nil {
 		return "", fmt.Errorf("failed to render HTML changelog: %s", err.Error())
 	}
 
 	return string(htmlBytes), nil
-}
-
-func getTemplatePath(filename string) (string, error) {
-	_, currentFile, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", fmt.Errorf("unable to get current file path")
-	}
-	dir := filepath.Dir(currentFile)
-	return filepath.Join(dir, filename), nil
 }
